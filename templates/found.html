@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Found Items - Reunited{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="dashboard-header mb-4">
+    <h1 class="fw-bold mb-2">Found Items 🕵️‍♂️</h1>
+    <p class="mb-0 opacity-75">View all reported found items. Help reunite them.</p>
+  </div>
+
+  <!-- Found items grid -->
+  <div class="row g-4">
+    {% for item in items %}
+    <div class="col-12 col-sm-6 col-lg-4">
+      <div class="card shadow-sm h-100">
+        <img src="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}" 
+             class="card-img-top" alt="Found Item Image" style="height: 200px; object-fit: cover;">
+
+        <div class="card-body">
+          <h5 class="card-title">{{ item.title }}</h5>
+          <p class="card-text small text-muted">
+            Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
+          </p>
+          <p class="card-text">{{ item.description }}</p>
+          <span class="badge bg-success">
+            {{ item.status if item.status else 'Unresolved' }}
+          </span>
+        </div>
+
+        <!-- Reporter Info -->
+        <div class="card-footer d-flex align-items-center">
+          <img src="{{ url_for('uploaded_file', filename=item.profile_picture) if item.profile_picture else url_for('static', filename='images/default-avatar.png') }}"
+               class="rounded-circle me-2" width="40" height="40" alt="User" style="object-fit: cover;">
+          <small class="text-muted">
+            Reported by {{ item.first_name }} {{ item.last_name }}
+          </small>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted">No found items reported yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

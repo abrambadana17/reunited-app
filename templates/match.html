@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Match Items - Reunited{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="dashboard-header mb-4">
+    <h1 class="fw-bold mb-2">Match Items 🕵️‍♂️</h1>
+    <p class="mb-0 opacity-75">Here are items matched with yours.</p>
+  </div>
+
+  <!-- Match Items Grid -->
+  <div class="row g-4">
+    {% for match in matches %}
+    <div class="col-12 col-sm-6 col-lg-4">
+      <div class="card shadow-sm h-100">
+        <!-- Display both images side by side -->
+        <div class="d-flex">
+          <img src="{{ url_for('static', filename=match.lost_image) if match.lost_image else url_for('static', filename='images/placeholder.png') }}" 
+               class="card-img-top w-50 border-end" alt="Lost Item Image">
+          <img src="{{ url_for('static', filename=match.found_image) if match.found_image else url_for('static', filename='images/placeholder.png') }}" 
+               class="card-img-top w-50" alt="Found Item Image">
+        </div>
+
+        <div class="card-body">
+          <h5 class="card-title">
+            {{ match.lost_title }} ↔ {{ match.found_title }}
+          </h5>
+          <p class="card-text small text-muted">
+            Matched on: {{ match.match_at.strftime('%b %d, %Y') if match.match_at else 'N/A' }}
+          </p>
+          <p class="card-text">
+            Lost: {{ match.lost_description }} <br>
+            Found: {{ match.found_description }}
+          </p>
+          <span class="badge bg-success">
+            Match Score: {{ match.match_score }}
+          </span>
+        </div>
+
+        <div class="card-footer">
+          <small class="text-muted">
+            Reported by {{ match.lost_first_name }} {{ match.lost_last_name }} (Lost) 
+            and {{ match.found_first_name }} {{ match.found_last_name }} (Found)
+          </small>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted">No matches found for your items yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

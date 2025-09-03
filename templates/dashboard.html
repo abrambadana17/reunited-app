@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Reunited{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="dashboard-header mb-4">
+    <h1 class="fw-bold mb-2">Dashboard</h1>
+    <p class="mb-0 opacity-75">Welcome to Reunited, {{ session.first_name }}!</p>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row g-4 mb-4">
+   
+  <!-- Add your dashboard cards here -->
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="stats-card">
+          <div class="stats-icon" style="background: rgba(52, 152, 219, 0.2);">
+            <i class="bi bi-search text-info"></i>
+          </div>
+          <h2 class="stats-number text-info">3</h2>
+          <p class="mb-0 opacity-75">Lost Items Posted</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="stats-card">
+          <div class="stats-icon" style="background: rgba(46, 204, 113, 0.2);">
+            <i class="bi bi-check-circle text-success"></i>
+          </div>
+          <h2 class="stats-number text-success">1</h2>
+          <p class="mb-0 opacity-75">Items Found</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="stats-card">
+          <div class="stats-icon" style="background: rgba(155, 89, 182, 0.2);">
+            <i class="bi bi-puzzle" style="color: #9b59b6;"></i>
+          </div>
+          <h2 class="stats-number" style="color: #9b59b6;">5</h2>
+          <p class="mb-0 opacity-75">Potential Matches</p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="stats-card">
+          <div class="stats-icon" style="background: rgba(231, 76, 60, 0.2);">
+            <i class="bi bi-bell text-danger"></i>
+          </div>
+          <h2 class="stats-number text-danger">2</h2>
+          <p class="mb-0 opacity-75">New Notifications</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- same stats cards here -->
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row g-4 mb-4">
+    <!-- Report Lost Item -->
+    <div class="col-12 col-lg-6">
+      <div class="stats-card text-center">
+        <div class="stats-icon mx-auto" style="background: rgba(52, 152, 219, 0.2);">
+          <i class="bi bi-plus-circle text-info"></i>
+        </div>
+        <h4 class="mb-3">Report Lost Item</h4>
+        <p class="mb-4 opacity-75">Lost something? Create a detailed report to help others find and return it.</p>
+        <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#lostItemModal">
+          <i class="bi bi-plus-circle me-2"></i>Report Lost Item
+        </button>
+      </div>
+    </div>
+
+    <!-- Report Found Item -->
+    <div class="col-12 col-lg-6">
+      <div class="stats-card text-center">
+        <div class="stats-icon mx-auto" style="background: rgba(46, 204, 113, 0.2);">
+          <i class="bi bi-search text-success"></i>
+        </div>
+        <h4 class="mb-3">Report Found Item</h4>
+        <p class="mb-4 opacity-75">Found something? Help reunite it with its owner by reporting it here.</p>
+        <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#foundItemModal">
+          <i class="bi bi-search me-2"></i>Report Found Item
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lost Item Modal -->
+<div class="modal fade" id="lostItemModal" tabindex="-1" aria-labelledby="lostItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form action="{{ url_for('lost') }}" method="POST" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="lostItemModalLabel">Report Lost Item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Item Title</label>
+            <input type="text" name="title" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select" required>
+              <option value="">Select category</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Wallet">Wallet</option>
+              <option value="Keys">Keys</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Location Lost</label>
+            <input type="text" name="location_reported" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Reward (Optional)</label>
+            <input type="text" name="reward" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Upload Item Image</label>
+            <input type="file" name="image" class="form-control" accept="image/*" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Lost Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Found Item Modal -->
+<div class="modal fade" id="foundItemModal" tabindex="-1" aria-labelledby="foundItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form action="{{ url_for('found') }}" method="POST" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="foundItemModalLabel">Report Found Item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Item Title</label>
+            <input type="text" name="title" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select" required>
+              <option value="">Select category</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Wallet">Wallet</option>
+              <option value="Keys">Keys</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Location Found</label>
+            <input type="text" name="location_reported" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Upload Item Image</label>
+            <input type="file" name="image" class="form-control" accept="image/*" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Submit Found Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

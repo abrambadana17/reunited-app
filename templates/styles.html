@@ -1,0 +1,412 @@
+/* Body */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  color: #333;
+}
+
+/* Sidebar */
+.sidebar {
+  background: #1a1a1a;
+  min-height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  width: 250px;
+}
+
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.sidebar a {
+  color: #ccc;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar.collapsed a {
+  padding: 12px 15px;
+  justify-content: center;
+}
+
+.sidebar a:hover {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.sidebar a.active {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: #fff;
+}
+
+.sidebar .nav-text {
+  margin-left: 12px;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar.collapsed .nav-text {
+  opacity: 0;
+  width: 0;
+  margin-left: 0;
+}
+
+.sidebar .brand-text {
+  transition: opacity 0.3s ease;
+}
+
+.sidebar.collapsed .brand-text {
+  opacity: 0;
+  width: 0;
+}
+
+/* User profile */
+.user-profile {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .user-profile {
+  padding: 10px;
+  text-align: center;
+  background: transparent;
+  border: none;
+}
+
+.user-profile-content {
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .user-profile-content {
+  justify-content: center;
+}
+
+.user-info {
+  margin-left: 12px;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .user-info {
+  opacity: 0;
+  width: 0;
+  margin-left: 0;
+  overflow: hidden;
+}
+
+.sidebar .section-header {
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .section-header {
+  opacity: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #f39c12, #e67e22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Main content */
+.main-content {
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+  min-height: 100vh;
+  padding: 30px;
+}
+
+.main-content.expanded {
+  margin-left: 70px;
+}
+
+/* Dashboard header */
+.dashboard-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Stats card */
+.stats-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.stats-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+}
+
+.stats-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+.stats-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Recent activity */
+.recent-activity {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  margin-top: 30px;
+}
+
+.activity-item {
+  padding: 15px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+}
+
+/* Toggle button */
+.toggle-btn {
+  position: fixed;
+  top: 20px;                  /* keep it at the top */
+  left: 200px;                /* inside the expanded sidebar (250px - margin) */
+  z-index: 1001;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+/* When sidebar is collapsed */
+.toggle-btn.collapsed-pos {
+  left: 15px;   /* matches collapsed sidebar (70px) with small margin */
+}
+
+/* Mobile override */
+@media (max-width: 768px) {
+  .toggle-btn {
+    top: 20px;
+    left: 5px; /* stick inside collapsed sidebar */
+  }
+
+  .toggle-btn.mobile-expanded {
+    left: 150px; /* match expanded sidebar on mobile */
+  }
+}
+
+
+
+/* Primary button */
+.btn-primary-custom {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border: none;
+  color: white;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-primary-custom:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 70px;
+  }
+
+  .sidebar.show {
+    width: 250px;
+  }
+
+  .sidebar.show .nav-text {
+    opacity: 1;
+    width: auto;
+    margin-left: 12px;
+  }
+
+  .sidebar.show .brand-text {
+    opacity: 1;
+    width: auto;
+  }
+
+  .sidebar.show .user-info {
+    opacity: 1;
+    width: auto;
+    margin-left: 12px;
+  }
+
+  .sidebar.show .section-header {
+    opacity: 1;
+    height: auto;
+    margin: inherit;
+    padding: inherit;
+    overflow: visible;
+  }
+
+  .main-content {
+    margin-left: 70px;
+    padding: 20px 15px;
+  }
+
+  .main-content.expanded {
+    margin-left: 70px;
+  }
+
+  .toggle-btn {
+    left: 15px !important;
+  }
+
+  .toggle-btn.mobile-expanded {
+    left: 200px !important;
+
+  }
+
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .stats-number {
+    font-size: 2rem;
+  }
+}
+
+/* Brand logo text */
+.brand {
+  text-align: left;
+  padding: 10px 0;
+  margin-left: 10px;
+}
+
+.brand-text {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+/* Fixed card size for lost/found items */
+.card {
+  width: 100%;
+  max-width: 350px;  /* keeps cards uniform */
+  min-height: 420px; /* ensures equal height */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Force image height */
+.card-img-top {
+  height: 200px;        /* fixed image height */
+  object-fit: cover;    /* crop/scale nicely */
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+/* Card body should take remaining space */
+.card-body {
+  flex-grow: 1;
+  overflow: hidden;  /* prevents overflow text */
+}
+
+/* Text inside cards */
+.card-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.card-text {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* Footer with reporter info */
+.card-footer {
+  background: rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 10px 15px;
+}
+

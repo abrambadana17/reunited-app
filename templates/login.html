@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Reunited</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .sidebar {
+      background: #1a1a1a;
+      min-height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      transition: all 0.3s ease;
+      width: 250px;
+    }
+
+    .sidebar.collapsed {
+      width: 70px;
+    }
+
+    .sidebar a {
+      color: #ccc;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .sidebar.collapsed a {
+      padding: 12px 15px;
+      justify-content: center;
+    }
+
+    .sidebar a:hover {
+      background: #2a2a2a;
+      color: #fff;
+    }
+
+    .sidebar a.active {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: #fff;
+    }
+
+    .sidebar .nav-text {
+      margin-left: 12px;
+      transition: opacity 0.3s ease;
+    }
+
+    .sidebar.collapsed .nav-text {
+      opacity: 0;
+      width: 0;
+      margin-left: 0;
+    }
+
+    .sidebar .brand-text {
+      transition: opacity 0.3s ease;
+    }
+
+    .sidebar.collapsed .brand-text {
+      opacity: 0;
+      width: 0;
+    }
+
+    .sidebar .section-header {
+      transition: all 0.3s ease;
+    }
+
+    .sidebar.collapsed .section-header {
+      opacity: 0;
+      height: 0;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .main-content {
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .main-content.expanded {
+      margin-left: 70px;
+    }
+
+    .form-section {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 60px 40px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .form-section h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-section p {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+      opacity: 0.9;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .form-control {
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 16px;
+      color: white;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    .form-control::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .btn-primary {
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      padding: 12px 32px;
+      font-weight: 600;
+      color: white;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      width: 100%;
+      position: relative;
+    }
+
+    .btn-primary:hover {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      color: white;
+    }
+
+    .btn-primary:disabled {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.5);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .spinner-border {
+      width: 1rem;
+      height: 1rem;
+      margin-right: 0.5rem;
+    }
+
+    .form-footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .form-footer a {
+      color: rgba(255, 255, 255, 0.9);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .form-footer a:hover {
+      color: white;
+    }
+
+    .alert {
+      background: rgba(248, 215, 218, 0.9);
+      border: 1px solid rgba(245, 198, 203, 0.9);
+      color: #721c24;
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 1rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .alert-success {
+      background: rgba(212, 237, 218, 0.9);
+      border: 1px solid rgba(198, 230, 206, 0.9);
+      color: #0f5132;
+    }
+
+    .toggle-btn {
+      position: fixed;
+      top: 20px;
+      left: 200px;
+      z-index: 1001;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      border-radius: 8px;
+      padding: 8px 12px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+
+    .toggle-btn.collapsed-pos {
+      left: 15px;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 70px;
+      }
+
+      .sidebar.show {
+        width: 250px;
+      }
+
+      .sidebar.show .nav-text {
+        opacity: 1;
+        width: auto;
+        margin-left: 12px;
+      }
+
+      .sidebar.show .brand-text {
+        opacity: 1;
+        width: auto;
+      }
+
+      .sidebar.show .section-header {
+        opacity: 1;
+        height: auto;
+        margin: inherit;
+        padding: inherit;
+        overflow: visible;
+      }
+
+      .main-content {
+        margin-left: 70px;
+        padding: 20px;
+      }
+
+      .main-content.expanded {
+        margin-left: 70px;
+      }
+
+      .toggle-btn {
+        left: 15px !important;
+      }
+
+      .toggle-btn.mobile-expanded {
+        left: 200px !important;
+      }
+
+      .form-section {
+        padding: 40px 30px;
+        margin: 20px;
+      }
+
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+
+    /* Brand logo text */
+.brand {
+  text-align: left;
+  padding: 10px 0;
+  margin-left: 10px;
+}
+
+.brand-text {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+  </style>
+</head>
+<body>
+
+<!-- Mobile overlay -->
+<div class="overlay" id="overlay"></div>
+
+<!-- Toggle button -->
+<button class="toggle-btn" id="toggleBtn">
+  <i class="bi bi-list"></i>
+</button>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="p-3">
+
+    <!-- Brand -->
+    <div class="brand d-flex align-items-center justify-content-left mb-4">
+      <span class="brand-text">Reunited</span>
+    </div>
+
+    <h6 class="text-secondary text-uppercase small section-header">Main</h6>
+    <a href="/">
+      <i class="bi bi-house-fill"></i>
+      <span class="nav-text">Dashboard</span>
+    </a>
+
+    <h6 class="text-secondary text-uppercase mt-4 small section-header">Account</h6>
+    <a href="/login" class="active">
+      <i class="bi bi-shield-lock-fill"></i>
+      <span class="nav-text">Login</span>
+    </a>
+    <a href="/register">
+      <i class="bi bi-person-plus-fill"></i>
+      <span class="nav-text">Register</span>
+    </a>
+  </div>
+</nav>
+
+<!-- Main content -->
+<main class="main-content d-flex align-items-center justify-content-center" id="mainContent">
+  <div class="container-fluid px-4">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-8">
+        <div class="form-section">
+          <h1>Welcome Back</h1>
+          <p>Sign in to your Reunited account</p>
+          
+          <!-- Alert messages -->
+          <div id="alertContainer"></div>
+          
+          <form id="loginForm">
+            <div class="form-group">
+              <label class="form-label" for="username">Email Address</label>
+              <input type="email" class="form-control" id="username" name="username" placeholder="Enter your email address" required>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" for="password">Password</label>
+              <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" id="loginBtn">
+              <span class="btn-text">Sign In</span>
+            </button>
+          </form>
+          
+          <div class="form-footer">
+            Don't have an account? <a href="/register">Create one here</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  const sidebar = document.getElementById('sidebar');
+  const mainContent = document.getElementById('mainContent');
+  const toggleBtn = document.getElementById('toggleBtn');
+  const overlay = document.getElementById('overlay');
+  const loginForm = document.getElementById('loginForm');
+  const loginBtn = document.getElementById('loginBtn');
+  const alertContainer = document.getElementById('alertContainer');
+  let isCollapsed = false;
+  let isMobile = window.innerWidth <= 768;
+
+  function updateLayout() {
+    isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+      sidebar.classList.add('collapsed');
+      sidebar.classList.remove('show');
+      mainContent.classList.add('expanded');
+      toggleBtn.classList.add('collapsed-pos');
+      overlay.classList.remove('show');
+    } else {
+      sidebar.classList.remove('show');
+      overlay.classList.remove('show');
+      if (isCollapsed) {
+        sidebar.classList.add('collapsed');
+        mainContent.classList.add('expanded');
+        toggleBtn.classList.add('collapsed-pos');
+      } else {
+        sidebar.classList.remove('collapsed');
+        mainContent.classList.remove('expanded');
+        toggleBtn.classList.remove('collapsed-pos');
+      }
+    }
+  }
+
+  toggleBtn.addEventListener('click', function() {
+    if (isMobile) {
+      if (sidebar.classList.contains('show')) {
+        sidebar.classList.remove('show');
+        overlay.classList.remove('show');
+        toggleBtn.classList.remove('mobile-expanded');
+      } else {
+        sidebar.classList.add('show');
+        overlay.classList.add('show');
+        toggleBtn.classList.add('mobile-expanded');
+      }
+    } else {
+      isCollapsed = !isCollapsed;
+      updateLayout();
+    }
+  });
+
+  overlay.addEventListener('click', function() {
+    if (isMobile) {
+      sidebar.classList.remove('show');
+      overlay.classList.remove('show');
+      toggleBtn.classList.remove('mobile-expanded');
+    }
+  });
+
+  window.addEventListener('resize', updateLayout);
+  updateLayout();
+
+  // Login functionality
+  function showAlert(message, type = 'danger') {
+    const alertClass = type === 'success' ? 'alert-success' : '';
+    alertContainer.innerHTML = `
+      <div class="alert ${alertClass}" role="alert">
+        ${message}
+      </div>
+    `;
+    
+    setTimeout(() => {
+      alertContainer.innerHTML = '';
+    }, 5000);
+  }
+
+  function setLoading(loading) {
+    const btnText = loginBtn.querySelector('.btn-text');
+    
+    if (loading) {
+      loginBtn.disabled = true;
+      btnText.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>Signing In...';
+    } else {
+      loginBtn.disabled = false;
+      btnText.innerHTML = 'Sign In';
+    }
+  }
+
+  loginForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(loginForm);
+    const data = {
+      username: formData.get('username'),
+      password: formData.get('password')
+    };
+    
+    setLoading(true);
+    
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        showAlert(result.message, 'success');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1500);
+      } else {
+        showAlert(result.errors.join('<br>'));
+      }
+    } catch (error) {
+      showAlert('Connection error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  });
+</script>
+
+</body>
+</html>

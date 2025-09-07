@@ -1,45 +1,58 @@
 import numpy as np
+import re
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Model
-import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity as cos_sim
 
-# Load ResNet50 once
+# -----------------------------
+# Load ResNet50 once at startup
+# -----------------------------
 base_model = ResNet50(weights="imagenet")
 model = Model(inputs=base_model.input, outputs=base_model.get_layer("avg_pool").output)
 
+# -----------------------------
+# Image Feature Extraction
+# -----------------------------
 def extract_features(img_path):
-    """Extract vector features from image"""
+    """Extract deep vector features from an image using ResNet50"""
     img = image.load_img(img_path, target_size=(224, 224))
     x = image.img_to_array(img)
     x = np.expand_dims(x, axis=0)
     x = preprocess_input(x)
-    features = model.predict(x)
+    features = model.predict(x, verbose=0)
     return features.flatten()
 
 def cosine_similarity(a, b):
+    """Cosine similarity between two vectors"""
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-def text_similarity(str1, str2):
-    """Simple Jaccard similarity for text comparison"""
-    if not str1 or not str2:
-        return 0.0
-    words1 = set(re.findall(r'\w+', str1.lower()))
-    words2 = set(re.findall(r'\w+', str2.lower()))
-    if not words1 or not words2:
-        return 0.0
-    return len(words1 & words2) / len(words1 | words2)
+# -----------------------------
+# Text Feature Matching (TF-IDF)
+# -----------------------------
+def clean_text(text):
+    return re.sub(r'[^a-zA-Z0-9 ]', '', text.lower())
 
-def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql,
-               img_weight=0.7, text_weight=0.3, threshold=0.65):
+def text_similarity(text1, text2):
+    docs = [clean_text(text1), clean_text(text2)]
+    vectorizer = TfidfVectorizer().fit_transform(docs)
+    vectors = vectorizer.toarray()
+    return cos_sim([vectors[0]], [vectors[1]])[0][0]
+
+# -----------------------------
+# Combined Auto Match (Image + Text)
+# -----------------------------
+def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, threshold=0.4):
     """
-    Check similarity with opposite type and insert match.
-    Uses both image features and textual details.
+    Compare new item against opposite type (lost vs found).
+    Match based on BOTH image features and text details.
     """
+
     opposite_type = 'found' if type_ == 'lost' else 'lost'
 
     cursor.execute('''
-        SELECT i.id, i.title, i.description, img.ai_features
+        SELECT i.id, i.title, i.description, i.category, i.location_reported, img.ai_features 
         FROM items i
         JOIN images img ON i.id = img.item_id
         WHERE i.type = %s
@@ -48,17 +61,21 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql,
 
     for other in others:
         try:
-            # Image similarity
-            other_features = np.array(eval(other['ai_features']))
-            img_score = cosine_similarity(new_features, other_features)
+            # ---- Image similarity ----
+            image_score = 0
+            if other['ai_features']:
+                other_features = np.array(eval(other['ai_features']))
+                image_score = cosine_similarity(new_features, other_features)
 
-            # Text similarity
-            other_details = (other['title'] or '') + " " + (other['description'] or '')
-            text_score = text_similarity(new_details, other_details)
+            # ---- Text similarity ----
+            details1 = f"{new_details['title']} {new_details['description']} {new_details['category']} {new_details['location']}"
+            details2 = f"{other['title']} {other['description']} {other['category']} {other['location_reported']}"
+            text_score = text_similarity(details1, details2)
 
-            # Weighted final score
-            final_score = (img_weight * img_score) + (text_weight * text_score)
+            # ---- Weighted final score ----
+            final_score = (0.6 * image_score) + (0.4 * text_score)
 
+            # ---- Insert match if above threshold ----
             if final_score >= threshold:
                 cursor.execute('''
                     INSERT INTO ai_matches (lost_item_id, found_item_id, match_score, status)
@@ -71,4 +88,4 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql,
                 mysql.connection.commit()
 
         except Exception as e:
-            print(f"Error matching: {e}")
+            print(f"Error in auto_match: {e}")

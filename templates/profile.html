@@ -10,8 +10,8 @@
 </div>
 
 <!-- Profile Form -->
-<div class="card bg-transparent border-light text-white mb-4">
-  <div class="card-body">
+<div class="profile-card">
+  <div class="profile-card-body">
     <form method="POST" action="" enctype="multipart/form-data" id="profileForm">
       
       <!-- Profile Picture Section -->
@@ -47,34 +47,40 @@
       </div>
 
       <!-- Form Fields -->
-      <div class="mb-3">
-        <label for="fullName" class="form-label">Full Name</label>
-        <input type="text" id="fullName" name="full_name" class="form-control" 
-               value="{{ session.full_name }}" required>
+      <div class="profile-form-row">
+        <div class="profile-form-group">
+          <label for="fullName" class="form-label">Full Name</label>
+          <input type="text" id="fullName" name="full_name" class="form-control" 
+                 value="{{ session.full_name }}" required>
+        </div>
+        
+        <div class="profile-form-group">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" id="email" name="email" class="form-control" 
+                 value="{{ session.email }}" required>
+        </div>
       </div>
       
-      <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
-        <input type="email" id="email" name="email" class="form-control" 
-               value="{{ session.email }}" required>
+      <div class="profile-form-row">
+        <div class="profile-form-group">
+          <label class="form-label" for="phone">Phone Number</label>
+          <input type="tel" class="form-control" id="phone" name="phone" 
+                 value="{{ session.phone }}" required>
+        </div>
+        
+        <div class="profile-form-group">
+          <label for="password" class="form-label">Change Password</label>
+          <input type="password" id="password" name="password" class="form-control" 
+                 placeholder="Leave blank to keep current password">
+          <small class="text-muted">Only fill this if you want to change your password</small>
+        </div>
       </div>
       
-      <div class="mb-3">
-        <label class="form-label" for="phone">Phone Number</label>
-        <input type="tel" class="form-control" id="phone" name="phone" 
-               value="{{ session.phone }}" required>
+      <div class="profile-form-actions">
+        <button type="button" class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#confirmModal">
+          Save Changes
+        </button>
       </div>
-      
-      <div class="mb-3">
-        <label for="password" class="form-label">Change Password</label>
-        <input type="password" id="password" name="password" class="form-control" 
-               placeholder="Leave blank to keep current password">
-        <small class="text-muted">Only fill this if you want to change your password</small>
-      </div>
-      
-      <button type="button" class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#confirmModal">
-        Save Changes
-      </button>
     </form>
   </div>
 </div>
@@ -99,6 +105,56 @@
 </div>
 
 <style>
+/* Custom profile card that won't be affected by global card styles */
+.profile-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  max-width: 800px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.profile-card-body {
+  padding: 2rem;
+  color: white;
+}
+
+/* Form layout */
+.profile-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.profile-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-form-actions {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .profile-form-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .profile-card-body {
+    padding: 1.5rem;
+  }
+}
+
+/* Profile picture styles */
 .profile-picture-preview {
   position: relative;
 }
@@ -129,34 +185,61 @@
 .btn-primary-custom {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
-  padding: 10px 24px;
+  padding: 12px 30px;
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.3s ease;
+  color: white;
+  font-size: 16px;
 }
 
 .btn-primary-custom:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  color: white;
 }
 
-.image-upload-area {
-  border: 2px dashed #666;
+/* Form controls */
+.profile-card .form-control {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  padding: 20px;
-  text-align: center;
-  cursor: pointer;
+  color: white;
+  padding: 0.75rem;
   transition: all 0.3s ease;
 }
 
-.image-upload-area:hover {
+.profile-card .form-control:focus {
+  background: rgba(255, 255, 255, 0.15);
   border-color: #667eea;
-  background-color: rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  color: white;
 }
 
-.image-upload-area.dragover {
-  border-color: #667eea;
-  background-color: rgba(102, 126, 234, 0.2);
+.profile-card .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.profile-card .form-label {
+  color: white;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.profile-card .text-muted {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 0.85rem;
+}
+
+/* Drag and drop enhancement */
+.profile-picture-preview.dragover {
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+}
+
+/* Button spacing in profile picture section */
+.profile-picture-preview + .flex-grow-1 .d-flex {
+  margin-bottom: 0.5rem;
 }
 </style>
 
@@ -265,7 +348,7 @@ document.getElementById('confirmSave').addEventListener('click', function() {
     document.getElementById('profileForm').submit();
 });
 
-// Drag and drop functionality (optional enhancement)
+// Drag and drop functionality
 const uploadArea = document.querySelector('.profile-picture-preview');
 if (uploadArea) {
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {

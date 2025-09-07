@@ -6,6 +6,7 @@ from resnet_model import extract_features, auto_match
 
 import MySQLdb.cursors
 import re
+import numpy as np
 from datetime import datetime
 import os
 import uuid
@@ -344,13 +345,21 @@ def lost():
 
         # insert item
         cursor.execute('''
-            INSERT INTO items (user_id, title, description, category, type, date_reported, location_reported, reward)
-            VALUES (%s, %s, %s, %s, 'lost', %s, %s, %s)
-        ''', (session['user_id'], title, description, category, date_reported, location, reward))
+            INSERT INTO items (
+                user_id, title, description, category, type,
+                date_reported, location_reported, reward, status
+            )
+            VALUES (%s, %s, %s, %s, 'lost', %s, %s, %s, %s)
+        ''', (session['user_id'], title, description, category, date_reported, location, reward, "Not Yet Found"))
+
+
+
         item_id = cursor.lastrowid
         mysql.connection.commit()
 
-        # insert image + extract features
+        features = None
+
+        # insert image + extract AI features
         if 'image' in request.files:
             file = request.files['image']
             if file and allowed_file(file.filename):
@@ -359,17 +368,27 @@ def lost():
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 file.save(filepath)
 
-                # Extract features with ResNet50
+                # extract features
                 features = extract_features(filepath)
 
+                # insert into images table with features
                 cursor.execute('''
                     INSERT INTO images (item_id, file_path, ai_features)
                     VALUES (%s, %s, %s)
                 ''', (item_id, filepath, str(features.tolist())))
                 mysql.connection.commit()
 
-                # Run auto-match
-                auto_match(item_id, 'lost', features, cursor)
+        # prepare details for text matching
+        new_details = {
+            "title": title,
+            "description": description,
+            "category": category,
+            "location": location
+        }
+
+        # auto match
+        if features is not None:
+            auto_match(item_id, 'lost', features, new_details, cursor, mysql)
 
         flash('Lost item reported successfully!', 'success')
         return redirect(url_for('lost'))
@@ -407,13 +426,22 @@ def found():
 
         # insert item
         cursor.execute('''
-            INSERT INTO items (user_id, title, description, category, type, date_reported, location_reported)
-            VALUES (%s, %s, %s, %s, 'found', %s, %s)
-        ''', (session['user_id'], title, description, category, date_reported, location))
+        INSERT INTO items (
+            user_id, title, description, category, type,
+            date_reported, location_reported, status
+        )
+        VALUES (%s, %s, %s, %s, 'found', %s, %s, %s)
+    ''', (session['user_id'], title, description, category, date_reported, location, "Unclaimed"))
+
+
+
+
         item_id = cursor.lastrowid
         mysql.connection.commit()
 
-        # insert image + extract features
+        features = None
+
+        # insert image + extract AI features
         if 'image' in request.files:
             file = request.files['image']
             if file and allowed_file(file.filename):
@@ -422,17 +450,27 @@ def found():
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 file.save(filepath)
 
-                # Extract features with ResNet50
+                # extract features
                 features = extract_features(filepath)
 
+                # insert into images table with features
                 cursor.execute('''
                     INSERT INTO images (item_id, file_path, ai_features)
                     VALUES (%s, %s, %s)
                 ''', (item_id, filepath, str(features.tolist())))
                 mysql.connection.commit()
 
-                # Run auto-match
-                auto_match(item_id, 'found', features, cursor)
+        # prepare details for text matching
+        new_details = {
+            "title": title,
+            "description": description,
+            "category": category,
+            "location": location
+        }
+
+        # auto match
+        if features is not None:
+            auto_match(item_id, 'found', features, new_details, cursor, mysql)
 
         flash('Found item reported successfully!', 'success')
         return redirect(url_for('found'))
@@ -453,37 +491,53 @@ def found():
     return render_template('found.html', items=found_items, active_page='found')
 
 
+
+# ---------- MATCH ----------
 @app.route('/match')
 def match():
     if 'user_id' not in session:
-        flash("Please log in first.", "danger")
+        flash("Please log in to view matches.", "danger")
         return redirect(url_for("login_page"))
 
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-
-    # Fetch matches where the logged-in user owns either lost or found item
-    cursor.execute('''
-        SELECT m.id AS match_id, m.match_score, m.match_at, m.status,
-               lost.title AS lost_title, lost.description AS lost_description, 
-               found.title AS found_title, found.description AS found_description,
-               lost_img.file_path AS lost_image, found_img.file_path AS found_image,
-               u1.first_name AS lost_first_name, u1.last_name AS lost_last_name,
-               u2.first_name AS found_first_name, u2.last_name AS found_last_name
+    cursor.execute("""
+        SELECT m.id, m.match_score, m.match_at, m.status,
+               lost.id AS lost_id, lost.title AS lost_title, lost.description AS lost_description,
+               lost.date_reported AS lost_date, u1.first_name AS lost_first_name, 
+               u1.last_name AS lost_last_name, u1.profile_picture AS lost_profile,
+               lost_img.file_path AS lost_image,
+               found.id AS found_id, found.title AS found_title, found.description AS found_description,
+               found.date_reported AS found_date, u2.first_name AS found_first_name, 
+               u2.last_name AS found_last_name, u2.profile_picture AS found_profile,
+               found_img.file_path AS found_image
         FROM ai_matches m
         JOIN items lost ON m.lost_item_id = lost.id
-        JOIN items found ON m.found_item_id = found.id
-        LEFT JOIN images lost_img ON lost.id = lost_img.item_id
-        LEFT JOIN images found_img ON found.id = found_img.item_id
         JOIN users u1 ON lost.user_id = u1.id
+        LEFT JOIN images lost_img ON lost.id = lost_img.item_id
+        JOIN items found ON m.found_item_id = found.id
         JOIN users u2 ON found.user_id = u2.id
+        LEFT JOIN images found_img ON found.id = found_img.item_id
         WHERE lost.user_id = %s OR found.user_id = %s
         ORDER BY m.match_at DESC
-    ''', (session['user_id'], session['user_id']))
-
+    """, (session['user_id'], session['user_id']))
+    
     matches = cursor.fetchall()
     cursor.close()
 
-    return render_template('match.html', matches=matches, active_page='match')
+    # 🔥 Normalize image paths for Flask
+    for m in matches:
+     if m['lost_image']:
+        m['lost_image'] = m['lost_image'].replace("\\", "/")  # Windows → web
+        if m['lost_image'].startswith("static/"):
+            m['lost_image'] = m['lost_image'][7:]  # remove "static/"
+     if m['found_image']:
+        m['found_image'] = m['found_image'].replace("\\", "/")
+        if m['found_image'].startswith("static/"):
+            m['found_image'] = m['found_image'][7:]
+
+
+    return render_template("match.html", matches=matches, active_page="match")
+
 
 
 

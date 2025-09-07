@@ -22,9 +22,15 @@
             Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
           </p>
           <p class="card-text">{{ item.description }}</p>
-          <span class="badge bg-success">
-            {{ item.status if item.status else 'Unresolved' }}
-          </span>
+          {% if item.status == "claimed" %}
+            <span class="badge bg-success">{{ item.status }}</span>
+          {% elif item.status == "returned" %}
+            <span class="badge bg-primary">{{ item.status }}</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">{{ item.status }}</span>
+          {% endif %}
+
+
         </div>
 
         <!-- Reporter Info -->

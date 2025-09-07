@@ -36,43 +36,51 @@
     }
     
     .user-profile {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 24px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .user-profile-content {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    
-    .user-info {
-      flex: 1;
-      min-width: 0;
-    }
-    
-    .user-info .text-white {
-      font-size: 14px;
-      line-height: 1.2;
-      margin: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    .user-info .text-light {
-      font-size: 12px;
-      line-height: 1.2;
-      margin: 0;
-      opacity: 0.8;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer; /* indicates click */
+}
+
+.user-profile:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); /* shadow hover */
+  transform: translateY(-2px); /* slight lift */
+}
+
+.user-profile-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-info .text-white {
+  font-size: 14px;
+  line-height: 1.2;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-info .text-light {
+  font-size: 12px;
+  line-height: 1.2;
+  margin: 0;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
   </style>
 </head>
 <body>
@@ -95,7 +103,8 @@
     </div>
 
     <!-- User Profile -->
-    <div class="user-profile">
+     
+    <div class="user-profile" onclick="window.location.href='{{ url_for('profile') }}'" style="cursor:pointer;">
       <div class="user-profile-content">
         <div class="user-avatar">
           {% if session.profile_picture %}

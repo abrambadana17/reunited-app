@@ -1,12 +1,30 @@
 {% extends "base.html" %}
-
 {% block title %}Notifications - Reunited{% endblock %}
 
-{% block active_notifications %}active{% endblock %}
-
 {% block content %}
-<div class="dashboard-header mb-4">
-  <h1 class="fw-bold mb-2">Notifications 🔔</h1>
-  <p class="mb-0 opacity-75">Manage your account settings and preferences.</p>
+<div class="container-fluid">
+  <div class="dashboard-header mb-4">
+    <h1 class="fw-bold mb-2">🔔 Notifications</h1>
+    <p class="mb-0 opacity-75">Stay updated about your items.</p>
+  </div>
+
+  <div class="list-group shadow-sm">
+    {% for n in notifications %}
+      <div class="list-group-item d-flex justify-content-between align-items-center {% if not n.is_read %}list-group-item-warning{% endif %}">
+       <a href="{{ url_for('mark_notification_read', notif_id=n.id) }}" 
+   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if not n.is_read %}list-group-item-warning{% endif %}">
+  <div>
+    <p class="mb-1">{{ n.message | replace('\n', '<br>') | safe }}</p>
+    <small class="text-muted">{{ n.sent_at.strftime('%b %d, %Y %I:%M %p') }}</small>
+  </div>
+  <span class="badge {% if n.is_read %}bg-secondary{% else %}bg-primary{% endif %}">
+    {{ "Read" if n.is_read else "New" }}
+  </span>
+</a>
+      </div>
+    {% else %}
+      <p class="text-muted p-3">No notifications yet.</p>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

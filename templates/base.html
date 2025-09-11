@@ -8,10 +8,46 @@
   <!-- Bootstrap CSS & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <style>
     {% include 'styles.html' %}
+
+    /* === Brand / Reunited Logo === */
+    /* Sidebar header / brand */
     
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 18px 20px;
+  margin-bottom: 25px;
+  color: var(--color-white);
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brand-icon {
+  font-size: 1.5rem;
+  margin-right: 12px;
+  color: var(--color-sidebar-active);
+  transition: opacity 0.3s ease, width 0.3s ease;
+}
+
+.brand-text {
+  transition: opacity 0.3s ease, width 0.3s ease;
+  white-space: nowrap;
+}
+
+/* 🔹 Hide both icon + text when collapsed */
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .brand-icon {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
     /* Profile picture styles for sidebar */
     .user-avatar {
       width: 40px;
@@ -27,60 +63,81 @@
       flex-shrink: 0;
       overflow: hidden;
     }
-    
+
     .user-avatar img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       border-radius: 50%;
     }
-    
+
     .user-profile {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 24px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
-  cursor: pointer; /* indicates click */
-}
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
 
-.user-profile:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); /* shadow hover */
-  transform: translateY(-2px); /* slight lift */
-}
+    .user-profile:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      transform: translateY(-2px);
+    }
 
-.user-profile-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+    .user-profile-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-.user-info {
-  flex: 1;
-  min-width: 0;
-}
+    .user-info {
+      flex: 1;
+      min-width: 0;
+    }
 
-.user-info .text-white {
-  font-size: 14px;
-  line-height: 1.2;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+    .user-info .text-white {
+      font-size: 14px;
+      line-height: 1.2;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-.user-info .text-light {
-  font-size: 12px;
-  line-height: 1.2;
-  margin: 0;
-  opacity: 0.8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+    .user-info .text-light {
+      font-size: 12px;
+      line-height: 1.2;
+      margin: 0;
+      opacity: 0.8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
+    /* Fixed toggle button positioning for mobile */
+    @media (max-width: 768px) {
+      .toggle-btn {
+        top: 20px;
+        left: 15px !important;
+        transition: all 0.3s ease;
+      }
+      
+      /* When sidebar is expanded on mobile, move toggle button with it */
+      .sidebar.show ~ .toggle-btn,
+      .toggle-btn.mobile-expanded {
+        left: 200px !important;
+      }
+      
+      /* Alternative: Keep toggle button in top right */
+      .toggle-btn.top-right {
+        left: auto !important;
+        right: 20px !important;
+        top: 20px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -98,13 +155,13 @@
   <div class="p-3">
 
     <!-- Brand -->
-    <div class="brand d-flex align-items-center justify-content-left mb-4">
+    <div class="sidebar-header">
+      <span class="brand-icon"><i class="fas fa-hands-helping"></i></span>
       <span class="brand-text">Reunited</span>
     </div>
 
     <!-- User Profile -->
-     
-    <div class="user-profile" onclick="window.location.href='{{ url_for('profile') }}'" style="cursor:pointer;">
+    <div class="user-profile" onclick="window.location.href='{{ url_for('profile') }}'">
       <div class="user-profile-content">
         <div class="user-avatar">
           {% if session.profile_picture %}
@@ -136,8 +193,13 @@
 
     <h6 class="text-secondary text-uppercase mt-4 small section-header">Account</h6>
     <a href="{{ url_for('notifications') }}" class="{% if active_page == 'notifications' %}active{% endif %}">
-      <i class="bi bi-bell-fill"></i><span class="nav-text">Notifications</span>
-    </a>
+  <i class="bi bi-bell-fill"></i>
+  <span class="nav-text">Notifications</span>
+  {% if unread_count > 0 %}
+    <span class="badge bg-danger rounded-pill">{{ unread_count }}</span>
+  {% endif %}
+</a>
+
     <a href="{{ url_for('profile') }}" class="{% if active_page == 'profile' %}active{% endif %}">
       <i class="bi bi-person"></i><span class="nav-text">Profile Settings</span>
     </a>
@@ -156,6 +218,68 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   {% include 'sidebar.js' %}
+
+  // Enhanced toggle button positioning for mobile and sidebar height fix
+  document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const overlay = document.getElementById('overlay');
+
+    // Function to ensure sidebar takes full height
+    function ensureFullHeight() {
+      sidebar.style.minHeight = '100vh';
+      sidebar.style.height = '100vh';
+    }
+
+    // Function to update toggle button position
+    function updateTogglePosition() {
+      if (window.innerWidth <= 768) { // Mobile
+        if (sidebar.classList.contains('show')) {
+          toggleBtn.classList.add('mobile-expanded');
+        } else {
+          toggleBtn.classList.remove('mobile-expanded');
+        }
+      } else {
+        toggleBtn.classList.remove('mobile-expanded');
+      }
+    }
+
+    // Listen for sidebar toggle events
+    toggleBtn.addEventListener('click', function() {
+      setTimeout(updateTogglePosition, 10); // Small delay for class changes
+      ensureFullHeight(); // Ensure height after toggle
+    });
+
+    // Listen for window resize
+    window.addEventListener('resize', function() {
+      updateTogglePosition();
+      ensureFullHeight();
+    });
+
+    // Fix height on page load and navigation
+    ensureFullHeight();
+    updateTogglePosition();
+
+    // Fix height when navigating (for SPA-like behavior)
+    window.addEventListener('beforeunload', ensureFullHeight);
+    window.addEventListener('pageshow', ensureFullHeight);
+
+    // Optional: Uncomment this line if you prefer top-right positioning on mobile
+    // toggleBtn.classList.add('top-right');
+  });
+</script>
+<script>
+setInterval(() => {
+  fetch("{{ url_for('unread_count_api') }}")
+    .then(res => res.json())
+    .then(data => {
+      const badge = document.querySelector(".nav-text ~ .badge");
+      if (badge) {
+        badge.textContent = data.count;
+        badge.style.display = data.count > 0 ? "inline-block" : "none";
+      }
+    });
+}, 10000);
 </script>
 
 </body>

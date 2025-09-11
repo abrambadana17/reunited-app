@@ -39,30 +39,42 @@
           {% if score >= 1 %}
             <span class="badge bg-success">✅ Exact Match ({{ score }})</span>
           {% elif score >= 0.8 %}
-            <span class="badge bg-success">High Possibility ({{ score }})</span>
+            <span class="badge bg-success">Very High Possibility with ({{ score }}) Match Score</span>
           {% elif score >= 0.6 %}
-            <span class="badge bg-warning text-dark">Medium Possibility ({{ score }})</span>
+            <span class="badge bg-success text-dark">High Possibility with ({{ score }}) Match Score</span>
           {% elif score >= 0.4 %}
-            <span class="badge bg-danger">Low Possibility ({{ score }})</span>
+            <span class="badge bg-warning">Medium Possibility with  ({{ score }}) Match Score</span>
           {% else %}
             <span class="badge bg-secondary">Below Threshold ({{ score }})</span>
           {% endif %}
         </div>
 
-        <div class="card-footer d-flex justify-content-between align-items-center">
-          <!-- Lost User -->
-          <div class="d-flex align-items-center">
-            <img src="{{ url_for('static', filename='uploads/profile_pictures/' ~ match.lost_profile) if match.lost_profile else url_for('static', filename='images/default-avatar.png') }}"
-                 class="rounded-circle me-2" width="32" height="32" alt="Lost User">
-            <small class="text-muted">{{ match.lost_first_name }} {{ match.lost_last_name }} (Lost)</small>
-          </div>
-          <!-- Found User -->
-          <div class="d-flex align-items-center">
-            <img src="{{ url_for('static', filename='uploads/profile_pictures/' ~ match.found_profile) if match.found_profile else url_for('static', filename='images/default-avatar.png') }}"
-                 class="rounded-circle me-2" width="32" height="32" alt="Found User">
-            <small class="text-muted">{{ match.found_first_name }} {{ match.found_last_name }} (Found)</small>
-          </div>
-        </div>
+       <div class="card-footer d-flex justify-content-between align-items-center">
+  <!-- Lost User -->
+  <div class="d-flex align-items-center">
+    <div class="user-avatar me-2">
+      {% if match.lost_profile %}
+        <img src="{{ url_for('static', filename='uploads/profile_pictures/' ~ match.lost_profile) }}" alt="Lost User">
+      {% else %}
+        {{ match.lost_first_name[0]|upper }}{{ match.lost_last_name[0]|upper }}
+      {% endif %}
+    </div>
+    <small class="text-muted">{{ match.lost_first_name }} {{ match.lost_last_name }} (Lost)</small>
+  </div>
+
+  <!-- Found User -->
+  <div class="d-flex align-items-center">
+    <div class="user-avatar me-2">
+      {% if match.found_profile %}
+        <img src="{{ url_for('static', filename='uploads/profile_pictures/' ~ match.found_profile) }}" alt="Found User">
+      {% else %}
+        {{ match.found_first_name[0]|upper }}{{ match.found_last_name[0]|upper }}
+      {% endif %}
+    </div>
+    <small class="text-muted">{{ match.found_first_name }} {{ match.found_last_name }} (Found)</small>
+  </div>
+</div>
+
 
       </div>
     </div>

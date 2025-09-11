@@ -5,41 +5,158 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register - Reunited</title>
 
-  <!-- Bootstrap CSS -->
+  <!-- Bootstrap CSS & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      color: #333;
+    /* Theme variables */
+    :root {
+      /* Core Brand Colors */
+      --color-primary: #1E3A8A;
+      --color-primary-hover: #1e40af;
+      --color-accent: #3B82F6;
+
+      /* Sidebar */
+      --color-sidebar-bg: #1E3A8A;
+      --color-sidebar-hover: #374151;
+      --color-sidebar-active: #10B981;
+      --color-sidebar-text: #cbd5e1;
+      --color-sidebar-text-hover: #ffffff;
+      --color-sidebar-dark: #1F2937;
+      --color-sidebar-dark-hover: #374151;
+      --color-sidebar-dark-active: #111827;
+
+      /* Status Colors */
+      --color-success: #10B981;
+      --color-success-hover: #059669;
+      --color-danger: #EF4444;
+      --color-warning: #facc15;
+      --color-info: #1E3A8A;
+
+      /* Neutral Palette */
+      --color-white: #ffffff;
+      --color-bg-light: #F8F9FA;
+      --color-gray-50: #f9fafb;
+      --color-gray-100: #f3f4f6;
+      --color-gray-200: #e5e7eb;
+      --color-gray-300: #d1d5db;
+      --color-gray-400: #94a3b8;
+      --color-gray-500: #6b7280;
+      --color-gray-700: #374151;
+      --color-gray-800: #1f2937;
+      --color-gray-900: #111827;
+
+      /* Shadows */
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+      --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.15);
+      --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+      /* Borders & Radii */
+      --border-light: 1px solid var(--color-gray-200);
+      --border-dark: 1px solid var(--color-gray-300);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
     }
 
-    .sidebar {
-      background: #1a1a1a;
+    /* Body */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: var(--color-bg-light);
       min-height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
+      color: var(--color-gray-800);
+    }
+
+    /* Sidebar base */
+    .sidebar {
+      background: #1E3A8A;
+      height: 100vh !important;
+      min-height: 100vh !important;
+      max-height: 100vh !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
       z-index: 1000;
       transition: all 0.3s ease;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
       width: 250px;
     }
 
+    /* Collapsed state (desktop + mobile default) */
     .sidebar.collapsed {
       width: 70px;
     }
 
+    /* Mobile overrides */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 70px;
+      }
+      .sidebar.show {
+        width: 250px;
+      }
+    }
+
+    /* === Brand / Reunited Logo === */
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      padding: 18px 20px;
+      margin-bottom: 25px;
+      color: var(--color-white);
+      font-weight: 700;
+      font-size: 1.3rem;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .brand-icon {
+      font-size: 1.5rem;
+      margin-right: 12px;
+      color: var(--color-sidebar-active);
+      transition: opacity 0.3s ease, width 0.3s ease;
+    }
+
+    .brand-text {
+      transition: opacity 0.3s ease, width 0.3s ease;
+      white-space: nowrap;
+    }
+
+    /* 🔹 Hide both icon + text when collapsed */
+    .sidebar.collapsed .brand-text,
+    .sidebar.collapsed .brand-icon {
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+    }
+
+    /* Sidebar icons */
+    .sidebar a i {
+      font-size: 1.2rem;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .sidebar.collapsed .nav-text {
+      display: none !important;
+    }
+
+    .sidebar.collapsed a {
+      justify-content: center;
+      padding: 12px;
+    }
+
     .sidebar a {
-      color: #ccc;
+      color: var(--color-sidebar-text);
       text-decoration: none;
       display: flex;
       align-items: center;
       padding: 12px 20px;
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       transition: all 0.3s ease;
       white-space: nowrap;
       overflow: hidden;
@@ -51,13 +168,14 @@
     }
 
     .sidebar a:hover {
-      background: #2a2a2a;
-      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--color-sidebar-text-hover);
     }
 
     .sidebar a.active {
-      background: linear-gradient(45deg, #667eea, #764ba2);
-      color: #fff;
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--color-sidebar-text-hover);
+      border-left: 3px solid var(--color-sidebar-active);
     }
 
     .sidebar .nav-text {
@@ -71,17 +189,8 @@
       margin-left: 0;
     }
 
-    .sidebar .brand-text {
-      transition: opacity 0.3s ease;
-    }
-
-    .sidebar.collapsed .brand-text {
-      opacity: 0;
-      width: 0;
-    }
-
     .sidebar .section-header {
-      transition: all 0.3s ease;
+      color: var(--color-gray-400);
     }
 
     .sidebar.collapsed .section-header {
@@ -92,170 +201,59 @@
       overflow: hidden;
     }
 
+    /* Main content */
     .main-content {
       margin-left: 250px;
       transition: margin-left 0.3s ease;
       min-height: 100vh;
-      padding: 40px 20px;
+      padding: 30px;
+      background: var(--color-bg-light);
     }
 
     .main-content.expanded {
       margin-left: 70px;
     }
 
-    .form-section {
-      text-align: center;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(20px);
-      border-radius: 24px;
-      padding: 60px 40px;
-      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .form-section h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    .form-section p {
-      font-size: 1.1rem;
-      margin-bottom: 2rem;
-      opacity: 0.9;
-    }
-
-    .form-group {
-      margin-bottom: 1.5rem;
-      text-align: left;
-    }
-
-    .form-label {
-      display: block;
-      margin-bottom: 0.5rem;
-      color: rgba(255, 255, 255, 0.9);
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-
-    .form-control {
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-size: 16px;
-      color: white;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-    }
-
-    .form-control:focus {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.4);
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-      color: white;
-    }
-
-    .form-control::placeholder {
-      color: rgba(255, 255, 255, 0.6);
-    }
-
-    .btn-primary {
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 12px;
-      padding: 12px 32px;
-      font-weight: 600;
-      color: white;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-      width: 100%;
-    }
-
-    .btn-primary:hover {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(255, 255, 255, 0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-      color: white;
-    }
-
-    .form-footer {
-      margin-top: 2rem;
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-
-    .form-footer a {
-      color: rgba(255, 255, 255, 0.9);
-      text-decoration: underline;
-      font-weight: 600;
-    }
-
-    .form-footer a:hover {
-      color: white;
-    }
-
-    .row.g-3 .col-md-6 {
-      padding-right: 0.5rem;
-      padding-left: 0.5rem;
-    }
-
+    /* Toggle button */
     .toggle-btn {
       position: fixed;
       top: 20px;
       left: 200px;
       z-index: 1001;
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
-      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      border: var(--border-light);
+      color: var(--color-primary);
+      border-radius: var(--radius-md);
       padding: 8px 12px;
       backdrop-filter: blur(10px);
       transition: all 0.3s ease;
+      box-shadow: var(--shadow-sm);
     }
 
     .toggle-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
+      background: var(--color-white);
       transform: scale(1.05);
+      box-shadow: var(--shadow-md);
     }
 
     .toggle-btn.collapsed-pos {
       left: 15px;
     }
 
-    /* Mobile responsiveness */
+    /* Fixed toggle button positioning for mobile */
     @media (max-width: 768px) {
-      .sidebar {
-        width: 70px;
+      .toggle-btn {
+        top: 20px;
+        left: 15px !important;
+        transition: all 0.3s ease;
       }
-
-      .sidebar.show {
-        width: 250px;
+      
+      /* When sidebar is expanded on mobile, move toggle button with it */
+      .sidebar.show ~ .toggle-btn,
+      .toggle-btn.mobile-expanded {
+        left: 200px !important;
       }
-
-      .sidebar.show .nav-text {
-        opacity: 1;
-        width: auto;
-        margin-left: 12px;
-      }
-
-      .sidebar.show .brand-text {
-        opacity: 1;
-        width: auto;
-      }
-
-      .sidebar.show .section-header {
-        opacity: 1;
-        height: auto;
-        margin: inherit;
-        padding: inherit;
-        overflow: visible;
-      }
-
+      
       .main-content {
         margin-left: 70px;
         padding: 20px;
@@ -263,24 +261,6 @@
 
       .main-content.expanded {
         margin-left: 70px;
-      }
-
-      .toggle-btn {
-        left: 15px !important;
-      }
-
-      .toggle-btn.mobile-expanded {
-        left: 200px !important;
-      }
-
-      .form-section {
-        padding: 40px 30px;
-        margin: 20px;
-      }
-
-      .row.g-3 .col-md-6 {
-        padding-right: 0.75rem;
-        padding-left: 0.75rem;
       }
 
       .overlay {
@@ -302,28 +282,159 @@
       }
     }
 
-    /* Brand logo text */
-.brand {
-  text-align: left;
-  padding: 10px 0;
-  margin-left: 10px;
+    /* Form styling */
+    .form-section {
+      text-align: center;
+      background: var(--color-white);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      box-shadow: var(--shadow-md);
+      border: var(--border-light);
+      color: var(--color-gray-800);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .form-section h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--color-primary);
+    }
+
+    .form-section p {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+      color: var(--color-gray-500);
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--color-gray-700);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .form-control {
+      border: var(--border-dark);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      font-size: 16px;
+      background: var(--color-white);
+      color: var(--color-gray-800);
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    }
+
+    .form-control::placeholder {
+      color: var(--color-gray-400);
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      border: none;
+      color: var(--color-white);
+      border-radius: var(--radius-md);
+      padding: 12px 32px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+      color: var(--color-white);
+    }
+
+    .form-footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: var(--color-gray-500);
+    }
+
+    .form-footer a {
+      color: var(--color-primary);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .form-footer a:hover {
+      color: var(--color-primary-hover);
+    }
+
+    .row.g-3 .col-md-6 {
+      padding-right: 0.5rem;
+      padding-left: 0.5rem;
+    }
+
+    /* === RESPONSIVENESS FIXES === */
+@media (max-width: 768px) {
+  .form-section {
+    width: 100%;
+    max-width: 100%;
+    padding: 20px 15px;
+    margin: 0;
+    border-radius: var(--radius-md);
+    box-shadow: none;
+  }
+
+  .form-section h1 {
+    font-size: 1.5rem; /* smaller heading */
+  }
+
+  .form-section p {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-label {
+    font-size: 0.8rem;
+  }
+
+  .form-control {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .btn-primary {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .form-footer {
+    font-size: 0.8rem;
+    margin-top: 1.5rem;
+  }
+
+  /* Make row inputs stack nicely */
+  .row.g-3 .col-md-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 
-.brand-text {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: white;
-  letter-spacing: 1px;
-  white-space: nowrap;
-}
   </style>
 </head>
 <body>
 
-<!-- Mobile overlay -->
+<!-- Overlay -->
 <div class="overlay" id="overlay"></div>
 
-<!-- Toggle button -->
+<!-- Toggle Button -->
 <button class="toggle-btn" id="toggleBtn">
   <i class="bi bi-list"></i>
 </button>
@@ -333,7 +444,8 @@
   <div class="p-3">
 
     <!-- Brand -->
-    <div class="brand d-flex align-items-center justify-content-left mb-4">
+    <div class="sidebar-header">
+      <span class="brand-icon"><i class="fas fa-hands-helping"></i></span>
       <span class="brand-text">Reunited</span>
     </div>
 
@@ -344,18 +456,18 @@
     </a>
 
     <h6 class="text-secondary text-uppercase mt-4 small section-header">Account</h6>
-     <a href="{{ url_for('login_page') }}">
+    <a href="{{ url_for('login_page') }}">
       <i class="bi bi-shield-lock-fill"></i>
       <span class="nav-text">Login</span>
     </a>
-    <a href="register.html" class="active">
+    <a href="{{ url_for('register_page') }}" class="active">
       <i class="bi bi-person-plus-fill"></i>
       <span class="nav-text">Register</span>
     </a>
   </div>
 </nav>
 
-<!-- Main content -->
+<!-- Main Content -->
 <main class="main-content d-flex align-items-center justify-content-center" id="mainContent">
   <div class="container-fluid px-4">
     <div class="row justify-content-center">
@@ -365,55 +477,54 @@
           <p>Join Reunited and help reconnect lost items</p>
           
           <form id="registerForm" action="/api/register" method="POST">
-  <div class="row g-3">
-    <div class="col-md-6">
-      <div class="form-group">
-        <label class="form-label" for="firstName">First Name</label>
-        <input type="text" class="form-control" id="firstName" name="firstName" placeholder="Enter your first name" required>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="form-group">
-        <label class="form-label" for="lastName">Last Name</label>
-        <input type="text" class="form-control" id="lastName" name="lastName" placeholder="Enter your last name" required>
-      </div>
-    </div>
-  </div>
-  
-  <div class="form-group">
-        <label class="form-label" for="email">Email Address</label>
-        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email address" required>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label" for="phone">Phone Number</label>
-        <input type="tel" class="form-control" id="phone" name="phone" placeholder="Enter your phone number" required>
-      </div>
-      
-      <div class="row g-3">
-        <div class="col-md-6">
-          <div class="form-group">
-            <label class="form-label" for="password">Password</label>
-            <input type="password" class="form-control" id="password" name="password" placeholder="Create a password" required>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="form-group">
-            <label class="form-label" for="confirmPassword">Confirm Password</label>
-            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
-          </div>
-        </div>
-      </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label class="form-label" for="firstName">First Name</label>
+                  <input type="text" class="form-control" id="firstName" name="firstName" placeholder="Enter your first name" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label class="form-label" for="lastName">Last Name</label>
+                  <input type="text" class="form-control" id="lastName" name="lastName" placeholder="Enter your last name" required>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" for="email">Email Address</label>
+              <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email address" required>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" for="phone">Phone Number</label>
+              <input type="tel" class="form-control" id="phone" name="phone" placeholder="Enter your phone number" required>
+            </div>
+            
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label class="form-label" for="password">Password</label>
+                  <input type="password" class="form-control" id="password" name="password" placeholder="Create a password" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label class="form-label" for="confirmPassword">Confirm Password</label>
+                  <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required>
+                </div>
+              </div>
+            </div>
 
-      <!-- Message placeholder -->
-      <div id="message" class="mt-3"></div>
+            <!-- Message placeholder -->
+            <div id="message" class="mt-3"></div>
 
-      <button type="submit" class="btn btn-primary mt-3">Create Account</button>
-    </form>
+            <button type="submit" class="btn btn-primary mt-3">Create Account</button>
+          </form>
 
-          
           <div class="form-footer">
-            Already have an account? <a href="{{ url_for('login_page') }}">Sign in here</a>
+            Already have an account? <br><a href="{{ url_for('login_page') }}">Sign in here</a>
           </div>
         </div>
       </div>
@@ -421,31 +532,44 @@
   </div>
 </main>
 
-<!-- Bootstrap JS -->
+<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
   const sidebar = document.getElementById('sidebar');
   const mainContent = document.getElementById('mainContent');
   const toggleBtn = document.getElementById('toggleBtn');
   const overlay = document.getElementById('overlay');
-  let isCollapsed = false;
+  
+  // Load state from localStorage (desktop only)
+  let isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
   let isMobile = window.innerWidth <= 768;
+
+  // Force sidebar height function
+  function forceSidebarHeight() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+      sidebar.style.height = '100vh';
+      sidebar.style.minHeight = '100vh';
+      sidebar.style.maxHeight = '100vh';
+      sidebar.style.top = '0';
+      sidebar.style.bottom = '0';
+    }
+  }
 
   function updateLayout() {
     isMobile = window.innerWidth <= 768;
-    
+    forceSidebarHeight();
+
     if (isMobile) {
-      // Mobile: Default to icons-only, can toggle to full
       sidebar.classList.add('collapsed');
       sidebar.classList.remove('show');
       mainContent.classList.add('expanded');
       toggleBtn.classList.add('collapsed-pos');
       overlay.classList.remove('show');
     } else {
-      // Desktop layout
       sidebar.classList.remove('show');
       overlay.classList.remove('show');
+
       if (isCollapsed) {
         sidebar.classList.add('collapsed');
         mainContent.classList.add('expanded');
@@ -458,43 +582,64 @@
     }
   }
 
-  toggleBtn.addEventListener('click', function() {
+  toggleBtn.addEventListener('click', function () {
+    forceSidebarHeight();
+    
     if (isMobile) {
-      // Mobile toggle behavior: icons-only ↔ full details
       if (sidebar.classList.contains('show')) {
-        // From full to icons-only
         sidebar.classList.remove('show');
+        sidebar.classList.add('collapsed');
         overlay.classList.remove('show');
         toggleBtn.classList.remove('mobile-expanded');
       } else {
-        // From icons-only to full
         sidebar.classList.add('show');
+        sidebar.classList.remove('collapsed');
         overlay.classList.add('show');
         toggleBtn.classList.add('mobile-expanded');
       }
     } else {
-      // Desktop toggle behavior: full ↔ icons-only
       isCollapsed = !isCollapsed;
+      localStorage.setItem('sidebarCollapsed', isCollapsed);
       updateLayout();
     }
   });
 
-  // Close sidebar when clicking overlay (mobile only)
-  overlay.addEventListener('click', function() {
+  overlay.addEventListener('click', function () {
     if (isMobile) {
       sidebar.classList.remove('show');
+      sidebar.classList.add('collapsed');
       overlay.classList.remove('show');
       toggleBtn.classList.remove('mobile-expanded');
     }
   });
 
-  // Handle window resize
-  window.addEventListener('resize', updateLayout);
+  window.addEventListener('resize', function() {
+    updateLayout();
+    setTimeout(forceSidebarHeight, 100);
+  });
 
-  // Initialize layout
-  updateLayout();
+  // Enhanced initialization
+  function initializeSidebar() {
+    forceSidebarHeight();
+    updateLayout();
+    
+    setTimeout(() => {
+      forceSidebarHeight();
+      updateLayout();
+    }, 100);
+  }
 
-   document.getElementById('registerForm').addEventListener('submit', async function (e) {
+  initializeSidebar();
+
+  // Re-initialize on navigation events
+  document.addEventListener('DOMContentLoaded', initializeSidebar);
+  window.addEventListener('beforeunload', forceSidebarHeight);
+  window.addEventListener('pageshow', function(event) {
+    setTimeout(initializeSidebar, 50);
+  });
+
+  // Register form handling
+  document.getElementById('registerForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
     const form = e.target;
@@ -521,8 +666,6 @@
       messageDiv.innerHTML = errors;
     }
   });
-
-  
 </script>
 
 </body>

@@ -4,48 +4,154 @@
 {% block content %}
 <div class="container-fluid">
   <div class="dashboard-header mb-4">
-    <h1 class="fw-bold mb-2">Found Items 🕵️‍♂️</h1>
-    <p class="mb-0 opacity-75">View all reported found items. Help reunite them.</p>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+      <div>
+        <h1 class="fw-bold mb-2">Found Items 🕵️‍♂️</h1>
+        <p class="mb-0 opacity-75">View all reported found items.</p>
+      </div>
+      <a href="{{ url_for('dashboard') }}#foundItemModal" class="btn btn-primary-custom mt-3 mt-md-0">
+        <i class="fas fa-plus me-2"></i>Report Found Item
+      </a>
+    </div>
   </div>
 
-  <!-- Found items grid -->
-  <div class="row g-4">
-    {% for item in items %}
-    <div class="col-12 col-sm-6 col-lg-4">
-      <div class="card shadow-sm h-100">
-        <img src="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}" 
-             class="card-img-top" alt="Found Item Image" style="height: 200px; object-fit: cover;">
-
-        <div class="card-body">
-          <h5 class="card-title">{{ item.title }}</h5>
-          <p class="card-text small text-muted">
-            Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
-          </p>
-          <p class="card-text">{{ item.description }}</p>
-          {% if item.status == "claimed" %}
-            <span class="badge bg-success">{{ item.status }}</span>
-          {% elif item.status == "returned" %}
-            <span class="badge bg-primary">{{ item.status }}</span>
-          {% else %}
-            <span class="badge bg-warning text-dark">{{ item.status }}</span>
-          {% endif %}
-
-
-        </div>
-
-        <!-- Reporter Info -->
-        <div class="card-footer d-flex align-items-center">
-          <img src="{{ url_for('uploaded_file', filename=item.profile_picture) if item.profile_picture else url_for('static', filename='images/default-avatar.png') }}"
-               class="rounded-circle me-2" width="40" height="40" alt="User" style="object-fit: cover;">
-          <small class="text-muted">
-            Reported by {{ item.first_name }} {{ item.last_name }}
-          </small>
-        </div>
+  <!-- Search & Filters -->
+<div class="recent-activity mb-4">
+  <div class="row g-3">
+    <div class="col-12 col-md-8">
+      <div class="position-relative">
+        <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-black-50"></i>
+        <input type="text" id="searchInput" 
+              class="form-control ps-5"
+              placeholder="Search found items...">
       </div>
+
     </div>
-    {% else %}
-    <p class="text-muted">No found items reported yet.</p>
-    {% endfor %}
+    <div class="col-6 col-md-2">
+      <select id="categoryFilter" class="form-select">
+        <option value="">All Categories</option>
+        <option value="Electronics">Electronics</option>
+        <option value="Wallet">Wallet</option>
+        <option value="Keys">Keys</option>
+        <option value="Others">Others</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <select id="statusFilter" class="form-select">
+        <option value="">All Status</option>
+        <option value="lost">Lost</option>
+        <option value="claimed">Claimed</option>
+        <option value="returned">Returned</option>
+      </select>
+    </div>
   </div>
 </div>
+
+
+  <!-- Found Items Grid -->
+<div class="row g-4" id="itemsGrid">
+  {% for item in items %}
+  <div class="col-12 col-sm-6 col-lg-4 item-card" 
+       data-title="{{ item.title|lower }}" 
+       data-description="{{ item.description|lower }}" 
+       data-category="{{ item.category|lower }}" 
+       data-status="{{ item.status|lower }}">
+    <div class="card shadow-sm h-100 found-item-card">
+      <!-- Item Image -->
+      <img src="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}" 
+           class="card-img-top" alt="Found Item Image" style="height: 200px; object-fit: cover;">
+
+      <!-- Card Body -->
+      <div class="card-body">
+        <h5 class="card-title">{{ item.title }}</h5>
+        <p class="card-text small text-muted">
+          Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
+        </p>
+        <p class="card-text">{{ item.description }}</p>
+        {% if item.status == "claimed" %}
+          <span class="badge bg-success">{{ item.status }}</span>
+        {% elif item.status == "returned" %}
+          <span class="badge bg-primary">{{ item.status }}</span>
+        {% else %}
+          <span class="badge bg-warning text-dark">{{ item.status }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Reporter Info -->
+      <div class="card-footer d-flex align-items-center">
+        <div class="user-avatar me-2">
+          {% if item.profile_picture %}
+            <img src="{{ url_for('uploaded_file', filename=item.profile_picture) }}" alt="Profile Picture" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+          {% else %}
+            {{ item.first_name[0]|upper }}{{ item.last_name[0]|upper }}
+          {% endif %}
+        </div>
+        <small class="text-muted">
+          Reported by {{ item.first_name }} {{ item.last_name }}
+        </small>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="text-center py-5">
+      <div class="recent-activity">
+        <i class="fas fa-search fa-4x text-white-50 mb-3"></i>
+        <h3 class="text-white mb-3">No found items reported yet.</h3>
+        <a href="{{ url_for('dashboard') }}#foundItemModal" class="btn btn-primary-custom">
+          <i class="fas fa-plus me-2"></i>Report First Found Item
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+
+
+<!-- Filter Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchInput');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const statusFilter = document.getElementById('statusFilter');
+  const noResults = document.getElementById('noResults');
+
+  function filterItems() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const selectedCategory = categoryFilter.value.toLowerCase();
+    const selectedStatus = statusFilter.value.toLowerCase();
+    
+    const items = document.querySelectorAll('.item-card');
+    let visibleCount = 0;
+
+    items.forEach(item => {
+      const title = item.dataset.title;
+      const description = item.dataset.description;
+      const category = item.dataset.category;
+      const status = item.dataset.status;
+
+      const matchesSearch = !searchTerm || 
+        title.includes(searchTerm) || 
+        description.includes(searchTerm);
+
+      const matchesCategory = !selectedCategory || category === selectedCategory;
+      const matchesStatus = !selectedStatus || status === selectedStatus;
+
+      if (matchesSearch && matchesCategory && matchesStatus) {
+        item.style.display = 'block';
+        visibleCount++;
+      } else {
+        item.style.display = 'none';
+      }
+    });
+
+    noResults.style.display = (visibleCount === 0 && items.length > 0) ? 'block' : 'none';
+  }
+
+  searchInput.addEventListener('input', filterItems);
+  categoryFilter.addEventListener('change', filterItems);
+  statusFilter.addEventListener('change', filterItems);
+});
+</script>
 {% endblock %}

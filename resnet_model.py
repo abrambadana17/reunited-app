@@ -5,6 +5,7 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Model
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity as cos_sim
+from utils import send_email   # ✅ Import helper
 
 # -----------------------------
 # Load ResNet50 once at startup
@@ -41,20 +42,27 @@ def text_similarity(text1, text2):
     return cos_sim([vectors[0]], [vectors[1]])[0][0]
 
 # -----------------------------
-# Combined Auto Match (Image + Text)
+# Combined Auto Match (Image + Text) + Notifications + Email
 # -----------------------------
-def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, threshold=0.4):
+def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mail, threshold=0.4):
     """
     Compare new item against opposite type (lost vs found).
-    Match based on BOTH image features and text details.
+    If match found:
+      - Insert into ai_matches
+      - Insert notifications for both users
+      - Send email alerts
     """
-
     opposite_type = 'found' if type_ == 'lost' else 'lost'
 
+    # ✅ Fetch opposite items with image features + user details
     cursor.execute('''
-        SELECT i.id, i.title, i.description, i.category, i.location_reported, img.ai_features 
+        SELECT i.id, i.user_id, i.title, i.description, i.category, i.location_reported,
+               img.ai_features,
+               CONCAT(u.first_name, ' ', u.last_name) AS fullname,
+               u.email, u.phone
         FROM items i
         JOIN images img ON i.id = img.item_id
+        JOIN users u ON i.user_id = u.id
         WHERE i.type = %s
     ''', (opposite_type,))
     others = cursor.fetchall()
@@ -72,20 +80,89 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, thr
             details2 = f"{other['title']} {other['description']} {other['category']} {other['location_reported']}"
             text_score = text_similarity(details1, details2)
 
-            # ---- Weighted final score ----
             final_score = (0.6 * image_score) + (0.4 * text_score)
 
-            # ---- Insert match if above threshold ----
             if final_score >= threshold:
+                lost_id = new_item_id if type_ == 'lost' else other['id']
+                found_id = other['id'] if type_ == 'lost' else new_item_id
+
+                # Insert into ai_matches
                 cursor.execute('''
                     INSERT INTO ai_matches (lost_item_id, found_item_id, match_score, status)
                     VALUES (%s, %s, %s, 'pending')
-                ''', (
-                    new_item_id if type_ == 'lost' else other['id'],
-                    other['id'] if type_ == 'lost' else new_item_id,
-                    round(float(final_score), 2)
-                ))
+                ''', (lost_id, found_id, round(float(final_score), 2)))
                 mysql.connection.commit()
 
+                # ---- Get both users ----
+                cursor.execute("""
+                    SELECT id, CONCAT(first_name, ' ', last_name) AS fullname, email, phone
+                    FROM users WHERE id = (SELECT user_id FROM items WHERE id = %s)
+                """, (lost_id,))
+                lost_user = cursor.fetchone()
+
+                cursor.execute("""
+                    SELECT id, CONCAT(first_name, ' ', last_name) AS fullname, email, phone
+                    FROM users WHERE id = (SELECT user_id FROM items WHERE id = %s)
+                """, (found_id,))
+                found_user = cursor.fetchone()
+
+                # ---- Notifications ----
+                message_text_lost = (
+                    f"A possible match has been found for your lost item: {new_details['title']}.\n\n"
+                    f"Opposite Item: {other['title']}\n"
+                    f" Opposite User: {found_user['fullname']}\n"
+                    f"Email: {found_user['email']}\n"
+                    f"Contact: {found_user['phone']}"
+                )
+
+                message_text_found = (
+                    f"A possible match has been found for your found item: {other['title']}.\n\n"
+                    f"Opposite Item: {new_details['title']}\n"
+                    f"Opposite User: {lost_user['fullname']}\n"
+                    f"Email: {lost_user['email']}\n"
+                    f"Contact: {lost_user['phone']}"
+                )
+
+
+                cursor.execute('''
+                    INSERT INTO notifications (user_id, item_id, type, message, is_read, sent_at)
+                    VALUES (%s, %s, 'match', %s, 0, NOW())
+                ''', (lost_user['id'], new_item_id, message_text_lost))
+
+                cursor.execute('''
+                    INSERT INTO notifications (user_id, item_id, type, message, is_read, sent_at)
+                    VALUES (%s, %s, 'match', %s, 0, NOW())
+                ''', (found_user['id'], new_item_id, message_text_found))
+
+                mysql.connection.commit()
+
+                # ---- Email ----
+                subject = "🔔 Reunited: Possible Item Match Found!"
+                body = f"""
+                    Hello {lost_user['fullname']} and {found_user['fullname']},
+
+                    A possible match has been found in Reunited! 🎉
+
+                    Lost Item: {new_details['title']}
+                    Found Item: {other['title']}
+
+                    For your reference, here are the contact details:
+                    
+                    👤 {lost_user['fullname']}  
+                    📧 {lost_user['email']}  
+                    📱 {lost_user['phone']}
+
+                    👤 {found_user['fullname']}  
+                    📧 {found_user['email']}  
+                    📱 {found_user['phone']}
+
+                    Please check your Reunited app to confirm and coordinate directly.
+
+                    Best regards,  
+                    Reunited Team
+                    """
+
+                send_email(mail, subject, [lost_user['email'], found_user['email']], body)
+
         except Exception as e:
-            print(f"Error in auto_match: {e}")
+            print(f"❌ Error in auto_match: {e}")

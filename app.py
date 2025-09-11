@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, session, render_template, redirect, u
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from flask_mail import Mail  
 from resnet_model import extract_features, auto_match
 
 import MySQLdb.cursors
@@ -20,6 +21,15 @@ app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'  # Default XAMPP MySQL username
 app.config['MYSQL_PASSWORD'] = ''  # Default XAMPP MySQL password (empty)
 app.config['MYSQL_DB'] = 'reunited_db'
+
+#Email Sender
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'reunited.uc@gmail.com'
+app.config['MAIL_PASSWORD'] = 'dhhp qhea vvbk zofx'  # Use App Password from Gmail
+app.config['MAIL_DEFAULT_SENDER'] = ('Reunited Team', 'reunited.uc@gmail.com') 
+mail = Mail(app)
 
 # File upload configuration
 app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pictures'
@@ -197,7 +207,60 @@ def logout():
 
 @app.route('/notifications')
 def notifications():
-    return render_template('notifications.html')
+    if 'user_id' not in session:
+        flash("Please log in to view notifications.", "danger")
+        return redirect(url_for("login_page"))
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("""
+        SELECT id, item_id, type, message, is_read, sent_at
+        FROM notifications
+        WHERE user_id = %s
+        ORDER BY sent_at DESC
+    """, (session['user_id'],))
+    notifications = cursor.fetchall()
+    cursor.close()
+
+    return render_template("notifications.html", notifications=notifications, active_page="notifications")
+
+@app.context_processor
+def inject_unread_notifications():
+    if 'user_id' in session:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
+        result = cursor.fetchone()
+        cursor.close()
+        return dict(unread_count=result['cnt'])
+    return dict(unread_count=0)
+
+@app.route('/api/unread_count')
+def unread_count_api():
+    if 'user_id' not in session:
+        return {"count": 0}
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute(
+        "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0",
+        (session['user_id'],)
+    )
+    result = cursor.fetchone()
+    cursor.close()
+    return {"count": result['cnt']}
+
+
+
+
+@app.route('/notifications/read/<int:notif_id>')
+def mark_notification_read(notif_id):
+    if 'user_id' not in session:
+        return redirect(url_for("login_page"))
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("UPDATE notifications SET is_read = 1 WHERE id=%s AND user_id=%s", 
+                   (notif_id, session['user_id']))
+    mysql.connection.commit()
+    cursor.close()
+    return redirect(url_for("notifications"))
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -388,7 +451,7 @@ def lost():
 
         # auto match
         if features is not None:
-            auto_match(item_id, 'lost', features, new_details, cursor, mysql)
+            auto_match(item_id, 'lost', features, new_details, cursor, mysql, mail)
 
         flash('Lost item reported successfully!', 'success')
         return redirect(url_for('lost'))
@@ -470,7 +533,7 @@ def found():
 
         # auto match
         if features is not None:
-            auto_match(item_id, 'found', features, new_details, cursor, mysql)
+            auto_match(item_id, 'found', features, new_details, cursor, mysql, mail)
 
         flash('Found item reported successfully!', 'success')
         return redirect(url_for('found'))
@@ -537,6 +600,7 @@ def match():
 
 
     return render_template("match.html", matches=matches, active_page="match")
+
 
 
 

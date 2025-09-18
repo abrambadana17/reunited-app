@@ -42,7 +42,7 @@
           <option value="">All Status</option>
           <option value="lost">Lost</option>
           <option value="claimed">Claimed</option>
-          <option value="returned">Returned</option>
+          
         </select>
       </div>
     </div>
@@ -70,8 +70,7 @@
           <div>
             {% if item.status == "claimed" %}
               <span class="badge bg-success">{{ item.status }}</span>
-            {% elif item.status == "returned" %}
-              <span class="badge bg-primary">{{ item.status }}</span>
+        
             {% else %}
               <span class="badge bg-warning text-dark">{{ item.status }}</span>
             {% endif %}

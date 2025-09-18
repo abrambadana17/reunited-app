@@ -40,7 +40,7 @@
       <select id="statusFilter" class="form-select">
         <option value="">All Status</option>
         <option value="lost">Lost</option>
-        <option value="claimed">Claimed</option>
+        
         <option value="returned">Returned</option>
       </select>
     </div>
@@ -68,10 +68,8 @@
           Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
         </p>
         <p class="card-text">{{ item.description }}</p>
-        {% if item.status == "claimed" %}
+        {% if item.status == "returned" %}
           <span class="badge bg-success">{{ item.status }}</span>
-        {% elif item.status == "returned" %}
-          <span class="badge bg-primary">{{ item.status }}</span>
         {% else %}
           <span class="badge bg-warning text-dark">{{ item.status }}</span>
         {% endif %}

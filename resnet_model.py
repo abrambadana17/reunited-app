@@ -93,6 +93,8 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                 ''', (lost_id, found_id, round(float(final_score), 2)))
                 mysql.connection.commit()
 
+                match_id = cursor.lastrowid 
+
                 # ---- Get both users ----
                 cursor.execute("""
                     SELECT id, CONCAT(first_name, ' ', last_name) AS fullname, email, phone
@@ -113,6 +115,7 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                     f" Opposite User: {found_user['fullname']}\n"
                     f"Email: {found_user['email']}\n"
                     f"Contact: {found_user['phone']}"
+                    f"Contact: {found_user['phone']}"
                 )
 
                 message_text_found = (
@@ -123,18 +126,17 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                     f"Contact: {lost_user['phone']}"
                 )
 
+                cursor.execute('''
+                    INSERT INTO notifications (user_id, item_id, match_id, type, message, is_read, sent_at)
+                    VALUES (%s, %s, %s, 'match_found', %s, 0, NOW())
+                ''', (lost_user['id'], lost_id, match_id, message_text_lost))
 
                 cursor.execute('''
-                    INSERT INTO notifications (user_id, item_id, type, message, is_read, sent_at)
-                    VALUES (%s, %s, 'match', %s, 0, NOW())
-                ''', (lost_user['id'], new_item_id, message_text_lost))
-
-                cursor.execute('''
-                    INSERT INTO notifications (user_id, item_id, type, message, is_read, sent_at)
-                    VALUES (%s, %s, 'match', %s, 0, NOW())
-                ''', (found_user['id'], new_item_id, message_text_found))
-
+                    INSERT INTO notifications (user_id, item_id, match_id, type, message, is_read, sent_at)
+                    VALUES (%s, %s, %s, 'match_found', %s, 0, NOW())
+                ''', (found_user['id'], found_id, match_id, message_text_found))
                 mysql.connection.commit()
+
 
                 # ---- Email ----
                 subject = "🔔 Reunited: Possible Item Match Found!"

@@ -17,7 +17,7 @@
       <!-- Profile Picture Section -->
       <div class="mb-4">
         <label class="form-label">Profile Picture</label>
-        <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-3 flex-column flex-md-row">
           <div class="profile-picture-preview">
             {% if session.profile_picture %}
               <img src="{{ url_for('uploaded_file', filename=session.profile_picture) }}" 
@@ -28,10 +28,10 @@
               </div>
             {% endif %}
           </div>
-          <div class="flex-grow-1">
+          <div class="flex-grow-1 text-center text-md-start">
             <input type="file" class="form-control mb-2" id="profilePicture" name="profile_picture" 
                    accept="image/*" style="display: none;">
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 justify-content-center justify-content-md-start">
               <button type="button" class="btn btn-sidebar btn-sm" id="uploadBtn">
                 <i class="bi bi-upload"></i> Upload Photo
               </button>
@@ -108,9 +108,9 @@
 /* Profile card matching light dashboard theme */
 .profile-card {
   background: #ffffff;
-  border: 1px solid #d1d5db; /* medium gray, more visible */
+  border: 1px solid #d1d5db;
   border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); /* subtle shadow for separation */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
   margin-bottom: 2rem;
   max-width: 800px;
   width: 100%;
@@ -119,19 +119,17 @@
 }
 
 .profile-card-body {
-  padding: 2rem;
-  color: #1f2937; /* dark gray text for readability */
+  padding: 1.5rem;
 }
-
 
 /* Form layout */
 .profile-form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 1rem;
 }
 
+/* Ensure form inputs are full-width on mobile */
 .profile-form-group {
   display: flex;
   flex-direction: column;
@@ -139,24 +137,17 @@
 
 .profile-form-actions {
   text-align: center;
-  margin-top: 2rem;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .profile-form-row {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  .profile-card-body {
-    padding: 1.5rem;
-  }
+  margin-top: 1.5rem;
 }
 
 /* Profile picture styles */
+.profile-picture-preview {
+  touch-action: none; /* Prevent default touch behaviors */
+}
+
 .profile-preview-img {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #e5e7eb;
@@ -164,15 +155,15 @@
 }
 
 .profile-preview-placeholder {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 24px;
+  font-size: 20px;
   border: 2px solid #e5e7eb;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
@@ -181,13 +172,16 @@
 .btn-primary-custom {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
-  padding: 12px 30px;
+  padding: 10px 20px;
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.3s ease;
   color: white;
-  font-size: 16px;
+  font-size: 14px;
+  width: 100%;
+  max-width: 200px;
 }
+
 .btn-primary-custom:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
@@ -200,24 +194,87 @@
   border: 1px solid #d1d5db;
   border-radius: 8px;
   color: #111827;
-  padding: 0.75rem;
+  padding: 0.5rem;
+  font-size: 14px;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
+
 .profile-card .form-control:focus {
   border-color: #667eea;
   box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }
+
 .profile-card .form-label {
   color: #374151;
   font-weight: 500;
   margin-bottom: 0.5rem;
+  font-size: 14px;
 }
+
 .profile-card .text-muted {
   color: #6b7280 !important;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .profile-form-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .profile-card-body {
+    padding: 2rem;
+  }
+
+  .profile-preview-img,
+  .profile-preview-placeholder {
+    width: 80px;
+    height: 80px;
+    font-size: 24px;
+  }
+
+  .btn-primary-custom {
+    padding: 12px 30px;
+    font-size: 16px;
+    width: auto;
+  }
+
+  .profile-card .form-control {
+    padding: 0.75rem;
+    font-size: 16px;
+  }
+
+  .profile-card .form-label {
+    font-size: 16px;
+  }
+
+  .profile-card .text-muted {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-header p {
+    font-size: 0.9rem;
+  }
+
+  .btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Drag and drop highlight */
+.profile-picture-preview.dragover {
+  background: rgba(102, 126, 234, 0.1);
+  border: 2px dashed #667eea;
 }
 </style>
-
 
 <script>
 // Profile picture handling
@@ -367,5 +424,4 @@ if (uploadArea) {
     }
 }
 </script>
-
 {% endblock %}

@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - Reunited{% endblock %}
 
+<!-- Adding Bootstrap Icons CSS for icon display -->
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
   <div class="dashboard-header mb-4">
@@ -10,57 +15,57 @@
 
   <!-- Stats Cards -->
   <div class="row g-4 mb-4">
-   
-  <!-- Add your dashboard cards here -->
-    <!-- Stats Cards -->
-    <div class="row g-4 mb-4">
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="stats-card">
-          <div class="stats-icon" style="background: rgba(52, 152, 219, 0.2);">
-            <i class="bi bi-search text-info"></i>
-          </div>
-          <h2 class="stats-number text-info">3</h2>
-          <p class="mb-0 opacity-75">Lost Items Posted</p>
+    <!-- Items Posted -->
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stats-card">
+        <div class="stats-icon">
+          <i class="bi bi-plus-circle text-info"></i>
         </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="stats-card">
-          <div class="stats-icon" style="background: rgba(46, 204, 113, 0.2);">
-            <i class="bi bi-check-circle text-success"></i>
-          </div>
-          <h2 class="stats-number text-success">1</h2>
-          <p class="mb-0 opacity-75">Items Found</p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="stats-card">
-          <div class="stats-icon" style="background: rgba(155, 89, 182, 0.2);">
-            <i class="bi bi-puzzle" style="color: #9b59b6;"></i>
-          </div>
-          <h2 class="stats-number" style="color: #9b59b6;">5</h2>
-          <p class="mb-0 opacity-75">Potential Matches</p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="stats-card">
-          <div class="stats-icon" style="background: rgba(231, 76, 60, 0.2);">
-            <i class="bi bi-bell text-danger"></i>
-          </div>
-          <h2 class="stats-number text-danger">2</h2>
-          <p class="mb-0 opacity-75">New Notifications</p>
-        </div>
+        <h2 class="stats-number text-info">{{ stats.total_posted }}</h2>
+        <p class="mb-0 opacity-75">Items Posted</p>
       </div>
     </div>
-
-    <!-- same stats cards here -->
+    
+    <!-- Items Found/Claimed -->
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stats-card">
+        <div class="stats-icon">
+          <i class="bi bi-check-circle text-success"></i>
+        </div>
+        <h2 class="stats-number text-success">{{ stats.total_claimed }}</h2>
+        <p class="mb-0 opacity-75">Items Claimed</p>
+      </div>
+    </div>
+    
+    <!-- Total Activity/Matches -->
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stats-card">
+        <div class="stats-icon">
+          <i class="bi bi-puzzle" style="color: #9b59b6;"></i>
+        </div>
+        <h2 class="stats-number" style="color: #9b59b6;">{{ stats.total_activity }}</h2>
+        <p class="mb-0 opacity-75">Potential Matches</p>
+      </div>
+    </div>
+    
+    <!-- Returned Items -->
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stats-card">
+        <div class="stats-icon">
+          <i class="bi bi-arrow-return-left text-danger"></i>
+        </div>
+        <h2 class="stats-number text-danger">{{ stats.total_returned }}</h2>
+        <p class="mb-0 opacity-75">Items Returned</p>
+      </div>
+    </div>
   </div>
 
   <!-- Quick Actions -->
   <div class="row g-4 mb-4">
     <!-- Report Lost Item -->
-    <div class="col-12 col-lg-6">
+    <div class="col-12 col-lg-4">
       <div class="stats-card text-center">
-        <div class="stats-icon mx-auto" style="background: rgba(52, 152, 219, 0.2);">
+        <div class="stats-icon mx-auto">
           <i class="bi bi-plus-circle text-info"></i>
         </div>
         <h4 class="mb-3">Report Lost Item</h4>
@@ -72,9 +77,9 @@
     </div>
 
     <!-- Report Found Item -->
-    <div class="col-12 col-lg-6">
+    <div class="col-12 col-lg-4">
       <div class="stats-card text-center">
-        <div class="stats-icon mx-auto" style="background: rgba(46, 204, 113, 0.2);">
+        <div class="stats-icon mx-auto">
           <i class="bi bi-search text-success"></i>
         </div>
         <h4 class="mb-3">Report Found Item</h4>
@@ -83,6 +88,185 @@
           <i class="bi bi-search me-2"></i>Report Found Item
         </button>
       </div>
+    </div>
+
+    <!-- Share Feedback -->
+    <div class="col-12 col-lg-4">
+      <div class="stats-card text-center">
+        <div class="stats-icon mx-auto">
+          <i class="bi bi-chat-heart text-warning"></i>
+        </div>
+        <h4 class="mb-3">Share Feedback</h4>
+        <p class="mb-4 opacity-75">Help us improve Reunited by sharing your experience and suggestions.</p>
+        <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#feedbackModal">
+          <i class="bi bi-chat-heart me-2"></i>Share Feedback
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Community Feedback -->
+  {% if recent_feedback %}
+  <div class="row mb-5">
+    <div class="col-12">
+      <div class="stats-card">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">
+            <i class="bi bi-chat-heart me-2"></i>Community Feedback
+          </h4>
+        </div>
+        
+        <div class="feedback-carousel-wrapper">
+          <button class="carousel-control carousel-control-prev" onclick="previousFeedback()" id="prevBtn">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          
+          <button class="carousel-control carousel-control-next" onclick="nextFeedback()" id="nextBtn">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          
+          <div class="feedback-carousel-container">
+            <div class="feedback-carousel" id="feedbackCarousel">
+              {% for feedback in recent_feedback %}
+              <div class="feedback-slide">
+                <div class="feedback-card">
+                  <div class="feedback-header">
+                    <div class="profile-picture">
+                      {% if feedback.profile_picture %}
+                        <img src="{{ url_for('uploaded_file', filename=feedback.profile_picture) }}" 
+                             alt="{{ feedback.first_name }} {{ feedback.last_name }}" 
+                             class="profile-img">
+                      {% else %}
+                        <div class="profile-placeholder">
+                          <i class="bi bi-person-fill"></i>
+                        </div>
+                      {% endif %}
+                    </div>
+                    <div class="feedback-info">
+                      <h6 class="user-name">{{ feedback.first_name }} {{ feedback.last_name }}</h6>
+                      {% if feedback.rating %}
+                      <div class="rating-display">
+                        {% for i in range(feedback.rating) %}
+                          <i class="bi bi-star-fill"></i>
+                        {% endfor %}
+                        {% for i in range(5 - feedback.rating) %}
+                          <i class="bi bi-star"></i>
+                        {% endfor %}
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <p class="feedback-message">{{ feedback.message }}</p>
+                  <small class="feedback-date">{{ feedback.created_at.strftime('%b %d, %Y') }}</small>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Activity -->
+  {% if recent_items %}
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="stats-card">
+        <h4 class="mb-4">
+          <i class="bi bi-clock-history me-2"></i>Recent Activity
+        </h4>
+        <div class="row g-3">
+          {% for item in recent_items %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm">
+              {% if item.image_path %}
+              <img src="{{ url_for('static', filename='uploads/items/' + item.image_path.split('/')[-1]) }}" 
+                   class="card-img-top" style="height: 150px; object-fit: cover;">
+              {% else %}
+              <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                   style="height: 150px;">
+                <i class="bi bi-image fs-1 text-muted"></i>
+              </div>
+              {% endif %}
+              <div class="card-body">
+                <h6 class="card-title mb-2">{{ item.title }}</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="badge {% if item.type == 'lost' %}bg-info{% else %}bg-success{% endif %}">
+                    {{ item.type.title() }}
+                  </span>
+                  <small class="text-muted">{{ item.created_at.strftime('%b %d') }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+          <a href="{{ url_for('lost') }}" class="btn btn-outline-primary me-2">View All Lost Items</a>
+          <a href="{{ url_for('found') }}" class="btn btn-outline-success">View All Found Items</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form action="{{ url_for('submit_feedback') }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="feedbackModalLabel">Share Your Feedback</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Your Experience</label>
+            <textarea name="message" class="form-control" rows="4" 
+                      placeholder="Tell us about your experience with Reunited..." required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Rating (Optional)</label>
+            <div class="rating-stars">
+              <input type="radio" name="rating" value="1" id="star1">
+              <label for="star1" class="star">
+                <i class="bi bi-star-fill"></i>
+              </label>
+              <input type="radio" name="rating" value="2" id="star2">
+              <label for="star2" class="star">
+                <i class="bi bi-star-fill"></i>
+              </label>
+              <input type="radio" name="rating" value="3" id="star3">
+              <label for="star3" class="star">
+                <i class="bi bi-star-fill"></i>
+              </label>
+              <input type="radio" name="rating" value="4" id="star4">
+              <label for="star4" class="star">
+                <i class="bi bi-star-fill"></i>
+              </label>
+              <input type="radio" name="rating" value="5" id="star5">
+              <label for="star5" class="star">
+                <i class="bi bi-star-fill"></i>
+              </label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="is_public" value="1" id="publicFeedback" checked>
+              <label class="form-check-label" for="publicFeedback">
+                Make this feedback public (visible to other users)
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn" style="background: var(--color-warning); color: var(--color-white); border: none; border-radius: var(--radius-md); padding: 10px 20px; font-weight: 500;">Submit Feedback</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -182,9 +366,9 @@
     </div>
   </div>
 </div>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-
   if (window.location.hash === "#lostItemModal") {
     const modal = new bootstrap.Modal(document.getElementById('lostItemModal'));
     modal.show();
@@ -193,7 +377,377 @@ document.addEventListener("DOMContentLoaded", function () {
     const modal = new bootstrap.Modal(document.getElementById('foundItemModal'));
     modal.show();
   }
+  if (window.location.hash === "#feedbackModal") {
+    const modal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+    modal.show();
+  }
+
+  const stars = document.querySelectorAll('.rating-stars input[type="radio"]');
+  const starLabels = document.querySelectorAll('.rating-stars .star');
+  
+  starLabels.forEach((label, index) => {
+    label.addEventListener('click', function() {
+      const rating = index + 1;
+      stars[rating - 1].checked = true;
+      updateStarDisplay();
+    });
+    
+    label.addEventListener('mouseover', function() {
+      starLabels.forEach((star, i) => {
+        if (i <= index) {
+          star.querySelector('i').className = 'bi bi-star-fill';
+          star.style.color = 'var(--color-warning)';
+        } else {
+          star.querySelector('i').className = 'bi bi-star';
+          star.style.color = 'var(--color-gray-300)';
+        }
+      });
+    });
+  });
+  
+  document.querySelector('.rating-stars').addEventListener('mouseleave', function() {
+    updateStarDisplay();
+  });
+  
+  function updateStarDisplay() {
+    const checkedStar = document.querySelector('.rating-stars input[type="radio"]:checked');
+    if (checkedStar) {
+      const rating = parseInt(checkedStar.value);
+      starLabels.forEach((star, i) => {
+        if (i < rating) {
+          star.querySelector('i').className = 'bi bi-star-fill';
+          star.style.color = 'var(--color-warning)';
+        } else {
+          star.querySelector('i').className = 'bi bi-star';
+          star.style.color = 'var(--color-gray-300)';
+        }
+      });
+    } else {
+      starLabels.forEach(star => {
+        star.querySelector('i').className = 'bi bi-star';
+        star.style.color = 'var(--color-gray-300)';
+      });
+    }
+  }
+
+  let currentSlide = 0;
+  const carousel = document.getElementById('feedbackCarousel');
+  const slides = document.querySelectorAll('.feedback-slide');
+  
+  function getVisibleSlides() {
+    const width = window.innerWidth;
+    if (width >= 1200) return 3;
+    if (width >= 768) return 2;
+    return 1;
+  }
+  
+  function updateCarousel() {
+    if (carousel && slides.length > 0) {
+      const visibleSlides = getVisibleSlides();
+      const slideWidth = carousel.offsetWidth / visibleSlides;
+      const maxSlide = Math.max(0, slides.length - visibleSlides);
+      
+      if (currentSlide > maxSlide) {
+        currentSlide = maxSlide;
+      }
+      
+      carousel.style.transform = `translateX(-${currentSlide * slideWidth}px)`;
+      
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      
+      if (prevBtn) prevBtn.disabled = currentSlide === 0;
+      if (nextBtn) nextBtn.disabled = currentSlide >= maxSlide;
+    }
+  }
+  
+  window.nextFeedback = function() {
+    const visibleSlides = getVisibleSlides();
+    const maxSlide = Math.max(0, slides.length - visibleSlides);
+    if (currentSlide < maxSlide) {
+      currentSlide++;
+      updateCarousel();
+    }
+  };
+  
+  window.previousFeedback = function() {
+    if (currentSlide > 0) {
+      currentSlide--;
+      updateCarousel();
+    }
+  };
+  
+  window.addEventListener('resize', updateCarousel);
+  
+  updateCarousel();
 });
 </script>
+
+<style>
+.rating-stars {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.rating-stars input[type="radio"] {
+  display: none;
+}
+
+.rating-stars .star {
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: #dee2e6;
+  margin-right: 0.25rem;
+  transition: color 0.2s;
+}
+
+.rating-stars .star:hover {
+  color: #ffc107;
+}
+
+.rating-stars .star i {
+  transition: all 0.2s ease;
+}
+
+.stats-icon {
+  background: transparent !important;
+  font-size: 1.5rem;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+/* Community Feedback Section */
+.feedback-carousel-wrapper {
+  position: relative;
+  padding: 0 40px;
+  margin: 16px 0;
+}
+
+.carousel-control {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #fff;
+  border: 2px solid #007bff;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 15;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25);
+  color: #007bff;
+  font-size: 16px;
+}
+
+.carousel-control:hover:not(:disabled) {
+  background: #007bff;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-control:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: translateY(-50%);
+  background: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+}
+
+.carousel-control-prev {
+  left: 8px;
+}
+
+.carousel-control-next {
+  right: 8px;
+}
+
+.feedback-carousel-container {
+  overflow: hidden;
+  width: 100%;
+  border-radius: 8px;
+}
+
+.feedback-carousel {
+  display: flex;
+  transition: transform 0.4s ease;
+  gap: 16px;
+}
+
+.feedback-slide {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* Responsive slide widths */
+@media (min-width: 1200px) {
+  .feedback-slide {
+    width: calc((100% - 32px) / 3);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .feedback-slide {
+    width: calc((100% - 16px) / 2);
+  }
+}
+
+@media (max-width: 767px) {
+  .feedback-slide {
+    width: 100%;
+  }
+  
+  .feedback-carousel-wrapper {
+    padding: 0 32px;
+  }
+  
+  .carousel-control {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  
+  .carousel-control-prev {
+    left: 4px;
+  }
+  
+  .carousel-control-next {
+    right: 4px;
+  }
+  
+  .feedback-card {
+    padding: 16px;
+  }
+  
+  .profile-picture {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+  }
+  
+  .profile-img {
+    border-width: 2px;
+  }
+  
+  .profile-placeholder {
+    font-size: 16px;
+  }
+  
+  .user-name {
+    font-size: 14px;
+  }
+  
+  .rating-display {
+    font-size: 12px;
+  }
+  
+  .feedback-message {
+    font-size: 13px;
+    -webkit-line-clamp: 3;
+  }
+  
+  .feedback-date {
+    font-size: 11px;
+  }
+}
+
+.feedback-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  height: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.feedback-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+}
+
+.feedback-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.profile-picture {
+  width: 48px;
+  height: 48px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.profile-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e9ecef;
+}
+
+.profile-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+}
+
+.feedback-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  margin: 0 0 4px 0;
+  font-weight: 600;
+  font-size: 15px;
+  color: #2c3e50;
+}
+
+.rating-display {
+  color: #ffc107;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.rating-display i {
+  margin-right: 2px;
+}
+
+.feedback-message {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #495057;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feedback-date {
+  color: #6c757d;
+  font-size: 12px;
+  font-weight: 500;
+}
+</style>
 
 {% endblock %}

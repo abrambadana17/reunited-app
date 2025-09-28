@@ -30,7 +30,7 @@ app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', 'reunited.uc@gmail.com')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', '')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', 'dhhp qhea vvbk zofx')
 app.config['MAIL_DEFAULT_SENDER'] = (
     os.getenv('MAIL_DEFAULT_NAME', 'Reunited Team'),
     os.getenv('MAIL_USERNAME', 'reunited.uc@gmail.com')
@@ -375,6 +375,8 @@ def claim_item():
     except Exception as e:
         return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
 
+# Replace your existing /api/claim-status/<int:notification_id> endpoint with this:
+
 @app.route('/api/claim-status/<int:notification_id>')
 def get_claim_status(notification_id):
     if 'user_id' not in session:
@@ -383,15 +385,35 @@ def get_claim_status(notification_id):
     try:
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         
+        # Get notification details
         cursor.execute("""SELECT match_id FROM notifications WHERE id = %s""", (notification_id,))
-        
         notification = cursor.fetchone()
         if not notification:
             return jsonify({'success': False, 'errors': ['Notification not found']}), 404
         
         match_id = notification['match_id']
         
-        cursor.execute("""SELECT m.status as match_status, lost.user_id as lost_user_id, lost.status as lost_item_status, found.user_id as found_user_id, found.status as found_item_status, u1.first_name as lost_first_name, u1.last_name as lost_last_name, u2.first_name as found_first_name, u2.last_name as found_last_name FROM ai_matches m JOIN items lost ON m.lost_item_id = lost.id JOIN users u1 ON lost.user_id = u1.id JOIN items found ON m.found_item_id = found.id JOIN users u2 ON found.user_id = u2.id WHERE m.id = %s""", (match_id,))
+        # Get match and item status details
+        cursor.execute("""
+            SELECT 
+                m.status as match_status,
+                lost.id as lost_item_id,
+                lost.user_id as lost_user_id, 
+                lost.status as lost_item_status,
+                found.id as found_item_id,
+                found.user_id as found_user_id, 
+                found.status as found_item_status,
+                u1.first_name as lost_first_name, 
+                u1.last_name as lost_last_name,
+                u2.first_name as found_first_name, 
+                u2.last_name as found_last_name
+            FROM ai_matches m 
+            JOIN items lost ON m.lost_item_id = lost.id 
+            JOIN users u1 ON lost.user_id = u1.id 
+            JOIN items found ON m.found_item_id = found.id 
+            JOIN users u2 ON found.user_id = u2.id 
+            WHERE m.id = %s
+        """, (match_id,))
         
         match_data = cursor.fetchone()
         cursor.close()
@@ -405,18 +427,22 @@ def get_claim_status(notification_id):
             'both_completed': False
         }
         
+        # Check if lost item is claimed (by the lost item owner)
         if match_data['lost_item_status'] == 'Claimed':
             claim_status['claimed'] = {
                 'user_id': match_data['lost_user_id'],
                 'name': f"{match_data['lost_first_name']} {match_data['lost_last_name']}",
-                'status': 'resolved' if match_data['match_status'] == 'resolved' else 'pending'
+                'status': 'resolved' if match_data['match_status'] == 'resolved' else 'pending',
+                'item_id': match_data['lost_item_id']
             }
         
+        # Check if found item is returned (by the found item owner)
         if match_data['found_item_status'] == 'Returned':
             claim_status['returned'] = {
                 'user_id': match_data['found_user_id'],
                 'name': f"{match_data['found_first_name']} {match_data['found_last_name']}",
-                'status': 'resolved' if match_data['match_status'] == 'resolved' else 'pending'
+                'status': 'resolved' if match_data['match_status'] == 'resolved' else 'pending',
+                'item_id': match_data['found_item_id']
             }
         
         claim_status['both_completed'] = match_data['match_status'] == 'resolved'

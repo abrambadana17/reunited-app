@@ -1,10 +1,11 @@
+<!-- Replace your entire notifications.html template with this: -->
 {% extends "base.html" %}
 {% block title %}Notifications - Reunited{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
   <div class="dashboard-header mb-4">
-    <h1 class="fw-bold mb-2">🔔 Notifications</h1>
+    <h1 class="fw-bold mb-2">Notifications 🔔</h1>
     <p class="mb-0 opacity-75">Stay updated about your items.</p>
   </div>
 
@@ -30,7 +31,6 @@
           </div>
         </div>
         
-        <!-- Updated to show buttons/labels based on claim status and notification read status -->
         {% if n.type == 'match_found' and n.match_id %}
           <div class="mt-3 pt-3 border-top">
             <div class="d-flex gap-2 justify-content-end">
@@ -38,16 +38,16 @@
                    data-notification-id="{{ n.id }}" 
                    data-user-id="{{ session.user_id }}"
                    data-match-id="{{ n.match_id }}"
-                   data-is-read="{{ n.is_read }}">
+                   data-is-read="{{ 'True' if n.is_read else 'False' }}">
                 <div class="d-flex gap-2">
                   <!-- Buttons will be shown/hidden by JavaScript based on user's role and claim status -->
-                  <button class="btn btn-success btn-sm claim-btn" 
+                  <button class="btn btn-primary-custom btn-sm claim-btn " 
                           data-action="claimed" 
                           data-notification-id="{{ n.id }}"
                           style="display: none;">
                     Mark as Claimed
                   </button>
-                  <button class="btn btn-info btn-sm claim-btn" 
+                  <button class="btn btn-primary-custom btn-sm claim-btn " 
                           data-action="returned" 
                           data-notification-id="{{ n.id }}"
                           style="display: none;">
@@ -77,7 +77,6 @@
   </div>
 </div>
 
-<!-- Updated JavaScript to show labels instead of buttons after actions are taken -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const claimStatuses = document.querySelectorAll('.claim-status');
@@ -86,41 +85,42 @@ document.addEventListener('DOMContentLoaded', function() {
         const notificationId = statusDiv.dataset.notificationId;
         const currentUserId = parseInt(statusDiv.dataset.userId);
         const matchId = statusDiv.dataset.matchId;
-        const isRead = statusDiv.dataset.isRead === 'True';
         
-        // First, get match details to determine user's role
-        fetch(`/api/match-details/${matchId}`)
-            .then(response => response.json())
-            .then(matchData => {
-                if (matchData.success) {
-                    // Determine user's role and show appropriate button/label
-                    const isLostOwner = currentUserId === matchData.match.lost_user_id;
-                    const isFoundOwner = currentUserId === matchData.match.found_user_id;
-                    
-                    const claimedBtn = statusDiv.querySelector('[data-action="claimed"]');
-                    const returnedBtn = statusDiv.querySelector('[data-action="returned"]');
-                    const claimedLabel = statusDiv.querySelector('.claimed-label');
-                    const returnedLabel = statusDiv.querySelector('.returned-label');
-                    
-                    if (isLostOwner) {
-                        claimedBtn.dataset.itemId = matchData.match.lost_item_id;
-                    } else if (isFoundOwner) {
-                        returnedBtn.dataset.itemId = matchData.match.found_item_id;
-                    }
-                    
-                    // Then get claim status
-                    return fetch(`/api/claim-status/${notificationId}`);
+        console.log(`Processing notification ${notificationId}, user ${currentUserId}, is_read: ${statusDiv.dataset.isRead}`);
+        
+        // Get match details and claim status
+        Promise.all([
+            fetch(`/api/match-details/${matchId}`).then(r => r.json()),
+            fetch(`/api/claim-status/${notificationId}`).then(r => r.json())
+        ])
+        .then(([matchData, claimData]) => {
+            if (matchData.success && claimData.success) {
+                console.log(`Match data for notification ${notificationId}:`, matchData);
+                console.log(`Claim data for notification ${notificationId}:`, claimData);
+                
+                // Set item IDs on buttons
+                const claimedBtn = statusDiv.querySelector('[data-action="claimed"]');
+                const returnedBtn = statusDiv.querySelector('[data-action="returned"]');
+                
+                const isLostOwner = currentUserId === matchData.match.lost_user_id;
+                const isFoundOwner = currentUserId === matchData.match.found_user_id;
+                
+                if (isLostOwner && claimedBtn) {
+                    claimedBtn.dataset.itemId = matchData.match.lost_item_id;
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updateClaimUI(statusDiv, data.claim_status, currentUserId, isRead);
+                if (isFoundOwner && returnedBtn) {
+                    returnedBtn.dataset.itemId = matchData.match.found_item_id;
                 }
-            })
-            .catch(error => {
-                console.error('Error fetching match/claim data:', error);
-            });
+                
+                // Update UI based on current state
+                updateClaimUI(statusDiv, claimData.claim_status, currentUserId);
+            } else {
+                console.error('Failed to load match or claim data:', matchData, claimData);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+        });
     });
     
     // Handle claim button clicks
@@ -132,6 +132,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const action = button.dataset.action;
             const itemId = button.dataset.itemId;
             const notificationId = button.dataset.notificationId;
+            
+            if (!itemId) {
+                showMessage('Error: Item ID not found. Please refresh the page.', 'error');
+                return;
+            }
             
             // Disable button during request
             button.disabled = true;
@@ -152,10 +157,13 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Hide the button and show label
-                    button.style.display = 'none';
+                    console.log(`Successfully ${action} item. Response:`, data);
+                    
+                    // Update the UI immediately
                     const statusDiv = button.closest('.claim-status');
                     
+                    // Hide button and show appropriate label
+                    button.style.display = 'none';
                     if (action === 'claimed') {
                         const claimedLabel = statusDiv.querySelector('.claimed-label');
                         claimedLabel.style.display = 'inline-block';
@@ -164,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         returnedLabel.style.display = 'inline-block';
                     }
                     
-                    // Update notification badge to "Read"
+                    // Update notification to "Read" state
                     const notificationItem = button.closest('.list-group-item');
                     notificationItem.classList.remove('list-group-item-warning');
                     const badge = notificationItem.querySelector('.badge');
@@ -177,13 +185,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         markReadBtn.style.display = 'none';
                     }
                     
-                    // Show success message
+                    // CRITICAL: Update the data attribute so refresh works correctly
+                    statusDiv.dataset.isRead = 'True';
+                    
                     showMessage(data.message, 'success');
                     
                     if (data.both_completed) {
                         showMessage('Both parties have confirmed! The item exchange is complete and the match is resolved.', 'info');
                         
-                        // Update status text
                         const statusText = statusDiv.querySelector('.claim-status-text');
                         const statusTextContent = statusText.querySelector('small');
                         statusText.style.display = 'block';
@@ -191,6 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         statusTextContent.className = 'text-success';
                     }
                 } else {
+                    console.error('Claim failed:', data);
                     showMessage(data.errors.join(', '), 'error');
                     // Re-enable button
                     button.disabled = false;
@@ -200,7 +210,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error:', error);
                 showMessage('An error occurred. Please try again.', 'error');
-                // Re-enable button
                 button.disabled = false;
                 button.textContent = originalText;
             });
@@ -208,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function updateClaimUI(statusDiv, claimStatus, currentUserId, isRead) {
+function updateClaimUI(statusDiv, claimStatus, currentUserId) {
     const claimedBtn = statusDiv.querySelector('[data-action="claimed"]');
     const returnedBtn = statusDiv.querySelector('[data-action="returned"]');
     const claimedLabel = statusDiv.querySelector('.claimed-label');
@@ -216,59 +225,74 @@ function updateClaimUI(statusDiv, claimStatus, currentUserId, isRead) {
     const statusText = statusDiv.querySelector('.claim-status-text');
     const statusTextContent = statusText.querySelector('small');
     
+    // Get current notification read status
+    const isRead = statusDiv.dataset.isRead === 'True';
+    
+    console.log(`UpdateClaimUI for user ${currentUserId}, isRead: ${isRead}`, claimStatus);
+    
+    // Reset all visibility
+    if (claimedBtn) claimedBtn.style.display = 'none';
+    if (returnedBtn) returnedBtn.style.display = 'none';
+    claimedLabel.style.display = 'none';
+    returnedLabel.style.display = 'none';
+    statusText.style.display = 'none';
+    
+    // Check what actions have been taken
+    const userClaimed = claimStatus.claimed && claimStatus.claimed.user_id === currentUserId;
+    const userReturned = claimStatus.returned && claimStatus.returned.user_id === currentUserId;
+    
     if (claimStatus.both_completed) {
-        // Hide all buttons and show completion status
-        if (claimedBtn) claimedBtn.style.display = 'none';
-        if (returnedBtn) returnedBtn.style.display = 'none';
+        // Both actions completed - show completion message and labels
         statusText.style.display = 'block';
         statusTextContent.textContent = '✅ Exchange completed! Match resolved.';
         statusTextContent.className = 'text-success';
         
-        // Show appropriate labels
         if (claimStatus.claimed) claimedLabel.style.display = 'inline-block';
         if (claimStatus.returned) returnedLabel.style.display = 'inline-block';
+        
+    } else if (userClaimed) {
+        // Current user has claimed
+        claimedLabel.style.display = 'inline-block';
+        console.log(`User ${currentUserId} has claimed - showing claimed label`);
+        
+    } else if (userReturned) {
+        // Current user has returned
+        returnedLabel.style.display = 'inline-block';
+        console.log(`User ${currentUserId} has returned - showing returned label`);
+        
     } else {
-        // Check if current user already performed their action
-        const userClaimed = claimStatus.claimed && claimStatus.claimed.user_id === currentUserId;
-        const userReturned = claimStatus.returned && claimStatus.returned.user_id === currentUserId;
-        
-        if (userClaimed) {
-            if (claimedBtn) claimedBtn.style.display = 'none';
-            claimedLabel.style.display = 'inline-block';
-        } else if (userReturned) {
-            if (returnedBtn) returnedBtn.style.display = 'none';
-            returnedLabel.style.display = 'inline-block';
-        } else {
-            // Show appropriate button if notification is not read and user hasn't acted
-            if (!isRead) {
-                if (claimedBtn && claimedBtn.dataset.itemId) {
-                    claimedBtn.style.display = 'inline-block';
-                }
-                if (returnedBtn && returnedBtn.dataset.itemId) {
-                    returnedBtn.style.display = 'inline-block';
-                }
+        // User hasn't taken action yet
+        // Show buttons only if notification is NOT read
+        if (!isRead) {
+            console.log(`User ${currentUserId} hasn't acted and notification is unread - showing buttons`);
+            if (claimedBtn && claimedBtn.dataset.itemId) {
+                claimedBtn.style.display = 'inline-block';
             }
+            if (returnedBtn && returnedBtn.dataset.itemId) {
+                returnedBtn.style.display = 'inline-block';
+            }
+        } else {
+            console.log(`User ${currentUserId} hasn't acted but notification is read - no buttons shown`);
         }
-        
-        // Show status if any claims exist
-        let statusMessages = [];
-        if (claimStatus.claimed) {
-            statusMessages.push(`${claimStatus.claimed.name} marked as claimed`);
-        }
-        if (claimStatus.returned) {
-            statusMessages.push(`${claimStatus.returned.name} marked as returned`);
-        }
-        
-        if (statusMessages.length > 0) {
-            statusText.style.display = 'block';
-            statusTextContent.textContent = statusMessages.join(', ');
-            statusTextContent.className = 'text-info';
-        }
+    }
+    
+    // Show status messages for any completed actions
+    let statusMessages = [];
+    if (claimStatus.claimed && !claimStatus.both_completed) {
+        statusMessages.push(`${claimStatus.claimed.name} marked as claimed`);
+    }
+    if (claimStatus.returned && !claimStatus.both_completed) {
+        statusMessages.push(`${claimStatus.returned.name} marked as returned`);
+    }
+    
+    if (statusMessages.length > 0) {
+        statusText.style.display = 'block';
+        statusTextContent.textContent = statusMessages.join(', ');
+        statusTextContent.className = 'text-info';
     }
 }
 
 function showMessage(message, type) {
-    // Create a simple toast notification
     const toast = document.createElement('div');
     toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
     toast.style.top = '20px';
@@ -281,7 +305,6 @@ function showMessage(message, type) {
     
     document.body.appendChild(toast);
     
-    // Auto-remove after 5 seconds
     setTimeout(() => {
         if (toast.parentNode) {
             toast.parentNode.removeChild(toast);

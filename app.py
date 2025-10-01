@@ -12,11 +12,12 @@ from datetime import datetime
 import os
 import uuid
 from PIL import Image
+import random
+import string
+from flask_mail import Message
 
 app = Flask(__name__)
 app.secret_key = '071322'  # Change this to a random secret key
-
-import os
 
 # MySQL Configuration (Railway + local fallback)
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', 'localhost')
@@ -37,7 +38,6 @@ app.config['MAIL_DEFAULT_SENDER'] = (
 )
 
 mail = Mail(app)
-
 
 # File upload configuration
 app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pictures'
@@ -174,14 +174,18 @@ def submit_feedback():
         flash(f'Error submitting feedback: {str(e)}', 'danger')
         return redirect(url_for('dashboard'))
 
-# Serve uploaded files
-@app.route('/uploads/profile_pictures/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
 # API Routes
 @app.route('/api/register', methods=['POST'])
 def register():
+    # Redirect to new OTP flow
+    return jsonify({
+        'success': False, 
+        'errors': ['Please use the new registration process with email verification.'],
+        'redirect': '/api/send-otp'
+    }), 400
+
+@app.route('/api/send-otp', methods=['POST'])
+def send_otp():
     try:
         # Get form data
         data = request.get_json() if request.is_json else request.form.to_dict()
@@ -228,17 +232,89 @@ def register():
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('SELECT * FROM users WHERE email = %s', (email,))
         existing_user = cursor.fetchone()
+        cursor.close()
         
         if existing_user:
             return jsonify({'success': False, 'errors': ['Email already registered']}), 400
         
-        # Hash password and create user
-        hashed_password = generate_password_hash(password)
+        # Generate and store OTP in session
+        otp = generate_otp()
+        session['registration_otp'] = otp
+        session['registration_data'] = {
+            'firstName': first_name,
+            'lastName': last_name,
+            'email': email,
+            'phone': phone,
+            'password': password
+        }
+        session['otp_timestamp'] = datetime.now().timestamp()
         
-        cursor.execute('''INSERT INTO users (first_name, last_name, email, phone, password) VALUES (%s, %s, %s, %s, %s)''', (first_name, last_name, email, phone, hashed_password))
+        # Send OTP email
+        if send_otp_email(email, otp, first_name):
+            return jsonify({
+                'success': True, 
+                'message': 'Verification code sent to your email!'
+            }), 200
+        else:
+            return jsonify({'success': False, 'errors': ['Failed to send verification email. Please try again.']}), 500
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+
+@app.route('/api/verify-otp', methods=['POST'])
+def verify_otp():
+    try:
+        data = request.get_json() if request.is_json else request.form.to_dict()
+        entered_otp = data.get('otpCode', '').strip()
+        
+        if not entered_otp:
+            return jsonify({'success': False, 'errors': ['Please enter the verification code']}), 400
+        
+        # Check if OTP exists in session
+        if 'registration_otp' not in session or 'registration_data' not in session:
+            return jsonify({'success': False, 'errors': ['Verification session expired. Please try registering again.']}), 400
+        
+        # Check OTP expiry (10 minutes)
+        otp_timestamp = session.get('otp_timestamp', 0)
+        current_timestamp = datetime.now().timestamp()
+        if current_timestamp - otp_timestamp > 600:  # 10 minutes
+            # Clear session data
+            session.pop('registration_otp', None)
+            session.pop('registration_data', None)
+            session.pop('otp_timestamp', None)
+            return jsonify({'success': False, 'errors': ['Verification code expired. Please try registering again.']}), 400
+        
+        # Verify OTP
+        stored_otp = session.get('registration_otp')
+        if entered_otp != stored_otp:
+            return jsonify({'success': False, 'errors': ['Invalid verification code. Please try again.']}), 400
+        
+        # OTP is valid, create the account
+        registration_data = session.get('registration_data')
+        
+        # Check if user already exists (double-check)
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('SELECT * FROM users WHERE email = %s', (registration_data['email'],))
+        existing_user = cursor.fetchone()
+        
+        if existing_user:
+            cursor.close()
+            return jsonify({'success': False, 'errors': ['Email already registered']}), 400
+        
+        # Hash password and create user
+        hashed_password = generate_password_hash(registration_data['password'])
+        
+        cursor.execute('''INSERT INTO users (first_name, last_name, email, phone, password) VALUES (%s, %s, %s, %s, %s)''', 
+                      (registration_data['firstName'], registration_data['lastName'], 
+                       registration_data['email'], registration_data['phone'], hashed_password))
         
         mysql.connection.commit()
         cursor.close()
+        
+        # Clear session data
+        session.pop('registration_otp', None)
+        session.pop('registration_data', None)
+        session.pop('otp_timestamp', None)
         
         return jsonify({
             'success': True, 
@@ -394,26 +470,7 @@ def get_claim_status(notification_id):
         match_id = notification['match_id']
         
         # Get match and item status details
-        cursor.execute("""
-            SELECT 
-                m.status as match_status,
-                lost.id as lost_item_id,
-                lost.user_id as lost_user_id, 
-                lost.status as lost_item_status,
-                found.id as found_item_id,
-                found.user_id as found_user_id, 
-                found.status as found_item_status,
-                u1.first_name as lost_first_name, 
-                u1.last_name as lost_last_name,
-                u2.first_name as found_first_name, 
-                u2.last_name as found_last_name
-            FROM ai_matches m 
-            JOIN items lost ON m.lost_item_id = lost.id 
-            JOIN users u1 ON lost.user_id = u1.id 
-            JOIN items found ON m.found_item_id = found.id 
-            JOIN users u2 ON found.user_id = u2.id 
-            WHERE m.id = %s
-        """, (match_id,))
+        cursor.execute("""SELECT m.status as match_status, lost.id as lost_item_id, lost.user_id as lost_user_id, lost.status as lost_item_status, found.id as found_item_id, found.user_id as found_user_id, found.status as found_item_status, u1.first_name as lost_first_name, u1.last_name as lost_last_name, u2.first_name as found_first_name, u2.last_name as found_last_name FROM ai_matches m JOIN items lost ON m.lost_item_id = lost.id JOIN users u1 ON lost.user_id = u1.id JOIN items found ON m.found_item_id = found.id JOIN users u2 ON found.user_id = u2.id WHERE m.id = %s""", (match_id,))
         
         match_data = cursor.fetchone()
         cursor.close()
@@ -757,7 +814,7 @@ def match():
         return redirect(url_for("login_page"))
 
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("""SELECT m.id, m.match_score, m.match_at, m.status, lost.id AS lost_id, lost.title AS lost_title, lost.description AS lost_description, lost.date_reported AS lost_date, u1.first_name AS lost_first_name, u1.last_name AS lost_last_name, u1.profile_picture AS lost_profile, lost_img.file_path AS lost_image, found.id AS found_id, found.title AS found_title, found.description AS found_description, found.date_reported AS found_date, u2.first_name AS found_first_name, u2.last_name AS found_last_name, u2.profile_picture AS found_profile, found_img.file_path AS found_image FROM ai_matches m JOIN items lost ON m.lost_item_id = lost.id JOIN users u1 ON lost.user_id = u1.id LEFT JOIN images lost_img ON lost.id = lost_img.item_id JOIN items found ON m.found_item_id = found.id JOIN users u2 ON found.user_id = u2.id LEFT JOIN images found_img ON found.id = found_img.item_id WHERE lost.user_id = %s OR found.user_id = %s ORDER BY m.match_at DESC""", (session['user_id'], session['user_id']))
+    cursor.execute("""SELECT m.id, m.match_score, m.match_at, m.status, lost.id AS lost_id, lost.title AS lost_title, lost.description AS lost_description, lost.category AS lost_category, lost.date_reported AS lost_date_reported, u1.first_name AS lost_first_name, u1.last_name AS lost_last_name, u1.profile_picture AS lost_profile, lost_img.file_path AS lost_image, found.id AS found_id, found.title AS found_title, found.description AS found_description, found.category AS found_category, found.date_reported AS found_date_reported, u2.first_name AS found_first_name, u2.last_name AS found_last_name, u2.profile_picture AS found_profile, found_img.file_path AS found_image FROM ai_matches m JOIN items lost ON m.lost_item_id = lost.id JOIN users u1 ON lost.user_id = u1.id LEFT JOIN images lost_img ON lost.id = lost_img.item_id JOIN items found ON m.found_item_id = found.id JOIN users u2 ON found.user_id = u2.id LEFT JOIN images found_img ON found.id = found_img.item_id WHERE lost.user_id = %s OR found.user_id = %s ORDER BY m.match_at DESC""", (session['user_id'], session['user_id']))
     
     matches = cursor.fetchall()
     cursor.close()
@@ -806,6 +863,61 @@ def get_match_details(match_id):
         
     except Exception as e:
         return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+
+def generate_otp():
+    """Generate a 6-digit OTP"""
+    return ''.join(random.choices(string.digits, k=6))
+
+def send_otp_email(email, otp, first_name):
+    """Send OTP via email"""
+    try:
+        msg = Message(
+            subject='Verify Your Email - Reunited',
+            recipients=[email],
+            html=f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #1E3A8A; margin-bottom: 10px;">🤝 Reunited</h1>
+                    <h2 style="color: #374151; font-weight: normal;">Email Verification</h2>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; text-align: center;">
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                        Hi {first_name},
+                    </p>
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 30px;">
+                        Welcome to Reunited! Please use the verification code below to complete your registration:
+                    </p>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h1 style="font-size: 36px; color: #1E3A8A; letter-spacing: 8px; margin: 0; font-family: monospace;">
+                            {otp}
+                        </h1>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
+                        This code will expire in 10 minutes. If you didn't request this, please ignore this email.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="font-size: 12px; color: #9ca3af;">
+                        © 2025 Reunited. Helping reconnect lost items with their owners.
+                    </p>
+                </div>
+            </div>
+            '''
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending OTP email: {e}")
+        return False
+
+# Serve uploaded files
+@app.route('/uploads/profile_pictures/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

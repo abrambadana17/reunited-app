@@ -4,110 +4,187 @@
 {% block content %}
 <div class="container-fluid">
   <div class="dashboard-header mb-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-      <div>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border-1">
+      <div class="text-center text-md-start">
         <h1 class="fw-bold mb-2">Found Items 🕵️‍♂️</h1>
         <p class="mb-0 opacity-75">View all reported found items.</p>
       </div>
-      <a href="{{ url_for('dashboard') }}#foundItemModal" class="btn btn-primary-custom mt-3 mt-md-0">
-        <i class="fas fa-plus me-2"></i>Report Found Item
-      </a>
-    </div>
-  </div>
-
-  <!-- Search & Filters -->
-<div class="recent-activity mb-4">
-  <div class="row g-3">
-    <div class="col-12 col-md-8">
-      <div class="position-relative">
-        <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-black-50"></i>
-        <input type="text" id="searchInput" 
-              class="form-control ps-5"
-              placeholder="Search found items...">
-      </div>
-
-    </div>
-    <div class="col-6 col-md-2">
-      <select id="categoryFilter" class="form-select">
-        <option value="">All Categories</option>
-        <option value="Electronics">Electronics</option>
-        <option value="Wallet">Wallet</option>
-        <option value="Keys">Keys</option>
-        <option value="Others">Others</option>
-      </select>
-    </div>
-    <div class="col-6 col-md-2">
-      <select id="statusFilter" class="form-select">
-        <option value="">All Status</option>
-        <option value="lost">Lost</option>
-        
-        <option value="returned">Returned</option>
-      </select>
-    </div>
-  </div>
-</div>
-
-
-  <!-- Found Items Grid -->
-<div class="row g-4" id="itemsGrid">
-  {% for item in items %}
-  <div class="col-12 col-sm-6 col-lg-4 item-card" 
-       data-title="{{ item.title|lower }}" 
-       data-description="{{ item.description|lower }}" 
-       data-category="{{ item.category|lower }}" 
-       data-status="{{ item.status|lower }}">
-    <div class="card shadow-sm h-100 found-item-card">
-      <!-- Item Image -->
-      <img src="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}" 
-           class="card-img-top" alt="Found Item Image" style="height: 200px; object-fit: cover;">
-
-      <!-- Card Body -->
-      <div class="card-body">
-        <h5 class="card-title">{{ item.title }}</h5>
-        <p class="card-text small text-muted">
-          Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
-        </p>
-        <p class="card-text">{{ item.description }}</p>
-        {% if item.status == "returned" %}
-          <span class="badge bg-success">{{ item.status }}</span>
-        {% else %}
-          <span class="badge bg-warning text-dark">{{ item.status }}</span>
-        {% endif %}
-      </div>
-
-      <!-- Reporter Info -->
-      <div class="card-footer d-flex align-items-center">
-        <div class="user-avatar me-2">
-          {% if item.profile_picture %}
-            <img src="{{ url_for('uploaded_file', filename=item.profile_picture) }}" alt="Profile Picture" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-          {% else %}
-            {{ item.first_name[0]|upper }}{{ item.last_name[0]|upper }}
-          {% endif %}
-        </div>
-        <small class="text-muted">
-          Reported by {{ item.first_name }} {{ item.last_name }}
-        </small>
-      </div>
-    </div>
-  </div>
-  {% else %}
-  <div class="col-12">
-    <div class="text-center py-5">
-      <div class="recent-activity">
-        <i class="fas fa-search fa-4x text-white-50 mb-3"></i>
-        <h3 class="text-white mb-3">No found items reported yet.</h3>
-        <a href="{{ url_for('dashboard') }}#foundItemModal" class="btn btn-primary-custom">
-          <i class="fas fa-plus me-2"></i>Report First Found Item
+      <div class="text-center text-md-end">
+        <a href="{{ url_for('dashboard') }}#foundItemModal" class="btn btn-primary-custom w-100 w-md-auto">
+          <i class="fas fa-plus me-2"></i>Report Found Item
         </a>
       </div>
     </div>
   </div>
-  {% endfor %}
+
+  <div class="recent-activity mb-4">
+    <div class="row g-3">
+      <div class="col-12 col-md-8">
+        <div class="position-relative">
+          <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-black-50"></i>
+          <input type="text" id="searchInput" 
+                 class="form-control ps-5"
+                 placeholder="Search found items...">
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <select id="categoryFilter" class="form-select">
+          <option value="">All Categories</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Wallet">Wallet</option>
+          <option value="Keys">Keys</option>
+          <option value="Others">Others</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select id="statusFilter" class="form-select">
+          <option value="">All Status</option>
+          <option value="found">Found</option>
+          <option value="returned">Returned</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4" id="itemsGrid">
+    {% for item in items %}
+    <div class="col-12 col-sm-6 col-lg-4 item-card" 
+         data-title="{{ item.title|lower }}" 
+         data-description="{{ item.description|lower }}" 
+         data-category="{{ item.category|lower }}" 
+         data-status="{{ item.status|lower }}"
+         data-bs-toggle="modal" 
+         data-bs-target="#itemDetailModal"
+         data-item-id="{{ item.id }}"
+         data-item-title="{{ item.title }}"
+         data-item-description="{{ item.description }}"
+         data-item-category="{{ item.category }}"
+         data-item-status="{{ item.status }}"
+         data-item-date="{{ item.date_reported.strftime('%B %d, %Y at %I:%M %p') }}"
+         data-item-image="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}"
+         data-reporter-name="{{ item.first_name }} {{ item.last_name }}"
+         data-reporter-picture="{{ url_for('uploaded_file', filename=item.profile_picture) if item.profile_picture else '' }}"
+         data-reporter-initials="{{ item.first_name[0]|upper }}{{ item.last_name[0]|upper }}"
+         style="cursor: pointer;">
+      <div class="card shadow-sm h-100 found-item-card">
+        <img src="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}" 
+             class="card-img-top" alt="Found Item Image" 
+             style="height: 200px; object-fit: cover;">
+
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">{{ item.title }}</h5>
+          
+          <p class="card-text flex-grow-1">{{ item.description }}</p>
+          <p class="card-text small text-muted">
+            Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
+          </p>
+          <div>
+            {% if item.status == "returned" %}
+              <span class="badge bg-success">{{ item.status }}</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">{{ item.status }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card-footer d-flex align-items-center">
+          <div class="user-avatar me-2">
+            {% if item.profile_picture %}
+              <img src="{{ url_for('uploaded_file', filename=item.profile_picture) }}" 
+                   alt="Profile Picture" 
+                   style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+            {% else %}
+              {{ item.first_name[0]|upper }}{{ item.last_name[0]|upper }}
+            {% endif %}
+          </div>
+          <small class="text-muted">
+            Reported by {{ item.first_name }} {{ item.last_name }}
+          </small>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+      <div class="text-center py-5">
+        <div class="recent-activity">
+          <i class="fas fa-search fa-4x text-black-50 mb-3"></i>
+          <h3 class="text-black mb-3">No found items reported yet.</h3>
+          <a href="{{ url_for('dashboard') }}#foundItemModal" class="btn btn-primary-custom">
+            <i class="fas fa-plus me-2"></i>Report First Found Item
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div id="noResults" class="col-12 text-center py-5" style="display: none;">
+    <div class="recent-activity">
+      <i class="fas fa-search fa-3x text-black-50 mb-3"></i>
+      <h4 class="text-black">No items found</h4>
+      <p class="text-muted">Try adjusting your search criteria.</p>
+    </div>
+  </div>
 </div>
 
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-labelledby="itemDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="itemDetailModalLabel">Item Details</h5>
+        
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <img id="modalItemImage" src="{{ url_for('static', filename='images/placeholder.png') }}" alt="Found Item Image" 
+                 class="img-fluid rounded shadow-sm w-100" 
+                 style="max-height: 400px; object-fit: contain; background-color: #f8f9fa;">
+          </div>
+          
+          <div class="col-md-6">
+            <div class="mb-3">
+              <h4 id="modalItemTitle" class="fw-bold text-primary"></h4>
+              <span id="modalItemStatus" class="badge"></span>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">Category</h6>
+              <p id="modalItemCategory" class="mb-0"></p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">Description</h6>
+              <p id="modalItemDescription" class="mb-0"></p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">Date Reported</h6>
+              <p id="modalItemDate" class="mb-0"></p>
+            </div>
+            
+            <div class="border-top pt-3">
+              <h6 class="text-muted mb-2">Reported By</h6>
+              <div class="d-flex align-items-center">
+                <div class="user-avatar me-3" id="modalReporterAvatar">
+                </div>
+                <div>
+                  <p id="modalReporterName" class="mb-0 fw-semibold"></p>
+                  <small class="text-muted">Item Reporter</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-
-<!-- Filter Script -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('searchInput');
@@ -119,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchTerm = searchInput.value.toLowerCase();
     const selectedCategory = categoryFilter.value.toLowerCase();
     const selectedStatus = statusFilter.value.toLowerCase();
-    
+
     const items = document.querySelectorAll('.item-card');
     let visibleCount = 0;
 
@@ -129,10 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const category = item.dataset.category;
       const status = item.dataset.status;
 
-      const matchesSearch = !searchTerm || 
-        title.includes(searchTerm) || 
-        description.includes(searchTerm);
-
+      const matchesSearch = !searchTerm || title.includes(searchTerm) || description.includes(searchTerm);
       const matchesCategory = !selectedCategory || category === selectedCategory;
       const matchesStatus = !selectedStatus || status === selectedStatus;
 
@@ -144,12 +218,50 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
-    noResults.style.display = (visibleCount === 0 && items.length > 0) ? 'block' : 'none';
+    noResults.style.display = visibleCount === 0 ? 'block' : 'none';
   }
 
   searchInput.addEventListener('input', filterItems);
   categoryFilter.addEventListener('change', filterItems);
   statusFilter.addEventListener('change', filterItems);
+
+  const itemDetailModal = document.getElementById('itemDetailModal');
+  
+  itemDetailModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    
+    // Get item data from the clicked card
+    const itemTitle = button.dataset.itemTitle;
+    const itemDescription = button.dataset.itemDescription;
+    const itemCategory = button.dataset.itemCategory;
+    const itemStatus = button.dataset.itemStatus;
+    const itemDate = button.dataset.itemDate;
+    const itemImage = button.dataset.itemImage;
+    const reporterName = button.dataset.reporterName;
+    const reporterPicture = button.dataset.reporterPicture;
+    const reporterInitials = button.dataset.reporterInitials;
+    
+    // Populate modal with item data
+    document.getElementById('modalItemTitle').textContent = itemTitle;
+    document.getElementById('modalItemDescription').textContent = itemDescription;
+    document.getElementById('modalItemCategory').textContent = itemCategory;
+    document.getElementById('modalItemDate').textContent = itemDate;
+    document.getElementById('modalItemImage').src = itemImage;
+    document.getElementById('modalReporterName').textContent = reporterName;
+    
+    // Set status badge
+    const statusBadge = document.getElementById('modalItemStatus');
+    statusBadge.textContent = itemStatus;
+    statusBadge.className = itemStatus === 'returned' ? 'badge bg-success' : 'badge bg-warning text-dark';
+    
+    // Set reporter avatar
+    const reporterAvatar = document.getElementById('modalReporterAvatar');
+    if (reporterPicture) {
+      reporterAvatar.innerHTML = `<img src="${reporterPicture}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">`;
+    } else {
+      reporterAvatar.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${reporterInitials}</div>`;
+    }
+  });
 });
 </script>
 {% endblock %}

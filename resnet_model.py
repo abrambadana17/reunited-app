@@ -33,13 +33,61 @@ def cosine_similarity(a, b):
 # Text Feature Matching (TF-IDF)
 # -----------------------------
 def clean_text(text):
-    return re.sub(r'[^a-zA-Z0-9 ]', '', text.lower())
+    """Clean text by removing special characters and converting to lowercase"""
+    if not text:
+        return ""
+    return re.sub(r'[^a-zA-Z0-9 ]', '', str(text).lower()).strip()
 
 def text_similarity(text1, text2):
+    """Calculate TF-IDF based cosine similarity between two texts"""
+    if not text1 or not text2:
+        return 0.0
+    
     docs = [clean_text(text1), clean_text(text2)]
-    vectorizer = TfidfVectorizer().fit_transform(docs)
-    vectors = vectorizer.toarray()
-    return cos_sim([vectors[0]], [vectors[1]])[0][0]
+    
+    # Handle case where one or both texts are empty after cleaning
+    if not docs[0] or not docs[1]:
+        return 0.0
+    
+    try:
+        vectorizer = TfidfVectorizer().fit_transform(docs)
+        vectors = vectorizer.toarray()
+        return cos_sim([vectors[0]], [vectors[1]])[0][0]
+    except:
+        return 0.0
+
+def enhanced_text_similarity(details1, details2):
+    """
+    Enhanced text matching with weighted components:
+    - Category exact match: 20% bonus
+    - Location similarity: 20% weight
+    - Title + Description: 60% weight
+    
+    Returns: Score between 0 and 1
+    """
+    
+    # 1. Exact category match = bonus points
+    category_bonus = 0.0
+    if details1.get('category') and details2.get('category'):
+        if clean_text(details1['category']) == clean_text(details2['category']):
+            category_bonus = 0.2
+    
+    # 2. Location similarity (important for physical items)
+    location_score = 0.0
+    loc1 = details1.get('location', '')
+    loc2 = details2.get('location', '')
+    if loc1 and loc2:
+        location_score = text_similarity(loc1, loc2) * 0.2
+    
+    # 3. Title + Description content matching (main matching)
+    content1 = f"{details1.get('title', '')} {details1.get('description', '')}"
+    content2 = f"{details2.get('title', '')} {details2.get('description', '')}"
+    content_score = text_similarity(content1, content2) * 0.6
+    
+    # Combine all scores (cap at 1.0)
+    final_text_score = min(1.0, category_bonus + location_score + content_score)
+    
+    return final_text_score
 
 # -----------------------------
 # Combined Auto Match (Image + Text) + Notifications + Email
@@ -47,6 +95,10 @@ def text_similarity(text1, text2):
 def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mail, threshold=0.4):
     """
     Compare new item against opposite type (lost vs found).
+    Uses enhanced matching with:
+    - 60% image similarity (visual matching)
+    - 40% text similarity (description + category + location matching)
+    
     If match found:
       - Insert into ai_matches
       - Insert notifications for both users
@@ -69,18 +121,27 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
 
     for other in others:
         try:
-            # ---- Image similarity ----
-            image_score = 0
+            # ---- Image similarity (60% weight) ----
+            image_score = 0.0
             if other['ai_features']:
                 other_features = np.array(eval(other['ai_features']))
                 image_score = cosine_similarity(new_features, other_features)
 
-            # ---- Text similarity ----
-            details1 = f"{new_details['title']} {new_details['description']} {new_details['category']} {new_details['location']}"
-            details2 = f"{other['title']} {other['description']} {other['category']} {other['location_reported']}"
-            text_score = text_similarity(details1, details2)
+            # ---- Enhanced text similarity (40% weight) ----
+            other_details = {
+                'title': other['title'],
+                'description': other['description'],
+                'category': other['category'],
+                'location': other['location_reported']
+            }
+            text_score = enhanced_text_similarity(new_details, other_details)
 
+            # ---- Combined score ----
             final_score = (0.6 * image_score) + (0.4 * text_score)
+
+            # Debug logging (optional - comment out in production)
+            print(f"Comparing items: {new_details['title']} vs {other['title']}")
+            print(f"  Image score: {image_score:.2f}, Text score: {text_score:.2f}, Final: {final_score:.2f}")
 
             if final_score >= threshold:
                 lost_id = new_item_id if type_ == 'lost' else other['id']
@@ -108,20 +169,25 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                 """, (found_id,))
                 found_user = cursor.fetchone()
 
+                # ---- Get item titles ----
+                lost_title = new_details['title'] if type_ == 'lost' else other['title']
+                found_title = other['title'] if type_ == 'lost' else new_details['title']
+
                 # ---- Notifications ----
                 message_text_lost = (
-                    f"A possible match has been found for your lost item: {new_details['title']}.\n\n"
-                    f"Opposite Item: {other['title']}\n"
-                    f" Opposite User: {found_user['fullname']}\n"
+                    f"A possible match has been found for your lost item: {lost_title}\n\n"
+                    f"Match Score: {round(float(final_score) * 100)}%\n"
+                    f"Found Item: {found_title}\n"
+                    f"Found By: {found_user['fullname']}\n"
                     f"Email: {found_user['email']}\n"
-                    f"Contact: {found_user['phone']}"
                     f"Contact: {found_user['phone']}"
                 )
 
                 message_text_found = (
-                    f"A possible match has been found for your found item: {other['title']}.\n\n"
-                    f"Opposite Item: {new_details['title']}\n"
-                    f"Opposite User: {lost_user['fullname']}\n"
+                    f"A possible match has been found for your found item: {found_title}\n\n"
+                    f"Match Score: {round(float(final_score) * 100)}%\n"
+                    f"Lost Item: {lost_title}\n"
+                    f"Lost By: {lost_user['fullname']}\n"
                     f"Email: {lost_user['email']}\n"
                     f"Contact: {lost_user['phone']}"
                 )
@@ -137,34 +203,38 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                 ''', (found_user['id'], found_id, match_id, message_text_found))
                 mysql.connection.commit()
 
-
                 # ---- Email ----
                 subject = "🔔 Reunited: Possible Item Match Found!"
                 body = f"""
-                    Hello {lost_user['fullname']} and {found_user['fullname']},
+Hello {lost_user['fullname']} and {found_user['fullname']},
 
-                    A possible match has been found in Reunited! 🎉
+A possible match has been found in Reunited! 🎉
 
-                    Lost Item: {new_details['title']}
-                    Found Item: {other['title']}
+Match Confidence: {round(float(final_score) * 100)}%
 
-                    For your reference, here are the contact details:
-                    
-                    👤 {lost_user['fullname']}  
-                    📧 {lost_user['email']}  
-                    📱 {lost_user['phone']}
+Lost Item: {lost_title}
+Found Item: {found_title}
 
-                    👤 {found_user['fullname']}  
-                    📧 {found_user['email']}  
-                    📱 {found_user['phone']}
+For your reference, here are the contact details:
 
-                    Please check your Reunited app to confirm and coordinate directly.
+👤 {lost_user['fullname']} (Lost Item)
+📧 {lost_user['email']}
+📱 {lost_user['phone']}
 
-                    Best regards,  
-                    Reunited Team
-                    """
+👤 {found_user['fullname']} (Found Item)
+📧 {found_user['email']}
+📱 {found_user['phone']}
+
+Please check your Reunited app to view full details and coordinate directly.
+
+Best regards,
+Reunited Team
+                """
 
                 send_email(mail, subject, [lost_user['email'], found_user['email']], body)
+                
+                print(f"✅ Match created! Score: {final_score:.2f}, Match ID: {match_id}")
 
         except Exception as e:
-            print(f"❌ Error in auto_match: {e}")
+            print(f"❌ Error in auto_match for item {other['id']}: {e}")
+            continue

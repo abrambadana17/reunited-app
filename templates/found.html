@@ -186,6 +186,9 @@
 </div>
 
 <script>
+// Add this at the top of your script
+const showItemId = {{ show_item_id|tojson|safe }};
+
 document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('searchInput');
   const categoryFilter = document.getElementById('categoryFilter');
@@ -227,6 +230,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const itemDetailModal = document.getElementById('itemDetailModal');
   
+  // Function to populate modal data
+  function populateModal(title, description, category, status, date, image, reporterName, reporterPicture, reporterInitials) {
+    document.getElementById('modalItemTitle').textContent = title;
+    document.getElementById('modalItemDescription').textContent = description;
+    document.getElementById('modalItemCategory').textContent = category;
+    document.getElementById('modalItemDate').textContent = date;
+    document.getElementById('modalItemImage').src = image;
+    document.getElementById('modalReporterName').textContent = reporterName;
+    
+    // Set status badge
+    const statusBadge = document.getElementById('modalItemStatus');
+    statusBadge.textContent = status;
+    statusBadge.className = status === 'returned' ? 'badge bg-success' : 'badge bg-warning text-dark';
+    
+    // Set reporter avatar
+    const reporterAvatar = document.getElementById('modalReporterAvatar');
+    if (reporterPicture) {
+      reporterAvatar.innerHTML = `<img src="${reporterPicture}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">`;
+    } else {
+      reporterAvatar.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${reporterInitials}</div>`;
+    }
+  }
+
+  // Modal show event for manual clicks
   itemDetailModal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     
@@ -241,27 +268,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const reporterPicture = button.dataset.reporterPicture;
     const reporterInitials = button.dataset.reporterInitials;
     
-    // Populate modal with item data
-    document.getElementById('modalItemTitle').textContent = itemTitle;
-    document.getElementById('modalItemDescription').textContent = itemDescription;
-    document.getElementById('modalItemCategory').textContent = itemCategory;
-    document.getElementById('modalItemDate').textContent = itemDate;
-    document.getElementById('modalItemImage').src = itemImage;
-    document.getElementById('modalReporterName').textContent = reporterName;
-    
-    // Set status badge
-    const statusBadge = document.getElementById('modalItemStatus');
-    statusBadge.textContent = itemStatus;
-    statusBadge.className = itemStatus === 'returned' ? 'badge bg-success' : 'badge bg-warning text-dark';
-    
-    // Set reporter avatar
-    const reporterAvatar = document.getElementById('modalReporterAvatar');
-    if (reporterPicture) {
-      reporterAvatar.innerHTML = `<img src="${reporterPicture}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">`;
-    } else {
-      reporterAvatar.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${reporterInitials}</div>`;
-    }
+    populateModal(itemTitle, itemDescription, itemCategory, itemStatus, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
   });
+
+  // Check for show_item in URL and auto-open modal
+  const urlParams = new URLSearchParams(window.location.search);
+  const itemId = urlParams.get('show_item') || showItemId;  // Use both URL param and template variable
+  
+  if (itemId && itemId !== 'null') {
+    // Find the item card with matching data-item-id
+    const itemCard = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
+    if (itemCard) {
+      // Get item data from the card
+      const itemTitle = itemCard.dataset.itemTitle;
+      const itemDescription = itemCard.dataset.itemDescription;
+      const itemCategory = itemCard.dataset.itemCategory;
+      const itemStatus = itemCard.dataset.itemStatus;
+      const itemDate = itemCard.dataset.itemDate;
+      const itemImage = itemCard.dataset.itemImage;
+      const reporterName = itemCard.dataset.reporterName;
+      const reporterPicture = itemCard.dataset.reporterPicture;
+      const reporterInitials = itemCard.dataset.reporterInitials;
+      
+      // Populate modal
+      populateModal(itemTitle, itemDescription, itemCategory, itemStatus, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
+      
+      // Show the modal
+      const modal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
+      modal.show();
+      
+      // Clear the URL parameter without refreshing
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }
 });
 </script>
 {% endblock %}

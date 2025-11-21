@@ -129,7 +129,13 @@
             <div class="feedback-carousel" id="feedbackCarousel">
               {% for feedback in recent_feedback %}
               <div class="feedback-slide">
-                <div class="feedback-card">
+                <div class="feedback-card clickable-feedback" 
+                     data-feedback-id="{{ feedback.id }}"
+                     data-user-name="{{ feedback.first_name }} {{ feedback.last_name }}"
+                     data-profile-picture="{% if feedback.profile_picture %}{{ url_for('uploaded_file', filename=feedback.profile_picture) }}{% endif %}"
+                     data-rating="{{ feedback.rating }}"
+                     data-message="{{ feedback.message }}"
+                     data-date="{{ feedback.created_at.strftime('%b %d, %Y') }}">
                   <div class="feedback-header">
                     <div class="profile-picture">
                       {% if feedback.profile_picture %}
@@ -169,7 +175,7 @@
   </div>
   {% endif %}
 
-  <!-- Recent Activity -->
+    <!-- Recent Activity -->
   {% if recent_items %}
   <div class="row mb-4">
     <div class="col-12">
@@ -180,7 +186,11 @@
         <div class="row g-3">
           {% for item in recent_items %}
           <div class="col-12 col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm clickable-item" 
+                 data-item-id="{{ item.id }}"
+                 data-item-type="{{ item.type }}"
+                 style="cursor: pointer;"
+                 onclick="redirectToItemPage('{{ item.type }}', '{{ item.id }}')">
               {% if item.image_path %}
               <img src="{{ url_for('static', filename='uploads/items/' + item.image_path.split('/')[-1]) }}" 
                    class="card-img-top" style="height: 150px; object-fit: cover;">
@@ -203,14 +213,103 @@
           </div>
           {% endfor %}
         </div>
-        <div class="text-center mt-4">
-          <a href="{{ url_for('lost') }}" class="btn btn-outline-primary me-2">View All Lost Items</a>
-          <a href="{{ url_for('found') }}" class="btn btn-outline-success">View All Found Items</a>
-        </div>
       </div>
     </div>
   </div>
   {% endif %}
+</div>
+
+<!-- Feedback Detail Modal -->
+<div class="modal fade" id="feedbackDetailModal" tabindex="-1" aria-labelledby="feedbackDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="d-flex align-items-center">
+          <div class="modal-profile-picture me-3" id="modalProfilePicture">
+            <!-- Profile picture will be inserted here -->
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-1" id="modalUserName">User Name</h5>
+            <div class="rating-display" id="modalRating">
+              <!-- Rating stars will be inserted here -->
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="feedback-full-message mb-3" id="modalFullMessage"></p>
+        <small class="text-muted" id="modalDate"></small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Item Detail Modal -->
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-labelledby="itemDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="modalItemTitle">Item Title</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Item Image -->
+          <div class="col-12 col-md-6 mb-3">
+            <div class="item-image-container text-center" id="modalImageContainer">
+              <!-- Image or placeholder will be inserted here -->
+            </div>
+          </div>
+          
+          <!-- Item Details -->
+          <div class="col-12 col-md-6">
+            <div class="item-details">
+              <div class="mb-3">
+                <span class="badge fs-6" id="modalItemType">Type</span>
+              </div>
+              
+              <div class="mb-3">
+                <strong>Category:</strong>
+                <span id="modalItemCategory" class="ms-2">Category</span>
+              </div>
+              
+              <div class="mb-3">
+                <strong>Location:</strong>
+                <span id="modalItemLocation" class="ms-2">Location</span>
+              </div>
+              
+              <div class="mb-3">
+                <strong>Date:</strong>
+                <span id="modalItemDate" class="ms-2">Date</span>
+              </div>
+              
+              <div class="mb-3" id="modalRewardSection" style="display: none;">
+                <strong>Reward:</strong>
+                <span id="modalItemReward" class="ms-2 text-success fw-bold">Reward</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Description -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="description-section">
+              <h6 class="fw-bold mb-2">Description:</h6>
+              <p id="modalItemDescription" class="text-muted">Description will appear here...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Feedback Modal -->
@@ -264,7 +363,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn-primary-custom" >Submit Feedback</button>
+          <button type="submit" class="btn-primary-custom">Submit Feedback</button>
         </div>
       </form>
     </div>
@@ -368,6 +467,15 @@
 </div>
 
 <script>
+// Function to redirect to item pages - MUST BE GLOBAL
+function redirectToItemPage(itemType, itemId) {
+  if (itemType === 'lost') {
+    window.location.href = "{{ url_for('lost') }}?show_item=" + itemId;
+  } else {
+    window.location.href = "{{ url_for('found') }}?show_item=" + itemId;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   if (window.location.hash === "#lostItemModal") {
     const modal = new bootstrap.Modal(document.getElementById('lostItemModal'));
@@ -480,6 +588,72 @@ document.addEventListener("DOMContentLoaded", function () {
   window.addEventListener('resize', updateCarousel);
   
   updateCarousel();
+
+  // Feedback modal functionality
+  const feedbackCards = document.querySelectorAll('.clickable-feedback');
+  const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackDetailModal'));
+  
+  feedbackCards.forEach(card => {
+    card.addEventListener('click', function() {
+      const userName = this.getAttribute('data-user-name');
+      const profilePicture = this.getAttribute('data-profile-picture');
+      const rating = parseInt(this.getAttribute('data-rating'));
+      const message = this.getAttribute('data-message');
+      const date = this.getAttribute('data-date');
+      
+      // Populate modal with data
+      document.getElementById('modalUserName').textContent = userName;
+      document.getElementById('modalFullMessage').textContent = message;
+      document.getElementById('modalDate').textContent = date;
+      
+      // Handle profile picture
+      const modalProfilePicture = document.getElementById('modalProfilePicture');
+      modalProfilePicture.innerHTML = ''; // Clear previous content
+      
+      if (profilePicture) {
+        const img = document.createElement('img');
+        img.src = profilePicture;
+        img.alt = userName;
+        img.className = 'modal-profile-img';
+        modalProfilePicture.appendChild(img);
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'modal-profile-placeholder';
+        placeholder.innerHTML = '<i class="bi bi-person-fill"></i>';
+        modalProfilePicture.appendChild(placeholder);
+      }
+      
+      // Handle rating
+      const modalRating = document.getElementById('modalRating');
+      modalRating.innerHTML = ''; // Clear previous stars
+      
+      if (rating) {
+        for (let i = 0; i < rating; i++) {
+          const star = document.createElement('i');
+          star.className = 'bi bi-star-fill';
+          modalRating.appendChild(star);
+        }
+        for (let i = 0; i < (5 - rating); i++) {
+          const star = document.createElement('i');
+          star.className = 'bi bi-star';
+          modalRating.appendChild(star);
+        }
+      } else {
+        modalRating.innerHTML = '<span class="text-muted">No rating</span>';
+      }
+      
+      // Show modal
+      feedbackModal.show();
+    });
+  });
+  
+  // Prevent carousel controls from triggering card clicks
+  const carouselControls = document.querySelectorAll('.carousel-control');
+  carouselControls.forEach(control => {
+    control.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  });
 });
 </script>
 
@@ -603,63 +777,59 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 }
 
+/* Mobile Responsive Improvements */
 @media (max-width: 767px) {
   .feedback-slide {
     width: 100%;
+    padding: 0 8px;
   }
   
   .feedback-carousel-wrapper {
-    padding: 0 32px;
+    padding: 0 20px;
   }
   
   .carousel-control {
     width: 32px;
     height: 32px;
     font-size: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+    border: 1px solid #dee2e6;
   }
   
   .carousel-control-prev {
-    left: 4px;
+    left: -10px;
   }
   
   .carousel-control-next {
-    right: 4px;
+    right: -10px;
   }
   
-  .feedback-card {
-    padding: 16px;
+  .feedback-carousel {
+    gap: 12px;
   }
-  
-  .profile-picture {
-    width: 40px;
-    height: 40px;
-    margin-right: 10px;
-  }
-  
-  .profile-img {
-    border-width: 2px;
-  }
-  
-  .profile-placeholder {
-    font-size: 16px;
-  }
-  
-  .user-name {
-    font-size: 14px;
-  }
-  
-  .rating-display {
-    font-size: 12px;
-  }
-  
-  .feedback-message {
-    font-size: 13px;
-    -webkit-line-clamp: 3;
-  }
-  
-  .feedback-date {
-    font-size: 11px;
-  }
+}
+
+/* Clickable feedback cards */
+.clickable-feedback {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clickable-feedback:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Clickable item cards */
+.clickable-item {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clickable-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .feedback-card {
@@ -670,6 +840,9 @@ document.addEventListener("DOMContentLoaded", function () {
   height: 100%;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
 }
 
 .feedback-card:hover {
@@ -677,10 +850,26 @@ document.addEventListener("DOMContentLoaded", function () {
   transform: translateY(-4px);
 }
 
+@media (max-width: 767px) {
+  .feedback-card {
+    padding: 16px;
+    min-height: 180px;
+  }
+}
+
 .feedback-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 12px;
+  min-height: 48px;
+}
+
+@media (max-width: 767px) {
+  .feedback-header {
+    align-items: center;
+    margin-bottom: 10px;
+    min-height: 44px;
+  }
 }
 
 .profile-picture {
@@ -688,6 +877,14 @@ document.addEventListener("DOMContentLoaded", function () {
   height: 48px;
   margin-right: 12px;
   flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .profile-picture {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+  }
 }
 
 .profile-img {
@@ -710,9 +907,19 @@ document.addEventListener("DOMContentLoaded", function () {
   font-size: 20px;
 }
 
+@media (max-width: 767px) {
+  .profile-placeholder {
+    font-size: 16px;
+  }
+}
+
 .feedback-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .user-name {
@@ -720,33 +927,188 @@ document.addEventListener("DOMContentLoaded", function () {
   font-weight: 600;
   font-size: 15px;
   color: #2c3e50;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .user-name {
+    font-size: 14px;
+    margin-bottom: 3px;
+  }
 }
 
 .rating-display {
   color: #ffc107;
   font-size: 13px;
   line-height: 1;
+  display: flex;
+  flex-wrap: nowrap;
 }
 
 .rating-display i {
-  margin-right: 2px;
+  margin-right: 1px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .rating-display {
+    font-size: 12px;
+  }
+  
+  .rating-display i {
+    margin-right: 0;
+  }
 }
 
 .feedback-message {
   margin: 0 0 12px 0;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: #495057;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  flex: 1;
+  min-height: 60px;
+}
+
+@media (max-width: 767px) {
+  .feedback-message {
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-line-clamp: 3;
+    min-height: 55px;
+    margin-bottom: 10px;
+  }
 }
 
 .feedback-date {
   color: #6c757d;
   font-size: 12px;
   font-weight: 500;
+  margin-top: auto;
+}
+
+@media (max-width: 767px) {
+  .feedback-date {
+    font-size: 11px;
+  }
+}
+
+/* Modal specific styles */
+.modal-profile-picture {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.modal-profile-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #e9ecef;
+}
+
+.modal-profile-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  border: 3px solid #e9ecef;
+}
+
+.feedback-full-message {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #495057;
+  white-space: pre-line;
+}
+
+/* Item modal styles */
+.item-image-container {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.item-details {
+  padding: 10px 0;
+}
+
+.item-details strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.description-section {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+}
+
+/* Mobile responsive for modals */
+@media (max-width: 767px) {
+  .modal-profile-picture {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .modal-profile-placeholder {
+    font-size: 20px;
+  }
+  
+  .feedback-full-message {
+    font-size: 14px;
+  }
+  
+  #modalUserName {
+    font-size: 16px;
+  }
+  
+  .item-image-container img {
+    max-height: 200px !important;
+    height: 200px !important;
+  }
+  
+  .modal-body .row {
+    gap: 15px;
+  }
+  
+  .description-section {
+    margin-top: 15px;
+  }
+}
+
+/* Ensure modal rating stars are properly sized */
+#modalRating {
+  font-size: 16px;
+}
+
+#modalRating i {
+  margin-right: 2px;
+}
+
+@media (max-width: 767px) {
+  #modalRating {
+    font-size: 14px;
+  }
+}
+
+/* Ensure proper badge sizing in modal */
+#modalItemType {
+  font-size: 14px !important;
+  padding: 8px 12px;
 }
 </style>
 

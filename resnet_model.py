@@ -225,7 +225,7 @@ For your reference, here are the contact details:
 📧 {found_user['email']}
 📱 {found_user['phone']}
 
-Please check your Reunited app to view full details and coordinate directly.
+Please check your Reunited app to view full details.
 
 Best regards,
 Reunited Team

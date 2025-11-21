@@ -115,7 +115,7 @@ def update_dashboard_stats(user_id, cursor, mysql):
         'total_activity': activity_count['total_activity']
     }
 
-# Replace your existing dashboard route with this:
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -126,16 +126,47 @@ def dashboard():
     # Update and get dashboard stats
     stats = update_dashboard_stats(session['user_id'], cursor, mysql)
     
-    # Get recent activity (last 5 items posted by user)
-    cursor.execute("""SELECT i.title, i.type, i.created_at, img.file_path as image_path FROM items i LEFT JOIN images img ON i.id = img.item_id WHERE i.user_id = %s ORDER BY i.created_at DESC LIMIT 5""", (session['user_id'],))
+    # Get recent activity (last 6 items posted by user) with ALL necessary data
+    cursor.execute("""SELECT 
+        i.id, i.title, i.type, i.category, i.description, i.location_reported, 
+        i.status, i.created_at, i.date_reported,
+        img.file_path as image_path,
+        u.first_name, u.last_name, u.profile_picture
+    FROM items i 
+    LEFT JOIN images img ON i.id = img.item_id 
+    LEFT JOIN users u ON i.user_id = u.id 
+    WHERE i.user_id = %s 
+    ORDER BY i.created_at DESC LIMIT 6""", (session['user_id'],))
+    
     recent_items = cursor.fetchall()
     
-    # Fix image paths for display
+    # Fix image paths for display and add missing data attributes
     for item in recent_items:
         if item['image_path']:
             item['image_path'] = item['image_path'].replace("\\", "/")
             if item['image_path'].startswith("static/"):
                 item['image_path'] = item['image_path'][7:]
+        
+        # Ensure all required fields have values
+        item['description'] = item['description'] or 'No description provided'
+        item['category'] = item['category'] or 'Not specified'
+        item['status'] = item['status'] or 'active'
+        item['date_reported'] = item['date_reported'] or item['created_at']
+        
+        # Format date for modal display
+        if item['date_reported']:
+            if isinstance(item['date_reported'], str):
+                # If it's a string, try to parse it
+                try:
+                    date_obj = datetime.strptime(item['date_reported'], '%Y-%m-%d %H:%M:%S')
+                    item['formatted_date'] = date_obj.strftime('%B %d, %Y at %I:%M %p')
+                except:
+                    item['formatted_date'] = 'Date not available'
+            else:
+                # If it's a datetime object
+                item['formatted_date'] = item['date_reported'].strftime('%B %d, %Y at %I:%M %p')
+        else:
+            item['formatted_date'] = 'Date not available'
     
     cursor.execute("""SELECT f.message, f.rating, f.created_at, u.first_name, u.last_name, u.profile_picture FROM feedback f JOIN users u ON f.user_id = u.id WHERE f.is_public = 1 ORDER BY f.created_at DESC LIMIT 6""")
     recent_feedback = cursor.fetchall()
@@ -385,73 +416,136 @@ def claim_item():
         data = request.get_json()
         notification_id = data.get('notification_id')
         item_id = data.get('item_id')
+        action_type = data.get('action_type')
         
-        if not all([notification_id, item_id]):
+        print(f"DEBUG: Claim request - notification: {notification_id}, item: {item_id}, action: {action_type}")
+        
+        if not all([notification_id, item_id, action_type]):
             return jsonify({'success': False, 'errors': ['Missing required fields']}), 400
         
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         
-        cursor.execute("""SELECT n.*, m.id as match_id, m.lost_item_id, m.found_item_id, lost.user_id as lost_user_id, lost.title as lost_title, lost.status as lost_status, found.user_id as found_user_id, found.title as found_title, found.status as found_status FROM notifications n JOIN ai_matches m ON n.match_id = m.id JOIN items lost ON m.lost_item_id = lost.id JOIN items found ON m.found_item_id = found.id WHERE n.id = %s""", (notification_id,))
+        # Get the item being acted upon
+        cursor.execute("SELECT id, user_id, type, status FROM items WHERE id = %s", (item_id,))
+        target_item = cursor.fetchone()
         
-        notification_data = cursor.fetchone()
-        if not notification_data:
-            return jsonify({'success': False, 'errors': ['Notification not found']}), 404
+        if not target_item:
+            cursor.close()
+            return jsonify({'success': False, 'errors': ['Item not found']}), 404
+        
+        print(f"DEBUG: Target item - id: {target_item['id']}, type: {target_item['type']}, status: {target_item['status']}, user_id: {target_item['user_id']}")
+        
+        # Get match details to verify authorization
+        cursor.execute("""SELECT n.*, m.id as match_id, m.lost_item_id, m.found_item_id, 
+                         lost.user_id as lost_user_id, lost.status as lost_status,
+                         found.user_id as found_user_id, found.status as found_status 
+                         FROM notifications n 
+                         JOIN ai_matches m ON n.match_id = m.id 
+                         JOIN items lost ON m.lost_item_id = lost.id 
+                         JOIN items found ON m.found_item_id = found.id 
+                         WHERE n.id = %s""", (notification_id,))
+        
+        match_data = cursor.fetchone()
+        if not match_data:
+            cursor.close()
+            return jsonify({'success': False, 'errors': ['Match not found']}), 404
         
         user_id = session['user_id']
+        current_time = datetime.now()
         
-        if user_id == notification_data['lost_user_id']:
-            action_type = 'claimed'
-            target_item_id = notification_data['lost_item_id']
-            new_status = 'Claimed'
-        elif user_id == notification_data['found_user_id']:
-            action_type = 'returned'
-            target_item_id = notification_data['found_item_id']
-            new_status = 'Returned'
-        else:
-            return jsonify({'success': False, 'errors': ['Not authorized for this action']}), 403
+        print(f"DEBUG: Match details - lost_item: {match_data['lost_item_id']} (user: {match_data['lost_user_id']}), found_item: {match_data['found_item_id']} (user: {match_data['found_user_id']})")
         
-        cursor.execute("SELECT status FROM items WHERE id = %s", (target_item_id,))
-        current_item = cursor.fetchone()
+        # CORRECTED LOGIC - REVERSED:
+        valid_action = False
+        new_status = None
+        update_query = None
+        update_params = None
         
-        if (action_type == 'claimed' and current_item['status'] == 'Claimed') or (action_type == 'returned' and current_item['status'] == 'Returned'):
-            return jsonify({'success': False, 'errors': ['Already marked as ' + action_type]}), 400
+        # Case 1: Lost item owner clicking "Mark as Claimed" (they are claiming they got it back)
+        if (action_type == 'claimed' and 
+            user_id == match_data['lost_user_id'] and 
+            target_item['id'] == match_data['lost_item_id'] and
+            target_item['type'] == 'lost'):
+            
+            valid_action = True
+            new_status = 'claimed'  # Lost item gets CLAIMED back by owner
+            update_query = "UPDATE items SET status = %s, date_returned = %s WHERE id = %s"
+            update_params = (new_status, current_time, item_id)
+            print(f"DEBUG: LOST item owner claiming item back - setting to 'claimed'")
+            
+        # Case 2: Found item owner clicking "Mark as Returned" (they are returning it to owner)  
+        elif (action_type == 'returned' and 
+              user_id == match_data['found_user_id'] and 
+              target_item['id'] == match_data['found_item_id'] and
+              target_item['type'] == 'found'):
+            
+            valid_action = True
+            new_status = 'returned'  # Found item gets RETURNED to owner
+            update_query = "UPDATE items SET status = %s, claimed_by = %s, date_claimed = %s WHERE id = %s"
+            update_params = (new_status, match_data['lost_user_id'], current_time, item_id)
+            print(f"DEBUG: FOUND item owner returning item - setting to 'returned'")
         
-        cursor.execute("UPDATE items SET status = %s WHERE id = %s", (new_status, target_item_id))
+        if not valid_action:
+            cursor.close()
+            error_msg = f"Invalid action: User {user_id} cannot perform {action_type} on item {item_id}"
+            print(f"DEBUG: {error_msg}")
+            return jsonify({'success': False, 'errors': [error_msg]}), 403
+        
+        # Check if item is already in the target status
+        if target_item['status'] == new_status:
+            cursor.close()
+            error_msg = f"Item is already marked as {new_status}"
+            print(f"DEBUG: {error_msg}")
+            return jsonify({'success': False, 'errors': [error_msg]}), 400
+        
+        # Execute the update
+        cursor.execute(update_query, update_params)
+        
+        # Mark notification as read
         cursor.execute("UPDATE notifications SET is_read = 1 WHERE id = %s", (notification_id,))
         mysql.connection.commit()
         
-        cursor.execute("""SELECT UPPER(lost.status) as lost_status, UPPER(found.status) as found_status FROM ai_matches m JOIN items lost ON m.lost_item_id = lost.id JOIN items found ON m.found_item_id = found.id WHERE m.id = %s""", (notification_data['match_id'],))
+        print(f"DEBUG: Successfully updated item {item_id} from '{target_item['status']}' to '{new_status}'")
         
-        match_status = cursor.fetchone()
-        both_completed = (match_status['lost_status'] == 'CLAIMED' and match_status['found_status'] == 'RETURNED')
+        # Check if both actions are completed - ALSO REVERSED
+        cursor.execute("""SELECT lost.status as lost_status, found.status as found_status 
+                         FROM ai_matches m 
+                         JOIN items lost ON m.lost_item_id = lost.id 
+                         JOIN items found ON m.found_item_id = found.id 
+                         WHERE m.id = %s""", (match_data['match_id'],))
+        
+        status_check = cursor.fetchone()
+        both_completed = (status_check['lost_status'] == 'claimed' and status_check['found_status'] == 'returned')
+        
+        print(f"DEBUG: Status check - Lost: {status_check['lost_status']}, Found: {status_check['found_status']}, Complete: {both_completed}")
         
         if both_completed:
-            cursor.execute("""SELECT c.id FROM claims c WHERE c.lost_user_id = %s AND c.found_user_id = %s AND c.item_lost_id = %s AND c.item_found_id = %s""", (notification_data['lost_user_id'], notification_data['found_user_id'], notification_data['lost_item_id'], notification_data['found_item_id']))
+            # Create claim record
+            cursor.execute("""INSERT INTO claims (lost_user_id, found_user_id, item_lost_id, item_found_id, claim_date) 
+                            VALUES (%s, %s, %s, %s, NOW())""", 
+                          (match_data['lost_user_id'], match_data['found_user_id'], 
+                           match_data['lost_item_id'], match_data['found_item_id']))
             
-            existing_claim = cursor.fetchone()
+            # Mark match as resolved
+            cursor.execute("UPDATE ai_matches SET status = 'resolved' WHERE id = %s", (match_data['match_id'],))
             
-            if not existing_claim:
-                cursor.execute("""INSERT INTO claims (lost_user_id, found_user_id, item_lost_id, item_found_id, claim_date) VALUES (%s, %s, %s, %s, NOW())""", (notification_data['lost_user_id'], notification_data['found_user_id'], notification_data['lost_item_id'], notification_data['found_item_id']))
-                
-                claim_id = cursor.lastrowid
-                
-                cursor.execute("""UPDATE ai_matches SET status = 'resolved' WHERE id = %s""", (notification_data['match_id'],))
-                
-                mysql.connection.commit()
+            mysql.connection.commit()
+            print("DEBUG: Match resolved and claim recorded!")
         
         cursor.close()
         
         return jsonify({
             'success': True, 
-            'message': f'Item marked as {action_type} successfully!',
+            'message': f'Success! Item status updated to {new_status}.',
             'both_completed': both_completed,
             'action_type': action_type
         }), 200
         
     except Exception as e:
+        print(f"ERROR in claim_item: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
-
-# Replace your existing /api/claim-status/<int:notification_id> endpoint with this:
 
 @app.route('/api/claim-status/<int:notification_id>')
 def get_claim_status(notification_id):
@@ -470,7 +564,18 @@ def get_claim_status(notification_id):
         match_id = notification['match_id']
         
         # Get match and item status details
-        cursor.execute("""SELECT m.status as match_status, lost.id as lost_item_id, lost.user_id as lost_user_id, lost.status as lost_item_status, found.id as found_item_id, found.user_id as found_user_id, found.status as found_item_status, u1.first_name as lost_first_name, u1.last_name as lost_last_name, u2.first_name as found_first_name, u2.last_name as found_last_name FROM ai_matches m JOIN items lost ON m.lost_item_id = lost.id JOIN users u1 ON lost.user_id = u1.id JOIN items found ON m.found_item_id = found.id JOIN users u2 ON found.user_id = u2.id WHERE m.id = %s""", (match_id,))
+        cursor.execute("""SELECT 
+            m.status as match_status, 
+            lost.id as lost_item_id, lost.user_id as lost_user_id, lost.status as lost_item_status,
+            found.id as found_item_id, found.user_id as found_user_id, found.status as found_item_status,
+            u1.first_name as lost_first_name, u1.last_name as lost_last_name,
+            u2.first_name as found_first_name, u2.last_name as found_last_name 
+            FROM ai_matches m 
+            JOIN items lost ON m.lost_item_id = lost.id 
+            JOIN users u1 ON lost.user_id = u1.id 
+            JOIN items found ON m.found_item_id = found.id 
+            JOIN users u2 ON found.user_id = u2.id 
+            WHERE m.id = %s""", (match_id,))
         
         match_data = cursor.fetchone()
         cursor.close()
@@ -484,25 +589,26 @@ def get_claim_status(notification_id):
             'both_completed': False
         }
         
-        # Check if lost item is claimed (by the lost item owner)
-        if match_data['lost_item_status'] == 'Claimed':
+        # REVERSED: Check if lost item is claimed (by the lost item owner)
+        if match_data['lost_item_status'] == 'claimed':
             claim_status['claimed'] = {
                 'user_id': match_data['lost_user_id'],
                 'name': f"{match_data['lost_first_name']} {match_data['lost_last_name']}",
-                'status': 'resolved' if match_data['match_status'] == 'resolved' else 'pending',
+                'status': 'completed',
                 'item_id': match_data['lost_item_id']
             }
         
-        # Check if found item is returned (by the found item owner)
-        if match_data['found_item_status'] == 'Returned':
+        # REVERSED: Check if found item is returned (by the found item owner)
+        if match_data['found_item_status'] == 'returned':
             claim_status['returned'] = {
                 'user_id': match_data['found_user_id'],
                 'name': f"{match_data['found_first_name']} {match_data['found_last_name']}",
-                'status': 'resolved' if match_data['match_status'] == 'resolved' else 'pending',
+                'status': 'completed',
                 'item_id': match_data['found_item_id']
             }
         
-        claim_status['both_completed'] = match_data['match_status'] == 'resolved'
+        claim_status['both_completed'] = (match_data['lost_item_status'] == 'claimed' and 
+                                         match_data['found_item_status'] == 'returned')
         
         return jsonify({'success': True, 'claim_status': claim_status}), 200
         
@@ -737,8 +843,19 @@ def lost():
     # GET → show items with reporter info
     cursor.execute("""SELECT i.*, img.file_path AS image_path, u.first_name, u.last_name, u.profile_picture FROM items i LEFT JOIN images img ON i.id = img.item_id LEFT JOIN users u ON i.user_id = u.id WHERE i.type='lost' ORDER BY i.created_at DESC""")
     lost_items = cursor.fetchall()
+    
+    # Get the item_id from URL parameter if present
+    show_item_id = request.args.get('show_item')
+    
+    # Fix image paths for display
+    for item in lost_items:
+        if item['image_path']:
+            item['image_path'] = item['image_path'].replace("\\", "/")
+            if item['image_path'].startswith("static/"):
+                item['image_path'] = item['image_path'][7:]
+    
     cursor.close()
-    return render_template('lost.html', items=lost_items, active_page='lost')
+    return render_template('lost.html', items=lost_items, active_page='lost', show_item_id=show_item_id)
 
 
 @app.route('/found', methods=['GET', 'POST'])
@@ -802,9 +919,19 @@ def found():
     # GET → show items with reporter info
     cursor.execute("""SELECT i.*, img.file_path AS image_path, u.first_name, u.last_name, u.profile_picture FROM items i LEFT JOIN images img ON i.id = img.item_id LEFT JOIN users u ON i.user_id = u.id WHERE i.type='found' ORDER BY i.created_at DESC""")
     found_items = cursor.fetchall()
+    
+    # Get the item_id from URL parameter if present
+    show_item_id = request.args.get('show_item')
+    
+    # Fix image paths for display
+    for item in found_items:
+        if item['image_path']:
+            item['image_path'] = item['image_path'].replace("\\", "/")
+            if item['image_path'].startswith("static/"):
+                item['image_path'] = item['image_path'][7:]
+    
     cursor.close()
-
-    return render_template('found.html', items=found_items, active_page='found')
+    return render_template('found.html', items=found_items, active_page='found', show_item_id=show_item_id)
 
 # ---------- MATCH ----------
 @app.route('/match')
@@ -918,6 +1045,11 @@ def send_otp_email(email, otp, first_name):
 @app.route('/uploads/profile_pictures/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# Serve uploaded item images
+@app.route('/uploads/items/<filename>')
+def uploaded_item_file(filename):
+    return send_from_directory('static/uploads/items', filename)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

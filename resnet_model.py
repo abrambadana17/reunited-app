@@ -107,6 +107,7 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
     opposite_type = 'found' if type_ == 'lost' else 'lost'
 
     # ✅ Fetch opposite items with image features + user details
+    # ✅ EXCLUDE items that are already claimed/returned/resolved
     cursor.execute('''
         SELECT i.id, i.user_id, i.title, i.description, i.category, i.location_reported,
                img.ai_features,
@@ -115,9 +116,12 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
         FROM items i
         JOIN images img ON i.id = img.item_id
         JOIN users u ON i.user_id = u.id
-        WHERE i.type = %s
+        WHERE i.type = %s 
+        AND i.status NOT IN ('claimed', 'returned', 'resolved', 'Claimed', 'Returned', 'Resolved')
     ''', (opposite_type,))
     others = cursor.fetchall()
+
+    print(f"🔍 Comparing new {type_} item against {len(others)} active {opposite_type} items")
 
     for other in others:
         try:
@@ -146,6 +150,19 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
             if final_score >= threshold:
                 lost_id = new_item_id if type_ == 'lost' else other['id']
                 found_id = other['id'] if type_ == 'lost' else new_item_id
+
+                # Check if match already exists to avoid duplicates
+                cursor.execute('''
+                    SELECT id FROM ai_matches 
+                    WHERE (lost_item_id = %s AND found_item_id = %s)
+                    OR (lost_item_id = %s AND found_item_id = %s)
+                ''', (lost_id, found_id, found_id, lost_id))
+                
+                existing_match = cursor.fetchone()
+                
+                if existing_match:
+                    print(f"⚠️ Match already exists between items {lost_id} and {found_id}, skipping...")
+                    continue
 
                 # Insert into ai_matches
                 cursor.execute('''

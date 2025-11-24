@@ -391,7 +391,17 @@
               <option value="Electronics">Electronics</option>
               <option value="Wallet">Wallet</option>
               <option value="Keys">Keys</option>
-              <option value="Others">Others</option>
+              <option value="Phone">Phone</option>
+              <option value="Laptop/Tablet">Laptop/Tablet</option>
+              <option value="Bag/Backpack">Bag/Backpack</option>
+              <option value="Clothing">Clothing</option>
+              <option value="Jewelry">Jewelry</option>
+              <option value="Documents">Documents</option>
+              <option value="Books">Books</option>
+              <option value="Glasses">Glasses</option>
+              <option value="Sports Equipment">Sports Equipment</option>
+              <option value="Pet Items">Pet Items</option>
+              <option value="Other">Other</option>
             </select>
           </div>
           <div class="mb-3">
@@ -408,17 +418,76 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Upload Item Image</label>
-            <input type="file" name="image" class="form-control" accept="image/*" required>
+            <input type="file" name="image" class="form-control" accept="image/*">
+            <div class="form-text">
+              <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Please upload only images of the item itself. Do not include pictures of people for privacy reasons.
+              </small>
+            </div>
+          </div>
+          
+          <!-- Terms and Conditions Section -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Terms and Conditions</label>
+            <div class="border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+              <h6 class="fw-bold">Data Privacy Policy & User Agreement</h6>
+              
+              <p><strong>1. Image Guidelines</strong></p>
+              <ul class="small">
+                <li>Upload only images of the actual item itself</li>
+                <li>Do not include pictures of people, faces, or personal identification</li>
+                <li>Ensure images are clear and focused on the item</li>
+                <li>Images containing people will be removed immediately</li>
+              </ul>
+
+              <p><strong>2. Data Privacy</strong></p>
+              <ul class="small">
+                <li>We collect only necessary information for item matching</li>
+                <li>Your contact information is shared only with potential matches</li>
+                <li>We do not sell or share your data with third parties</li>
+                <li>You can request data deletion at any time</li>
+              </ul>
+
+              <p><strong>3. User Responsibilities</strong></p>
+              <ul class="small">
+                <li>Provide accurate and truthful information in all reports</li>
+                <li>Verify ownership before returning items</li>
+                <li>Respect other users' privacy and contact information</li>
+                <li>Report suspicious activity to administrators</li>
+              </ul>
+
+              <p><strong>4. Platform Usage</strong></p>
+              <ul class="small">
+                <li>Use Reunited only for its intended purpose</li>
+                <li>Do not post false or misleading information</li>
+                <li>Be respectful in all communications</li>
+                <li>Follow campus policies and procedures</li>
+              </ul>
+
+              <div class="alert alert-warning small mt-2 mb-0">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <strong>Important:</strong> By checking the agreement box below, you confirm that you have read, understood, and agree to all terms and conditions stated above.
+              </div>
+            </div>
+            
+            <div class="form-check mt-3">
+              <input class="form-check-input" type="checkbox" name="terms_agreed" id="lostTermsAgreed" required>
+              <label class="form-check-label fw-semibold" for="lostTermsAgreed">
+                I have read and agree to the Terms and Conditions and Data Privacy Policy
+              </label>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Submit Lost Item</button>
+          <button type="submit" class="btn btn-primary" id="lostSubmitBtn">Submit Lost Item</button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
 
 <!-- Found Item Modal -->
 <div class="modal fade" id="foundItemModal" tabindex="-1" aria-labelledby="foundItemModalLabel" aria-hidden="true">
@@ -441,7 +510,17 @@
               <option value="Electronics">Electronics</option>
               <option value="Wallet">Wallet</option>
               <option value="Keys">Keys</option>
-              <option value="Others">Others</option>
+              <option value="Phone">Phone</option>
+              <option value="Laptop/Tablet">Laptop/Tablet</option>
+              <option value="Bag/Backpack">Bag/Backpack</option>
+              <option value="Clothing">Clothing</option>
+              <option value="Jewelry">Jewelry</option>
+              <option value="Documents">Documents</option>
+              <option value="Books">Books</option>
+              <option value="Glasses">Glasses</option>
+              <option value="Sports Equipment">Sports Equipment</option>
+              <option value="Pet Items">Pet Items</option>
+              <option value="Other">Other</option>
             </select>
           </div>
           <div class="mb-3">
@@ -455,18 +534,106 @@
           <div class="mb-3">
             <label class="form-label">Upload Item Image</label>
             <input type="file" name="image" class="form-control" accept="image/*" required>
+            <div class="form-text">
+              <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Please upload only images of the item itself. Do not include pictures of people for privacy reasons.
+              </small>
+            </div>
+          </div>
+          
+         
+          <!-- Terms and Conditions Section -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Terms and Conditions</label>
+            <div class="border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+              <h6 class="fw-bold">Data Privacy Policy & User Agreement</h6>
+              
+              <p><strong>1. Image Guidelines</strong></p>
+              <ul class="small">
+                <li>Upload only images of the actual item itself</li>
+                <li>Do not include pictures of people, faces, or personal identification</li>
+                <li>Ensure images are clear and focused on the item</li>
+                <li>Images containing people will be removed immediately</li>
+              </ul>
+
+              <p><strong>2. Data Privacy</strong></p>
+              <ul class="small">
+                <li>We collect only necessary information for item matching</li>
+                <li>Your contact information is shared only with potential matches</li>
+                <li>We do not sell or share your data with third parties</li>
+                <li>You can request data deletion at any time</li>
+              </ul>
+
+              <p><strong>3. User Responsibilities</strong></p>
+              <ul class="small">
+                <li>Provide accurate and truthful information in all reports</li>
+                <li>Verify ownership before returning items</li>
+                <li>Respect other users' privacy and contact information</li>
+                <li>Report suspicious activity to administrators</li>
+              </ul>
+
+              <p><strong>4. Platform Usage</strong></p>
+              <ul class="small">
+                <li>Use Reunited only for its intended purpose</li>
+                <li>Do not post false or misleading information</li>
+                <li>Be respectful in all communications</li>
+                <li>Follow campus policies and procedures</li>
+              </ul>
+
+              <div class="alert alert-warning small mt-2 mb-0">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <strong>Important:</strong> By checking the agreement box below, you confirm that you have read, understood, and agree to all terms and conditions stated above.
+              </div>
+            </div>
+            
+            <div class="form-check mt-3">
+              <input class="form-check-input" type="checkbox" name="terms_agreed" id="foundTermsAgreed" required>
+              <label class="form-check-label fw-semibold" for="foundTermsAgreed">
+                I have read and agree to the Terms and Conditions and Data Privacy Policy
+              </label>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary-custom">Submit Found Item</button>
+          <button type="submit" class="btn btn-primary-custom" id="foundSubmitBtn">Submit Found Item</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
+
+
 <script>
+// Enhanced form validation for terms agreement
+document.addEventListener('DOMContentLoaded', function() {
+  // Handle terms agreement validation
+  const lostTermsCheckbox = document.getElementById('lostTermsAgreed');
+  const foundTermsCheckbox = document.getElementById('foundTermsAgreed');
+  const lostSubmitBtn = document.getElementById('lostSubmitBtn');
+  const foundSubmitBtn = document.getElementById('foundSubmitBtn');
+  
+  if (lostTermsCheckbox && lostSubmitBtn) {
+    lostTermsCheckbox.addEventListener('change', function() {
+      lostSubmitBtn.disabled = !this.checked;
+    });
+    // Initialize state
+    lostSubmitBtn.disabled = !lostTermsCheckbox.checked;
+  }
+  
+  if (foundTermsCheckbox && foundSubmitBtn) {
+    foundTermsCheckbox.addEventListener('change', function() {
+      foundSubmitBtn.disabled = !this.checked;
+    });
+    // Initialize state
+    foundSubmitBtn.disabled = !foundTermsCheckbox.checked;
+  }
+});
+  
+
+
 // Function to redirect to item pages - MUST BE GLOBAL
 function redirectToItemPage(itemType, itemId) {
   if (itemType === 'lost') {

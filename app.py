@@ -349,7 +349,9 @@ def verify_otp():
         
         return jsonify({
             'success': True, 
-            'message': 'Account created successfully! You can now log in.'
+            'message': 'Account created successfully! You can now log in.',
+            'redirect': '/login'
+            
         }), 201
         
     except Exception as e:
@@ -932,6 +934,155 @@ def found():
     
     cursor.close()
     return render_template('found.html', items=found_items, active_page='found', show_item_id=show_item_id)
+
+
+@app.route('/posted')
+def posted():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+    
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    
+    # Get all items posted by the user with image paths
+    cursor.execute("""SELECT 
+        i.*, 
+        img.file_path as image_path,
+        COUNT(DISTINCT m.id) as match_count
+    FROM items i 
+    LEFT JOIN images img ON i.id = img.item_id 
+    LEFT JOIN ai_matches m ON (m.lost_item_id = i.id OR m.found_item_id = i.id)
+    WHERE i.user_id = %s 
+    GROUP BY i.id
+    ORDER BY i.created_at DESC""", (session['user_id'],))
+    
+    posted_items = cursor.fetchall()
+    
+    # Fix image paths for display
+    for item in posted_items:
+        if item['image_path']:
+            item['image_path'] = item['image_path'].replace("\\", "/")
+            if item['image_path'].startswith("static/"):
+                item['image_path'] = item['image_path'][7:]
+    
+    cursor.close()
+    
+    return render_template('posted.html', 
+                         posted_items=posted_items, 
+                         active_page='posted')
+
+@app.route('/api/get-item/<int:item_id>')
+def get_item(item_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'errors': ['Not authenticated']}), 401
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Verify ownership and get complete item details
+        cursor.execute("""SELECT * FROM items WHERE id = %s AND user_id = %s""", 
+                      (item_id, session['user_id']))
+        item = cursor.fetchone()
+        cursor.close()
+        
+        if not item:
+            return jsonify({'success': False, 'errors': ['Item not found or not authorized']}), 404
+        
+        return jsonify({
+            'success': True, 
+            'item': {
+                'id': item['id'],
+                'title': item['title'],
+                'description': item['description'],
+                'category': item['category'],
+                'type': item['type'],
+                'location_reported': item['location_reported'],
+                'reward': item['reward'],
+                'status': item['status'],
+                'date_reported': item['date_reported'].strftime('%Y-%m-%d') if item['date_reported'] else None,
+                'created_at': item['created_at'].strftime('%Y-%m-%d %H:%M:%S') if item['created_at'] else None
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+
+@app.route('/api/delete-item/<int:item_id>', methods=['DELETE'])
+def delete_item(item_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'errors': ['Not authenticated']}), 401
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Verify ownership
+        cursor.execute("SELECT user_id, type FROM items WHERE id = %s", (item_id,))
+        item = cursor.fetchone()
+        
+        if not item:
+            return jsonify({'success': False, 'errors': ['Item not found']}), 404
+        
+        if item['user_id'] != session['user_id']:
+            return jsonify({'success': False, 'errors': ['Not authorized']}), 403
+        
+        # Get image path to delete file
+        cursor.execute("SELECT file_path FROM images WHERE item_id = %s", (item_id,))
+        image = cursor.fetchone()
+        
+        # Delete from database
+        cursor.execute("DELETE FROM images WHERE item_id = %s", (item_id,))
+        cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
+        
+        mysql.connection.commit()
+        cursor.close()
+        
+        # Delete image file if exists
+        if image and image['file_path']:
+            try:
+                file_path = image['file_path']
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"Error deleting image file: {e}")
+        
+        return jsonify({'success': True, 'message': 'Item deleted successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+
+@app.route('/api/update-item/<int:item_id>', methods=['PUT'])
+def update_item(item_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'errors': ['Not authenticated']}), 401
+    
+    try:
+        data = request.get_json()
+        
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Verify ownership
+        cursor.execute("SELECT user_id, type FROM items WHERE id = %s", (item_id,))
+        item = cursor.fetchone()
+        
+        if not item or item['user_id'] != session['user_id']:
+            return jsonify({'success': False, 'errors': ['Not authorized']}), 403
+        
+        # Update item with all fields
+        cursor.execute("""UPDATE items SET 
+            title = %s, description = %s, category = %s, 
+            location_reported = %s, reward = %s 
+            WHERE id = %s""", 
+            (data.get('title'), data.get('description'), data.get('category'),
+             data.get('location_reported'), data.get('reward'), item_id))
+        
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({'success': True, 'message': 'Item updated successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+    
+    
 
 # ---------- MATCH ----------
 @app.route('/match')

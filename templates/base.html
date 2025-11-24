@@ -188,6 +188,9 @@
     <a href="{{ url_for('found') }}" class="{% if active_page == 'found' %}active{% endif %}">
       <i class="bi bi-search"></i><span class="nav-text">Found Items</span>
     </a>
+    <a href="{{ url_for('posted') }}" class="{% if active_page == 'posted' %}active{% endif %}">
+      <i class="bi bi-list-check"></i><span class="nav-text">My Posted Items</span>
+    </a>
     <a href="{{ url_for('match') }}" class="{% if active_page == 'match' %}active{% endif %}">
       <i class="bi bi-puzzle"></i><span class="nav-text">Match Item</span>
     </a>

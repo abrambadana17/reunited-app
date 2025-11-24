@@ -353,6 +353,12 @@
       color: var(--color-white);
     }
 
+    .btn-primary:disabled {
+      background: var(--color-gray-400);
+      transform: none;
+      box-shadow: none;
+    }
+
     .form-footer {
       margin-top: 2rem;
       font-size: 0.9rem;
@@ -375,52 +381,52 @@
     }
 
     /* === RESPONSIVENESS FIXES === */
-@media (max-width: 768px) {
-  .form-section {
-    width: 100%;
-    max-width: 100%;
-    padding: 20px 15px;
-    margin: 0;
-    border-radius: var(--radius-md);
-    box-shadow: none;
-  }
+    @media (max-width: 768px) {
+      .form-section {
+        width: 100%;
+        max-width: 100%;
+        padding: 20px 15px;
+        margin: 0;
+        border-radius: var(--radius-md);
+        box-shadow: none;
+      }
 
-  .form-section h1 {
-    font-size: 1.5rem; /* smaller heading */
-  }
+      .form-section h1 {
+        font-size: 1.5rem; /* smaller heading */
+      }
 
-  .form-section p {
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-  }
+      .form-section p {
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+      }
 
-  .form-label {
-    font-size: 0.8rem;
-  }
+      .form-label {
+        font-size: 0.8rem;
+      }
 
-  .form-control {
-    padding: 10px 12px;
-    font-size: 14px;
-  }
+      .form-control {
+        padding: 10px 12px;
+        font-size: 14px;
+      }
 
-  .btn-primary {
-    padding: 10px;
-    font-size: 14px;
-  }
+      .btn-primary {
+        padding: 10px;
+        font-size: 14px;
+      }
 
-  .form-footer {
-    font-size: 0.8rem;
-    margin-top: 1.5rem;
-  }
+      .form-footer {
+        font-size: 0.8rem;
+        margin-top: 1.5rem;
+      }
 
-  /* Make row inputs stack nicely */
-  .row.g-3 .col-md-6 {
-    flex: 0 0 100%;
-    max-width: 100%;
-    padding-left: 0;
-    padding-right: 0;
-  }
-}
+      /* Make row inputs stack nicely */
+      .row.g-3 .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        padding-left: 0;
+        padding-right: 0;
+      }
+    }
 
   </style>
 </head>
@@ -515,7 +521,9 @@
             <!-- Message placeholder -->
             <div id="message" class="mt-3"></div>
 
-            <button type="submit" class="btn btn-primary mt-3">Create Account</button>
+            <button type="submit" class="btn btn-primary mt-3" id="registerBtn">
+              Create Account
+            </button>
           </form>
 
           <div class="form-footer">
@@ -551,7 +559,6 @@
           <div id="otpMessage" class="mt-3"></div>
           
           <button type="submit" class="btn btn-primary w-100 mt-3" id="verifyOtpBtn">
-            <span class="spinner-border spinner-border-sm d-none" id="otpSpinner"></span>
             Verify Code
           </button>
         </form>
@@ -677,6 +684,16 @@
     e.preventDefault();
 
     const form = e.target;
+    const submitBtn = document.getElementById('registerBtn');
+    const originalBtnText = submitBtn.innerHTML;
+    
+    // Show loading state on the main register button
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      Sending verification code...
+    `;
+
     const formData = new FormData(form);
     const data = {};
     formData.forEach((value, key) => data[key] = value);
@@ -684,26 +701,34 @@
     // Store registration data for later use
     registrationData = data;
 
-    const response = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    });
+    try {
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
 
-    const result = await response.json();
-    const messageDiv = document.getElementById('message');
+      const result = await response.json();
+      const messageDiv = document.getElementById('message');
 
-    if (result.success) {
-      // Show OTP modal
-      document.getElementById('otpEmail').textContent = data.email;
-      const otpModal = new bootstrap.Modal(document.getElementById('otpModal'));
-      otpModal.show();
-      messageDiv.innerHTML = `<div class="alert alert-info">Verification code sent to your email!</div>`;
-    } else {
-      const errors = result.errors.map(err => `<div class="alert alert-danger">${err}</div>`).join('');
-      messageDiv.innerHTML = errors;
+      if (result.success) {
+        // Show OTP modal
+        document.getElementById('otpEmail').textContent = data.email;
+        const otpModal = new bootstrap.Modal(document.getElementById('otpModal'));
+        otpModal.show();
+        messageDiv.innerHTML = `<div class="alert alert-info">Verification code sent to your email!</div>`;
+      } else {
+        const errors = result.errors.map(err => `<div class="alert alert-danger">${err}</div>`).join('');
+        messageDiv.innerHTML = errors;
+      }
+    } catch (error) {
+      document.getElementById('message').innerHTML = `<div class="alert alert-danger">Network error. Please try again.</div>`;
+    } finally {
+      // Reset button state
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
     }
   });
 
@@ -712,80 +737,116 @@
 
     const otpCode = document.getElementById('otpCode').value;
     const verifyBtn = document.getElementById('verifyOtpBtn');
-    const spinner = document.getElementById('otpSpinner');
+    const originalVerifyText = verifyBtn.innerHTML;
     
     // Show loading state
     verifyBtn.disabled = true;
-    spinner.classList.remove('d-none');
+    verifyBtn.innerHTML = `
+      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      Verifying...
+    `;
 
-    const response = await fetch('/api/verify-otp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...registrationData,
-        otpCode: otpCode
-      })
-    });
+    try {
+      const response = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...registrationData,
+          otpCode: otpCode
+        })
+      });
 
-    const result = await response.json();
-    const otpMessageDiv = document.getElementById('otpMessage');
+      const result = await response.json();
+      const otpMessageDiv = document.getElementById('otpMessage');
 
-    // Hide loading state
-    verifyBtn.disabled = false;
-    spinner.classList.add('d-none');
-
-    if (result.success) {
-      otpMessageDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
-      
-      // Close modal and show success message
-      setTimeout(() => {
-        const otpModal = bootstrap.Modal.getInstance(document.getElementById('otpModal'));
-        otpModal.hide();
+      if (result.success) {
+        otpMessageDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
         
-        const messageDiv = document.getElementById('message');
-        messageDiv.innerHTML = `<div class="alert alert-success">Account created successfully! You can now log in.</div>`;
+        // Check if we should redirect to login
+        if (result.redirect) {
+          // Close modal and redirect to login page
+          setTimeout(() => {
+            const otpModal = bootstrap.Modal.getInstance(document.getElementById('otpModal'));
+            if (otpModal) {
+              otpModal.hide();
+            }
+            window.location.href = result.redirect;
+          }, 1500);
+        } else {
+          // Close modal and show success message (fallback)
+          setTimeout(() => {
+            const otpModal = bootstrap.Modal.getInstance(document.getElementById('otpModal'));
+            if (otpModal) {
+              otpModal.hide();
+            }
+            
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="alert alert-success">Account created successfully! <a href="/login" class="alert-link">Click here to login</a></div>`;
+            
+            // Reset form
+            document.getElementById('registerForm').reset();
+            registrationData = {};
+          }, 1500);
+        }
+      } else {
+        const errors = result.errors.map(err => `<div class="alert alert-danger">${err}</div>`).join('');
+        otpMessageDiv.innerHTML = errors;
         
-        // Reset form
-        document.getElementById('registerForm').reset();
-        registrationData = {};
-      }, 1500);
-    } else {
-      const errors = result.errors.map(err => `<div class="alert alert-danger">${err}</div>`).join('');
-      otpMessageDiv.innerHTML = errors;
+        // Reset button on error
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = originalVerifyText;
+      }
+    } catch (error) {
+      document.getElementById('otpMessage').innerHTML = `<div class="alert alert-danger">Network error. Please try again.</div>`;
+      verifyBtn.disabled = false;
+      verifyBtn.innerHTML = originalVerifyText;
     }
   });
 
   // Resend OTP
   document.getElementById('resendOtpBtn').addEventListener('click', async function () {
     const btn = this;
+    const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Sending...';
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Sending...`;
 
-    const response = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(registrationData)
-    });
+    try {
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(registrationData)
+      });
 
-    const result = await response.json();
-    
-    if (result.success) {
-      document.getElementById('otpMessage').innerHTML = `<div class="alert alert-success">New verification code sent!</div>`;
-    } else {
-      document.getElementById('otpMessage').innerHTML = `<div class="alert alert-danger">Failed to resend code. Please try again.</div>`;
+      const result = await response.json();
+      const otpMessageDiv = document.getElementById('otpMessage');
+      
+      if (result.success) {
+        otpMessageDiv.innerHTML = `<div class="alert alert-success">New verification code sent!</div>`;
+      } else {
+        const errors = result.errors.map(err => `<div class="alert alert-danger">${err}</div>`).join('');
+        otpMessageDiv.innerHTML = errors;
+      }
+    } catch (error) {
+      document.getElementById('otpMessage').innerHTML = `<div class="alert alert-danger">Network error. Please try again.</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
     }
-
-    btn.disabled = false;
-    btn.textContent = 'Resend Code';
   });
 
   document.getElementById('otpCode').addEventListener('input', function (e) {
     // Only allow numbers
     this.value = this.value.replace(/[^0-9]/g, '');
+  });
+
+  // Clear messages when modal is closed
+  document.getElementById('otpModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('otpMessage').innerHTML = '';
+    document.getElementById('otpCode').value = '';
   });
 </script>
 

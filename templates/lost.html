@@ -70,6 +70,7 @@
          data-item-description="{{ item.description }}"
          data-item-category="{{ item.category }}"
          data-item-status="{{ item.status }}"
+         data-item-reward="{{ item.reward or 'No Reward' }}"  
          data-item-date="{{ item.date_reported.strftime('%B %d, %Y at %I:%M %p') }}"
          data-item-image="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}"
          data-reporter-name="{{ item.first_name }} {{ item.last_name }}"
@@ -87,6 +88,18 @@
             Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
           </p>
           <p class="card-text flex-grow-1">{{ item.description }}</p>
+
+          <!-- CHANGED: Show "No Reward" when empty -->
+          {% if item.reward and item.reward.strip() and item.reward != 'No Reward' %}
+          <div class="mb-2">
+            <span class="badge bg-success">Reward: {{ item.reward }}</span>
+          </div>
+          {% else %}
+          <div class="mb-2">
+            <span class="badge bg-secondary"> No Reward</span>
+          </div>
+          {% endif %}
+
           <div>
             {% if item.status == "claimed" %}
               <span class="badge bg-success">{{ item.status }}</span>
@@ -166,6 +179,12 @@
               <h6 class="text-muted mb-1">Description</h6>
               <p id="modalItemDescription" class="mb-0"></p>
             </div>
+
+            
+            <div class="mb-3">
+              <h6 class="text-muted mb-1"> Reward Offered</h6>
+              <p id="modalItemReward" class="mb-0 ">No Reward</p>
+            </div>
             
             <div class="mb-3">
               <h6 class="text-muted mb-1">Date Reported</h6>
@@ -239,8 +258,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const itemDetailModal = document.getElementById('itemDetailModal');
   
-  // Function to populate modal data
-  function populateModal(title, description, category, status, date, image, reporterName, reporterPicture, reporterInitials) {
+  // CORRECTED: Fixed parameter order - reward comes before date
+  function populateModal(title, description, category, status, reward, date, image, reporterName, reporterPicture, reporterInitials) {
     document.getElementById('modalItemTitle').textContent = title;
     document.getElementById('modalItemDescription').textContent = description;
     document.getElementById('modalItemCategory').textContent = category;
@@ -252,17 +271,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusBadge = document.getElementById('modalItemStatus');
     statusBadge.textContent = status;
     statusBadge.className = status === 'claimed' ? 'badge bg-success' : 'badge bg-warning text-dark';
+
+    // Set reward - CORRECTED: Proper handling for "0.0" and empty values
+    const rewardElement = document.getElementById('modalItemReward');
+    if (reward && reward.trim() !== '' && reward !== 'No Reward' && reward !== '0.0') {
+      rewardElement.textContent = reward;
+      rewardElement.className = 'mb-0 ';
+    } else {
+      rewardElement.textContent = 'No Reward';
+      rewardElement.className = 'mb-0 text-muted';
+    }
     
     // Set reporter avatar
     const reporterAvatar = document.getElementById('modalReporterAvatar');
-    if (reporterPicture) {
+    if (reporterPicture && reporterPicture.trim() !== '') {
       reporterAvatar.innerHTML = `<img src="${reporterPicture}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">`;
     } else {
       reporterAvatar.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${reporterInitials}</div>`;
     }
   }
 
-  // Modal show event for manual clicks
+  // Modal show event for manual clicks - CORRECTED: Proper parameter order
   itemDetailModal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     
@@ -271,42 +300,41 @@ document.addEventListener('DOMContentLoaded', function() {
     const itemDescription = button.dataset.itemDescription;
     const itemCategory = button.dataset.itemCategory;
     const itemStatus = button.dataset.itemStatus;
+    const itemReward = button.dataset.itemReward; // Reward comes before date
     const itemDate = button.dataset.itemDate;
     const itemImage = button.dataset.itemImage;
     const reporterName = button.dataset.reporterName;
     const reporterPicture = button.dataset.reporterPicture;
     const reporterInitials = button.dataset.reporterInitials;
     
-    populateModal(itemTitle, itemDescription, itemCategory, itemStatus, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
+    // CORRECTED: Proper parameter order - reward before date
+    populateModal(itemTitle, itemDescription, itemCategory, itemStatus, itemReward, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
   });
 
-  // Check for show_item in URL and auto-open modal
+  // Check for show_item in URL and auto-open modal - CORRECTED: Proper parameter order
   const urlParams = new URLSearchParams(window.location.search);
-  const itemId = urlParams.get('show_item') || showItemId;  // Use both URL param and template variable
+  const itemId = urlParams.get('show_item') || showItemId;
   
   if (itemId && itemId !== 'null') {
-    // Find the item card with matching data-item-id
     const itemCard = document.querySelector(`.item-card[data-item-id="${itemId}"]`);
     if (itemCard) {
-      // Get item data from the card
       const itemTitle = itemCard.dataset.itemTitle;
       const itemDescription = itemCard.dataset.itemDescription;
       const itemCategory = itemCard.dataset.itemCategory;
       const itemStatus = itemCard.dataset.itemStatus;
+      const itemReward = itemCard.dataset.itemReward; // Reward comes before date
       const itemDate = itemCard.dataset.itemDate;
       const itemImage = itemCard.dataset.itemImage;
       const reporterName = itemCard.dataset.reporterName;
       const reporterPicture = itemCard.dataset.reporterPicture;
       const reporterInitials = itemCard.dataset.reporterInitials;
       
-      // Populate modal
-      populateModal(itemTitle, itemDescription, itemCategory, itemStatus, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
+      // CORRECTED: Proper parameter order - reward before date
+      populateModal(itemTitle, itemDescription, itemCategory, itemStatus, itemReward, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
       
-      // Show the modal
       const modal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
       modal.show();
       
-      // Clear the URL parameter without refreshing
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }

@@ -52,13 +52,14 @@
     <table class="table table-hover mb-0 w-100" id="postedItemsTable" style="border: 2px solid #dee2e6;">
       <thead class="table-light">
         <tr>
-          <th style="width: 35%; border: 1px solid #dee2e6;">Item</th>
+          <th style="width: 30%; border: 1px solid #dee2e6;">Item</th>
           <th style="width: 10%; border: 1px solid #dee2e6;">Type</th>
-          <th style="width: 12%; border: 1px solid #dee2e6;">Category</th>
+          <th style="width: 10%; border: 1px solid #dee2e6;">Category</th>
           <th style="width: 12%; border: 1px solid #dee2e6;">Status</th>
+          <th style="width: 10%; border: 1px solid #dee2e6;">Reward</th>
           <th style="width: 12%; border: 1px solid #dee2e6;">Date Posted</th>
-          <th style="width: 9%; border: 1px solid #dee2e6;">Matches</th>
-          <th class="text-end" style="width: 10%; border: 1px solid #dee2e6;">Actions</th>
+          <th style="width: 7%; border: 1px solid #dee2e6;">Matches</th>
+          <th style="width: 9%; border: 1px solid #dee2e6;">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -67,8 +68,9 @@
             data-title="{{ item.title|lower }}" 
             data-description="{{ item.description|lower }}" 
             data-type="{{ item.type|lower }}" 
-            data-status="{{ (item.status or 'active')|lower }}">
-          <td style="width: 35%; border: 1px solid #dee2e6;">
+            data-status="{{ (item.status or 'active')|lower }}"
+            data-item-id="{{ item.id }}">
+          <td style="width: 30%; border: 1px solid #dee2e6;">
             <div class="d-flex align-items-center">
               {% if item.image_path %}
               <img src="{{ url_for('uploaded_item_file', filename=item.image_path.split('/')[-1]) }}" 
@@ -85,36 +87,38 @@
               </div>
             </div>
           </td>
-          <td style="width: 10%; border: 1px solid #dee2e6;">
-            <span class="badge {% if item.type == 'lost' %}bg-info{% else %}bg-success{% endif %} item-type">
-              {{ item.type.title() }}
-            </span>
+          <td class="item-type" style="width: 10%; border: 1px solid #dee2e6;">
+            {{ item.type.title() }}
           </td>
-          <td class="item-category" style="width: 12%; border: 1px solid #dee2e6;">{{ item.category or 'Not specified' }}</td>
-          <td style="width: 12%; border: 1px solid #dee2e6;">
-            <span class="badge item-status
-              {% if item.status in ['claimed', 'returned'] %}bg-success
-              {% elif item.status in ['Not Yet Found', 'Unclaimed'] %}bg-warning
-              {% else %}bg-secondary{% endif %}">
-              {{ item.status or 'Active' }}
-            </span>
+          <td class="item-category" style="width: 10%; border: 1px solid #dee2e6;">{{ item.category or 'Not specified' }}</td>
+          <td class="item-status" style="width: 12%; border: 1px solid #dee2e6;">
+            {{ item.status or 'Active' }}
+          </td>
+          <td class="item-reward" style="width: 10%; border: 1px solid #dee2e6;">
+            {% if item.reward and item.reward.strip() and item.reward != 'No Reward' %}
+              {{ item.reward }}
+            {% else %}
+              No Reward
+            {% endif %}
           </td>
           <td class="item-date" style="width: 12%; border: 1px solid #dee2e6;">{{ item.created_at.strftime('%b %d, %Y') }}</td>
-          <td style="width: 9%; border: 1px solid #dee2e6;">
-            <span class="badge bg-primary">{{ item.match_count or 0 }}</span>
+          <td class="item-matches text-center" style="width: 7%; border: 1px solid #dee2e6;">
+            {{ item.match_count or 0 }}
           </td>
-          <td class="text-end" style="width: 10%; border: 1px solid #dee2e6;">
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" 
-                      onclick="editItem({{ item.id }})"
-                      data-bs-toggle="tooltip" title="Edit">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-outline-danger" 
-                      onclick="deleteItem({{ item.id }})"
-                      data-bs-toggle="tooltip" title="Delete">
-                <i class="bi bi-trash"></i>
-              </button>
+          <td style="width: 9%; border: 1px solid #dee2e6;">
+            <div class="d-flex justify-content-center">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary edit-btn" 
+                        data-item-id="{{ item.id }}"
+                        data-bs-toggle="tooltip" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-outline-danger delete-btn" 
+                        data-item-id="{{ item.id }}"
+                        data-bs-toggle="tooltip" title="Delete">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
             </div>
           </td>
         </tr>
@@ -232,6 +236,21 @@ document.addEventListener('DOMContentLoaded', function() {
   typeFilter.addEventListener('change', filterItems);
   statusFilter.addEventListener('change', filterItems);
 
+  // Event listeners for edit and delete buttons
+  document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const itemId = this.getAttribute('data-item-id');
+      editItem(itemId);
+    });
+  });
+
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const itemId = this.getAttribute('data-item-id');
+      deleteItem(itemId);
+    });
+  });
+
   // Initialize tooltips
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   const tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
@@ -242,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Edit Item Function - Fetch complete data from API
 async function editItem(itemId) {
     try {
-        const editBtn = document.querySelector(`[onclick*="editItem(${itemId})"]`);
+        const editBtn = document.querySelector(`.edit-btn[data-item-id="${itemId}"]`);
         const originalHtml = editBtn.innerHTML;
         editBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
         editBtn.disabled = true;
@@ -271,7 +290,7 @@ async function editItem(itemId) {
         }
         
     } catch (error) {
-        const editBtn = document.querySelector(`[onclick*="editItem(${itemId})"]`);
+        const editBtn = document.querySelector(`.edit-btn[data-item-id="${itemId}"]`);
         editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
         editBtn.disabled = false;
         

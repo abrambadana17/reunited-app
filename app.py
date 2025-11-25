@@ -885,7 +885,7 @@ def lost():
         category = request.form.get('category')
         description = request.form.get('description')
         location = request.form.get('location_reported')
-        reward = request.form.get('reward') or 0.00
+        reward = request.form.get('reward', '').strip()
         date_reported = datetime.now()
 
         # Validate required fields

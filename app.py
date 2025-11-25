@@ -7,6 +7,8 @@ from resnet_model import extract_features, auto_match
 
 import MySQLdb.cursors
 import re
+import cv2
+import json
 import numpy as np
 from datetime import datetime
 import os
@@ -60,6 +62,89 @@ def resize_image(image_path, max_size=(400, 400)):
             img.save(image_path, optimize=True, quality=85)
     except Exception as e:
         print(f"Error resizing image: {e}")
+
+#human detection
+
+def contains_human_faces(image_path):
+    """
+    Simple face detection: reject only obvious personal photos with large faces
+    Allow IDs and documents with small faces
+    """
+    try:
+        print(f"🖼️ Checking image: {image_path}")
+        
+        img = cv2.imread(image_path)
+        if img is None:
+            return False
+            
+        height, width = img.shape[:2]
+        
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        
+        if face_cascade.empty():
+            return False
+        
+        # Detect all faces
+        faces = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=4,
+            minSize=(30, 30),
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+        
+        print(f"👤 Faces found: {len(faces)}")
+        
+        if len(faces) == 0:
+            print("✅ No faces - allowing")
+            return False
+        
+        # Calculate total face area
+        total_face_area = sum(w * h for (x, y, w, h) in faces)
+        face_area_percentage = (total_face_area / (width * height)) * 100
+        
+        print(f"📊 Face area: {face_area_percentage:.2f}%")
+        
+        # CRITICAL: Only reject if faces take up significant space
+        # IDs: faces are small (<4% of image)
+        # Personal photos: faces are large (>6% of image)
+        REJECT_THRESHOLD = 6.0  # Adjust this value as needed
+        
+        if face_area_percentage > REJECT_THRESHOLD:
+            print(f"❌ REJECT: Large faces ({face_area_percentage:.2f}%)")
+            return True
+        else:
+            print(f"✅ ALLOW: Small faces ({face_area_percentage:.2f}%) - likely ID")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return False
+
+def validate_image_file(file):
+    """Validate both uploaded files and captured images"""
+    if not file or file.filename == '':
+        return False, "No image provided"
+    
+    # Check file size (max 5MB for captured images)
+    file.seek(0, 2)  # Seek to end
+    file_size = file.tell()
+    file.seek(0)  # Reset seek position
+    
+    if file_size > 5 * 1024 * 1024:  # 5MB
+        return False, "Image too large (max 5MB)"
+    
+    # Check file extension
+    if not allowed_file(file.filename):
+        return False, "Invalid file type. Please upload PNG, JPG, JPEG, or GIF images."
+    
+    return True, "Valid"
+
+
+
+
+
 
 # Routes
 @app.route('/')
@@ -173,7 +258,11 @@ def dashboard():
     
     cursor.close()
     
-    return render_template('dashboard.html', active_page='dashboard', user=session, stats=stats, recent_items=recent_items, recent_feedback=recent_feedback)
+    # Get stored form data for repopulating modals
+    lost_form_data = session.pop('lost_form_data', None) if 'lost_form_data' in session else None
+    found_form_data = session.pop('found_form_data', None) if 'found_form_data' in session else None
+    
+    return render_template('dashboard.html', active_page='dashboard', user=session, stats=stats, recent_items=recent_items, recent_feedback=recent_feedback, lost_form_data=lost_form_data, found_form_data=found_form_data)
 
 @app.route('/submit_feedback', methods=['POST'])
 def submit_feedback():
@@ -797,7 +886,21 @@ def lost():
         description = request.form.get('description')
         location = request.form.get('location_reported')
         reward = request.form.get('reward') or 0.00
-        date_reported = datetime.now().date()
+        date_reported = datetime.now()
+
+        # Validate required fields
+        if not all([title, category, description, location]):
+            flash('Please fill in all required fields.', 'danger')
+            # Store form data for repopulation
+            form_data = {
+                'title': title,
+                'category': category,
+                'description': description,
+                'location_reported': location,
+                'reward': reward
+            }
+            session['lost_form_data'] = form_data
+            return redirect(url_for('dashboard') + '#lostItemModal')
 
         # insert item
         cursor.execute('''INSERT INTO items (user_id, title, description, category, type, date_reported, location_reported, reward, status) VALUES (%s, %s, %s, %s, 'lost', %s, %s, %s, %s)''', (session['user_id'], title, description, category, date_reported, location, reward, "Not Yet Found"))
@@ -810,21 +913,80 @@ def lost():
 
         features = None
 
-        # insert image + extract AI features
+        # insert image + extract AI features WITH FACE DETECTION
         if 'image' in request.files:
             file = request.files['image']
-            if file and allowed_file(file.filename):
-                filename = f"item_{item_id}_{uuid.uuid4().hex[:8]}.jpg"
-                filepath = os.path.join("static/uploads/items", filename)
-                os.makedirs(os.path.dirname(filepath), exist_ok=True)
-                file.save(filepath)
+            
+            # Validate image file
+            if file and file.filename != '':
+                is_valid, message = validate_image_file(file)
+                if not is_valid:
+                    # Delete the item record since validation failed
+                    cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
+                    mysql.connection.commit()
+                    
+                    # Store form data for repopulation
+                    form_data = {
+                        'title': title,
+                        'category': category,
+                        'description': description,
+                        'location_reported': location,
+                        'reward': reward
+                    }
+                    flash(f'❌ {message} LOST_FORM_DATA:{json.dumps(form_data)}', 'danger')
+                    return redirect(url_for('dashboard') + '#lostItemModal')
+                
+                if allowed_file(file.filename):
+                    print(f"🔍 Processing image upload for item {item_id}")
+                    
+                    # Create temp directory if it doesn't exist
+                    temp_dir = "static/uploads/temp"
+                    os.makedirs(temp_dir, exist_ok=True)
+                    
+                    # Save file temporarily for face detection
+                    temp_filename = f"temp_{uuid.uuid4().hex[:8]}.jpg"
+                    temp_filepath = os.path.join(temp_dir, temp_filename)
+                    file.save(temp_filepath)
+                    print(f"📁 Saved temporary file: {temp_filepath}")
+                    
+                    # Check for human faces
+                    print("🔍 Running face detection...")
+                    has_faces = contains_human_faces(temp_filepath)
+                    print(f"🎭 Face detection result: {has_faces}")
+                    
+                    if has_faces:
+                        # Delete temp file and return error
+                        os.remove(temp_filepath)
+                        # Also delete the item record since we're rejecting the submission
+                        cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
+                        mysql.connection.commit()
+                        print("❌ Face detected - rejecting submission")
+                        
+                        # Store form data in flash message as JSON
+                        form_data = {
+                            'title': title,
+                            'category': category,
+                            'description': description,
+                            'location_reported': location,
+                            'reward': reward
+                        }
+                        flash(f'❌ Image contains human faces. Please upload only images of the item itself for privacy and security reasons. LOST_FORM_DATA:{json.dumps(form_data)}', 'danger')
+                        # Redirect back to dashboard with modal open
+                        return redirect(url_for('dashboard') + '#lostItemModal')
+                    
+                    # If no faces, proceed with original processing
+                    print("✅ No faces detected - proceeding with item creation")
+                    filename = f"item_{item_id}_{uuid.uuid4().hex[:8]}.jpg"
+                    filepath = os.path.join("static/uploads/items", filename)
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    os.rename(temp_filepath, filepath)  # Move from temp to final location
 
-                # extract features
-                features = extract_features(filepath)
+                    # extract features
+                    features = extract_features(filepath)
 
-                # insert into images table with features
-                cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', (item_id, filepath, str(features.tolist())))
-                mysql.connection.commit()
+                    # insert into images table with features
+                    cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', (item_id, filepath, str(features.tolist())))
+                    mysql.connection.commit()
 
         # prepare details for text matching
         new_details = {
@@ -859,7 +1021,6 @@ def lost():
     cursor.close()
     return render_template('lost.html', items=lost_items, active_page='lost', show_item_id=show_item_id)
 
-
 @app.route('/found', methods=['GET', 'POST'])
 def found():
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -873,7 +1034,20 @@ def found():
         category = request.form.get('category')
         description = request.form.get('description')
         location = request.form.get('location_reported')
-        date_reported = datetime.now().date()
+        date_reported = datetime.now()
+
+        # Validate required fields
+        if not all([title, category, description, location]):
+            flash('Please fill in all required fields.', 'danger')
+            # Store form data for repopulation
+            form_data = {
+                'title': title,
+                'category': category,
+                'description': description,
+                'location_reported': location
+            }
+            session['found_form_data'] = form_data
+            return redirect(url_for('dashboard') + '#foundItemModal')
 
         # insert item
         cursor.execute('''INSERT INTO items (user_id, title, description, category, type, date_reported, location_reported, status) VALUES (%s, %s, %s, %s, 'found', %s, %s, %s)''', (session['user_id'], title, description, category, date_reported, location, "Unclaimed"))
@@ -886,21 +1060,78 @@ def found():
 
         features = None
 
-        # insert image + extract AI features
+        # insert image + extract AI features WITH FACE DETECTION
         if 'image' in request.files:
             file = request.files['image']
-            if file and allowed_file(file.filename):
-                filename = f"item_{item_id}_{uuid.uuid4().hex[:8]}.jpg"
-                filepath = os.path.join("static/uploads/items", filename)
-                os.makedirs(os.path.dirname(filepath), exist_ok=True)
-                file.save(filepath)
+            
+            # Validate image file
+            if file and file.filename != '':
+                is_valid, message = validate_image_file(file)
+                if not is_valid:
+                    # Delete the item record since validation failed
+                    cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
+                    mysql.connection.commit()
+                    
+                    # Store form data for repopulation
+                    form_data = {
+                        'title': title,
+                        'category': category,
+                        'description': description,
+                        'location_reported': location
+                    }
+                    flash(f'❌ {message} FOUND_FORM_DATA:{json.dumps(form_data)}', 'danger')
+                    return redirect(url_for('dashboard') + '#foundItemModal')
+                
+                if allowed_file(file.filename):
+                    print(f"🔍 Processing image upload for found item {item_id}")
+                    
+                    # Create temp directory if it doesn't exist
+                    temp_dir = "static/uploads/temp"
+                    os.makedirs(temp_dir, exist_ok=True)
+                    
+                    # Save file temporarily for face detection
+                    temp_filename = f"temp_{uuid.uuid4().hex[:8]}.jpg"
+                    temp_filepath = os.path.join(temp_dir, temp_filename)
+                    file.save(temp_filepath)
+                    print(f"📁 Saved temporary file: {temp_filepath}")
+                    
+                    # Check for human faces
+                    print("🔍 Running face detection...")
+                    has_faces = contains_human_faces(temp_filepath)
+                    print(f"🎭 Face detection result: {has_faces}")
+                    
+                    if has_faces:
+                        # Delete temp file and return error
+                        os.remove(temp_filepath)
+                        # Also delete the item record since we're rejecting the submission
+                        cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
+                        mysql.connection.commit()
+                        print("❌ Face detected - rejecting submission")
+                        
+                        # Store form data in flash message as JSON
+                        form_data = {
+                            'title': title,
+                            'category': category,
+                            'description': description,
+                            'location_reported': location
+                        }
+                        flash(f'❌ Image contains human faces. Please upload only images of the item itself for privacy and security reasons. FOUND_FORM_DATA:{json.dumps(form_data)}', 'danger')
+                        # Redirect back to dashboard with modal open
+                        return redirect(url_for('dashboard') + '#foundItemModal')
+                    
+                    # If no faces, proceed with original processing
+                    print("✅ No faces detected - proceeding with item creation")
+                    filename = f"item_{item_id}_{uuid.uuid4().hex[:8]}.jpg"
+                    filepath = os.path.join("static/uploads/items", filename)
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    os.rename(temp_filepath, filepath)  # Move from temp to final location
 
-                # extract features
-                features = extract_features(filepath)
+                    # extract features
+                    features = extract_features(filepath)
 
-                # insert into images table with features
-                cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', (item_id, filepath, str(features.tolist())))
-                mysql.connection.commit()
+                    # insert into images table with features
+                    cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', (item_id, filepath, str(features.tolist())))
+                    mysql.connection.commit()
 
         # prepare details for text matching
         new_details = {
@@ -934,7 +1165,6 @@ def found():
     
     cursor.close()
     return render_template('found.html', items=found_items, active_page='found', show_item_id=show_item_id)
-
 
 @app.route('/posted')
 def posted():

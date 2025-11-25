@@ -374,12 +374,52 @@
 <div class="modal fade" id="lostItemModal" tabindex="-1" aria-labelledby="lostItemModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form action="{{ url_for('lost') }}" method="POST" enctype="multipart/form-data">
+      <form action="{{ url_for('lost') }}" method="POST" enctype="multipart/form-data" id="lostItemForm">
         <div class="modal-header">
           <h5 class="modal-title fw-bold" id="lostItemModalLabel">Report Lost Item</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
+          <!-- Flash Data Extraction -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            {% if 'LOST_FORM_DATA:' in message %}
+              <script>
+                // Extract form data from flash message and store in sessionStorage for LOST items
+                const lostMessageText = "{{ message }}";
+                console.log('Lost flash message:', lostMessageText);
+                if (lostMessageText.includes('LOST_FORM_DATA:')) {
+                  const formDataJson = lostMessageText.split('LOST_FORM_DATA:')[1];
+                  console.log('Lost form data JSON:', formDataJson);
+                  try {
+                    // Decode HTML entities before parsing JSON
+                    const decodedJson = formDataJson.replace(/&#34;/g, '"');
+                    console.log('Decoded JSON:', decodedJson);
+                    const formData = JSON.parse(decodedJson);
+                    sessionStorage.setItem('lostFormData', JSON.stringify(formData));
+                    console.log('✅ Lost form data stored in sessionStorage');
+                  } catch (e) {
+                    console.error('Error parsing lost form data:', e);
+                  }
+                }
+              </script>
+            {% endif %}
+          {% endfor %}
+          {% endwith %}
+
+          <!-- Error Message Display -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+              {% if category == 'danger' and 'LOST_FORM_DATA:' in message %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  {{ message.split('LOST_FORM_DATA:')[0].strip() }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              {% endif %}
+            {% endfor %}
+          {% endwith %}
+
           <div class="mb-3">
             <label class="form-label">Item Title</label>
             <input type="text" name="title" class="form-control" required>
@@ -417,13 +457,52 @@
             <input type="text" name="reward" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">Upload Item Image</label>
-            <input type="file" name="image" class="form-control" accept="image/*">
+            <label class="form-label">Upload Item Image (Optional)</label>
+            <input type="file" name="image" class="form-control" accept="image/*" id="lostItemImage">
+            <!-- Lost Item Modal - Camera Section -->
+            <div class="mb-3">
+                <label class="form-label">Or Take a Photo (Optional)</label>
+                <div class="camera-section">
+                    <!-- Camera Preview -->
+                    <div class="camera-preview mb-2 text-center" id="lostCameraPreview" style="display: none;">
+                        <video id="lostVideo" autoplay playsinline style="max-width: 100%; max-height: 300px; border-radius: 8px;"></video>
+                        <canvas id="lostCanvas" style="display: none;"></canvas>
+                    </div>
+                    
+                    <!-- Camera Controls -->
+                    <div class="camera-controls text-center">
+                        <button type="button" class="btn btn-outline-primary btn-sm me-2" id="lostStartCamera">
+                            <i class="bi bi-camera-video me-1"></i>Start Camera
+                        </button>
+                        <button type="button" class="btn btn-success btn-sm me-2" id="lostCapturePhoto" style="display: none;">
+                            <i class="bi bi-camera me-1"></i>Capture Photo
+                        </button>
+                        <button type="button" class="btn btn-warning btn-sm" id="lostRetakePhoto" style="display: none;">
+                            <i class="bi bi-arrow-repeat me-1"></i>Retake
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="lostStopCamera" style="display: none;">
+                            <i class="bi bi-x-circle me-1"></i>Stop Camera
+                        </button>
+                    </div>
+                    
+                    <!-- Captured Image Preview -->
+                    <div class="captured-preview mt-2 text-center" id="lostCapturedPreview" style="display: none;">
+                        <p class="small text-muted mb-2">Captured Photo:</p>
+                        <img id="lostCapturedImage" src="" style="max-width: 200px; border-radius: 8px; border: 2px solid #007bff;">
+                        <input type="hidden" name="captured_image" id="lostCapturedImageData">
+                    </div>
+                </div>
+            </div>
             <div class="form-text">
               <small class="text-muted">
                 <i class="bi bi-info-circle me-1"></i>
-                Please upload only images of the item itself. Do not include pictures of people for privacy reasons.
+                Please upload only images of the item itself. <strong>Images containing human faces will be automatically rejected</strong> for privacy reasons.
               </small>
+            </div>
+            <!-- Face Detection Warning -->
+            <div class="alert alert-warning mt-2 py-2" id="lostFaceWarning" style="display: none;">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <small>Please ensure your image shows only the item. Photos with people cannot be accepted.</small>
             </div>
           </div>
           
@@ -436,9 +515,9 @@
               <p><strong>1. Image Guidelines</strong></p>
               <ul class="small">
                 <li>Upload only images of the actual item itself</li>
+                <li><strong>Images containing human faces will be automatically rejected</strong></li>
                 <li>Do not include pictures of people, faces, or personal identification</li>
                 <li>Ensure images are clear and focused on the item</li>
-                <li>Images containing people will be removed immediately</li>
               </ul>
 
               <p><strong>2. Data Privacy</strong></p>
@@ -488,17 +567,56 @@
   </div>
 </div>
 
-
 <!-- Found Item Modal -->
 <div class="modal fade" id="foundItemModal" tabindex="-1" aria-labelledby="foundItemModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form action="{{ url_for('found') }}" method="POST" enctype="multipart/form-data">
+      <form action="{{ url_for('found') }}" method="POST" enctype="multipart/form-data" id="foundItemForm">
         <div class="modal-header">
           <h5 class="modal-title fw-bold" id="foundItemModalLabel">Report Found Item</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
+          <!-- Flash Data Extraction -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            {% if 'FOUND_FORM_DATA:' in message %}
+              <script>
+                // Extract form data from flash message and store in sessionStorage for FOUND items
+                const foundMessageText = "{{ message }}";
+                console.log('Found flash message:', foundMessageText);
+                if (foundMessageText.includes('FOUND_FORM_DATA:')) {
+                  const formDataJson = foundMessageText.split('FOUND_FORM_DATA:')[1];
+                  console.log('Found form data JSON:', formDataJson);
+                  try {
+                    // Decode HTML entities before parsing JSON
+                    const decodedJson = formDataJson.replace(/&#34;/g, '"');
+                    console.log('Decoded JSON:', decodedJson);
+                    const formData = JSON.parse(decodedJson);
+                    sessionStorage.setItem('foundFormData', JSON.stringify(formData));
+                    console.log('✅ Found form data stored in sessionStorage');
+                  } catch (e) {
+                    console.error('Error parsing found form data:', e);
+                  }
+                }
+              </script>
+            {% endif %}
+          {% endfor %}
+          {% endwith %}
+
+          <!-- Error Message Display -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+              {% if category == 'danger' and 'FOUND_FORM_DATA:' in message %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  {{ message.split('FOUND_FORM_DATA:')[0].strip() }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              {% endif %}
+            {% endfor %}
+          {% endwith %}
+
           <div class="mb-3">
             <label class="form-label">Item Title</label>
             <input type="text" name="title" class="form-control" required>
@@ -532,17 +650,55 @@
             <input type="text" name="location_reported" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">Upload Item Image</label>
-            <input type="file" name="image" class="form-control" accept="image/*" required>
+            <label class="form-label">Upload Item Image <span class="text-danger">*</span></label>
+            <input type="file" name="image" class="form-control" accept="image/*" id="foundItemImage">
+            <!-- Found Item Modal - Camera Section -->
+            <div class="mb-3">
+                <label class="form-label">Or Take a Photo <span class="text-danger">*</span></label>
+                <div class="camera-section">
+                    <!-- Camera Preview -->
+                    <div class="camera-preview mb-2 text-center" id="foundCameraPreview" style="display: none;">
+                        <video id="foundVideo" autoplay playsinline style="max-width: 100%; max-height: 300px; border-radius: 8px;"></video>
+                        <canvas id="foundCanvas" style="display: none;"></canvas>
+                    </div>
+                    
+                    <!-- Camera Controls -->
+                    <div class="camera-controls text-center">
+                        <button type="button" class="btn btn-outline-primary btn-sm me-2" id="foundStartCamera">
+                            <i class="bi bi-camera-video me-1"></i>Start Camera
+                        </button>
+                        <button type="button" class="btn btn-success btn-sm me-2" id="foundCapturePhoto" style="display: none;">
+                            <i class="bi bi-camera me-1"></i>Capture Photo
+                        </button>
+                        <button type="button" class="btn btn-warning btn-sm" id="foundRetakePhoto" style="display: none;">
+                            <i class="bi bi-arrow-repeat me-1"></i>Retake
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="foundStopCamera" style="display: none;">
+                            <i class="bi bi-x-circle me-1"></i>Stop Camera
+                        </button>
+                    </div>
+                    
+                    <!-- Captured Image Preview -->
+                    <div class="captured-preview mt-2 text-center" id="foundCapturedPreview" style="display: none;">
+                        <p class="small text-muted mb-2">Captured Photo:</p>
+                        <img id="foundCapturedImage" src="" style="max-width: 200px; border-radius: 8px; border: 2px solid #007bff;">
+                        <input type="hidden" name="captured_image" id="foundCapturedImageData">
+                    </div>
+                </div>
+            </div>
             <div class="form-text">
               <small class="text-muted">
                 <i class="bi bi-info-circle me-1"></i>
-                Please upload only images of the item itself. Do not include pictures of people for privacy reasons.
+                Please upload only images of the item itself. <strong>Images containing human faces will be automatically rejected</strong> for privacy reasons.
               </small>
+            </div>
+            <!-- Face Detection Warning -->
+            <div class="alert alert-warning mt-2 py-2" id="foundFaceWarning" style="display: none;">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <small>Please ensure your image shows only the item. Photos with people cannot be accepted.</small>
             </div>
           </div>
           
-         
           <!-- Terms and Conditions Section -->
           <div class="mb-3">
             <label class="form-label fw-semibold">Terms and Conditions</label>
@@ -552,9 +708,9 @@
               <p><strong>1. Image Guidelines</strong></p>
               <ul class="small">
                 <li>Upload only images of the actual item itself</li>
+                <li><strong>Images containing human faces will be automatically rejected</strong></li>
                 <li>Do not include pictures of people, faces, or personal identification</li>
                 <li>Ensure images are clear and focused on the item</li>
-                <li>Images containing people will be removed immediately</li>
               </ul>
 
               <p><strong>2. Data Privacy</strong></p>
@@ -604,10 +760,493 @@
   </div>
 </div>
 
-
-
 <script>
-// Enhanced form validation for terms agreement
+// Camera functionality for lost and found modals
+class CameraHandler {
+    constructor(modalType) {
+        this.modalType = modalType;
+        this.video = null;
+        this.canvas = null;
+        this.stream = null;
+        this.isCameraActive = false;
+        this.init();
+    }
+
+    init() {
+        this.video = document.getElementById(`${this.modalType}Video`);
+        this.canvas = document.getElementById(`${this.modalType}Canvas`);
+        this.bindEvents();
+    }
+
+    bindEvents() {
+        // Start camera
+        document.getElementById(`${this.modalType}StartCamera`).addEventListener('click', () => {
+            this.startCamera();
+        });
+
+        // Capture photo
+        document.getElementById(`${this.modalType}CapturePhoto`).addEventListener('click', () => {
+            this.capturePhoto();
+        });
+
+        // Retake photo
+        document.getElementById(`${this.modalType}RetakePhoto`).addEventListener('click', () => {
+            this.retakePhoto();
+        });
+
+        // Stop camera
+        document.getElementById(`${this.modalType}StopCamera`).addEventListener('click', () => {
+            this.stopCamera();
+        });
+
+        // Stop camera when modal is closed
+        const modal = document.getElementById(`${this.modalType}ItemModal`);
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', () => {
+                this.stopCamera();
+            });
+        }
+    }
+
+    async startCamera() {
+        try {
+            // Hide file input warning if visible
+            const faceWarning = document.getElementById(`${this.modalType}FaceWarning`);
+            if (faceWarning) faceWarning.style.display = 'none';
+
+            // Remove any existing error messages
+            const existingError = document.getElementById(`${this.modalType}CameraError`);
+            if (existingError) {
+                existingError.remove();
+            }
+
+            // Clear file input when starting camera
+            clearFileInput(this.modalType);
+
+            // Basic camera availability check
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                this.showCameraError(
+                    'Camera not supported', 
+                    'Your browser does not support camera access. Please try using Chrome, Firefox, or Safari.'
+                );
+                return;
+            }
+
+            // Show loading state
+            const startButton = document.getElementById(`${this.modalType}StartCamera`);
+            const originalText = startButton.innerHTML;
+            startButton.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Accessing Camera...';
+            startButton.disabled = true;
+
+            // Try different camera constraints
+            const constraints = {
+                video: {
+                    facingMode: 'environment', // Prefer rear camera
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            };
+
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.video.srcObject = this.stream;
+            this.isCameraActive = true;
+
+            // Wait for video to be ready
+            this.video.onloadedmetadata = () => {
+                // Show camera elements
+                document.getElementById(`${this.modalType}CameraPreview`).style.display = 'block';
+                document.getElementById(`${this.modalType}CapturePhoto`).style.display = 'inline-block';
+                document.getElementById(`${this.modalType}StopCamera`).style.display = 'inline-block';
+                document.getElementById(`${this.modalType}StartCamera`).style.display = 'none';
+
+                // Hide captured preview if exists
+                document.getElementById(`${this.modalType}CapturedPreview`).style.display = 'none';
+
+                // Reset button
+                startButton.innerHTML = originalText;
+                startButton.disabled = false;
+
+                console.log('Camera started successfully');
+            };
+
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            
+            // Reset button
+            const startButton = document.getElementById(`${this.modalType}StartCamera`);
+            startButton.innerHTML = '<i class="bi bi-camera-video me-1"></i>Start Camera';
+            startButton.disabled = false;
+            
+            this.handleCameraError(error);
+        }
+    }
+
+    capturePhoto() {
+        if (!this.isCameraActive) return;
+
+        const context = this.canvas.getContext('2d');
+        
+        // Set canvas dimensions to match video
+        this.canvas.width = this.video.videoWidth;
+        this.canvas.height = this.video.videoHeight;
+        
+        // Draw current video frame to canvas
+        context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+        
+        // Convert to data URL (JPEG format with quality 0.8)
+        const imageData = this.canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Display captured image
+        const capturedImage = document.getElementById(`${this.modalType}CapturedImage`);
+        capturedImage.src = imageData;
+        
+        // Store image data in hidden input
+        document.getElementById(`${this.modalType}CapturedImageData`).value = imageData;
+        
+        // Clear any existing file input
+        clearFileInput(this.modalType);
+        
+        // Show captured preview and retake button
+        document.getElementById(`${this.modalType}CapturedPreview`).style.display = 'block';
+        document.getElementById(`${this.modalType}RetakePhoto`).style.display = 'inline-block';
+        document.getElementById(`${this.modalType}CapturePhoto`).style.display = 'none';
+        
+        // Stop camera after capture
+        this.stopCamera();
+        
+        console.log('Photo captured successfully');
+    }
+
+    retakePhoto() {
+        // Clear captured image
+        document.getElementById(`${this.modalType}CapturedImage`).src = '';
+        document.getElementById(`${this.modalType}CapturedImageData`).value = '';
+        document.getElementById(`${this.modalType}CapturedPreview`).style.display = 'none';
+        document.getElementById(`${this.modalType}RetakePhoto`).style.display = 'none';
+        
+        // Clear file input as well when retaking
+        clearFileInput(this.modalType);
+        
+        // Restart camera
+        this.startCamera();
+    }
+
+    stopCamera() {
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+        
+        this.isCameraActive = false;
+        
+        // Reset UI
+        document.getElementById(`${this.modalType}CameraPreview`).style.display = 'none';
+        document.getElementById(`${this.modalType}StartCamera`).style.display = 'inline-block';
+        document.getElementById(`${this.modalType}CapturePhoto`).style.display = 'none';
+        document.getElementById(`${this.modalType}StopCamera`).style.display = 'none';
+        
+        console.log('Camera stopped');
+    }
+
+    handleCameraError(error) {
+        console.error('Camera error details:', error);
+        
+        let errorMessage = 'Unable to access camera. ';
+        let detailedMessage = '';
+        
+        if (error.name === 'NotAllowedError') {
+            errorMessage += 'Camera permission was denied.';
+            detailedMessage = 'Please allow camera access in your browser settings. ' +
+                             'Look for the camera icon in your address bar and click "Allow".';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage += 'No camera found on your device.';
+            detailedMessage = 'Please check if your device has a camera and it\'s not being used by another application.';
+        } else if (error.name === 'NotSupportedError') {
+            errorMessage += 'Camera not supported in your browser.';
+            detailedMessage = 'Please try using Chrome, Firefox, or Safari. ' +
+                             'Make sure you\'re accessing the site over HTTPS.';
+        } else if (error.name === 'NotReadableError') {
+            errorMessage += 'Camera is already in use.';
+            detailedMessage = 'Another application might be using your camera. ' +
+                             'Please close other camera applications and try again.';
+        } else if (error.name === 'OverconstrainedError') {
+            errorMessage += 'Camera configuration not supported.';
+            detailedMessage = 'Trying to use different camera settings. Please try again.';
+        } else {
+            errorMessage += 'Please try again or upload an image file instead.';
+            detailedMessage = 'Technical details: ' + error.message;
+        }
+        
+        this.showCameraError(errorMessage, detailedMessage);
+    }
+
+    showCameraError(message, detailedMessage = '') {
+        // Remove any existing error messages
+        const existingError = document.getElementById(`${this.modalType}CameraError`);
+        if (existingError) {
+            existingError.remove();
+        }
+        
+        // Create new error message
+        const errorDiv = document.createElement('div');
+        errorDiv.id = `${this.modalType}CameraError`;
+        errorDiv.className = 'alert alert-warning mt-2';
+        errorDiv.style.display = 'block';
+        
+        let errorHTML = `<i class="bi bi-exclamation-triangle me-2"></i><strong>${message}</strong>`;
+        if (detailedMessage) {
+            errorHTML += `<div class="mt-1 small">${detailedMessage}</div>`;
+        }
+        
+        errorHTML += `<div class="mt-2 small">
+            <strong>Tips:</strong>
+            <ul class="mb-1 mt-1">
+                <li>Make sure you're using HTTPS</li>
+                <li>Allow camera permissions when prompted</li>
+                <li>Try using a different browser</li>
+                <li>Restart your browser if issues persist</li>
+            </ul>
+        </div>`;
+        
+        errorDiv.innerHTML = errorHTML;
+        
+        // Insert after camera controls
+        const cameraSection = document.querySelector(`#${this.modalType}ItemModal .camera-section`);
+        if (cameraSection) {
+            cameraSection.appendChild(errorDiv);
+        }
+        
+        // Auto-hide after 8 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.style.opacity = '0';
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.remove();
+                    }
+                }, 500);
+            }
+        }, 8000);
+    }
+}
+
+// Utility functions for file and camera management
+function clearFileInput(modalType) {
+    const fileInput = document.getElementById(`${modalType}ItemImage`);
+    if (fileInput) {
+        fileInput.value = ''; // Clear the file selection
+        console.log(`Cleared file input for ${modalType} modal`);
+    }
+}
+
+function clearCamera(modalType) {
+    // Clear captured image data
+    document.getElementById(`${modalType}CapturedImageData`).value = '';
+    document.getElementById(`${modalType}CapturedPreview`).style.display = 'none';
+    document.getElementById(`${modalType}RetakePhoto`).style.display = 'none';
+    
+    // Make sure capture button is visible if needed
+    const captureBtn = document.getElementById(`${modalType}CapturePhoto`);
+if (captureBtn) {
+    captureBtn.style.display = 'none';   // hide it, not show it
+}
+
+    
+    console.log(`Cleared camera data for ${modalType} modal`);
+}
+
+// Toggle camera section when file input is focused/blurred
+function setupCameraSectionToggle() {
+    const lostImageInput = document.getElementById('lostItemImage');
+    const foundImageInput = document.getElementById('foundItemImage');
+    const lostCameraSection = document.getElementById('lostCameraSection');
+    const foundCameraSection = document.getElementById('foundCameraSection');
+
+    // Lost item modal
+    if (lostImageInput && lostCameraSection) {
+        lostImageInput.addEventListener('focus', function() {
+            lostCameraSection.style.display = 'block';
+        });
+        
+        lostImageInput.addEventListener('blur', function() {
+            // Only hide if no camera is active and no photo is captured
+            const lostCameraHandler = window.lostCameraHandler;
+            if (!lostCameraHandler || !lostCameraHandler.isCameraActive) {
+                const hasCapturedImage = document.getElementById('lostCapturedImageData').value;
+                if (!hasCapturedImage) {
+                    lostCameraSection.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Found item modal
+    if (foundImageInput && foundCameraSection) {
+        foundImageInput.addEventListener('focus', function() {
+            foundCameraSection.style.display = 'block';
+        });
+        
+        foundImageInput.addEventListener('blur', function() {
+            // Only hide if no camera is active and no photo is captured
+            const foundCameraHandler = window.foundCameraHandler;
+            if (!foundCameraHandler || !foundCameraHandler.isCameraActive) {
+                const hasCapturedImage = document.getElementById('foundCapturedImageData').value;
+                if (!hasCapturedImage) {
+                    foundCameraSection.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Also hide camera sections when modals close
+    const lostModal = document.getElementById('lostItemModal');
+    const foundModal = document.getElementById('foundItemModal');
+
+    if (lostModal) {
+        lostModal.addEventListener('hidden.bs.modal', function() {
+            if (lostCameraSection) lostCameraSection.style.display = 'none';
+        });
+    }
+
+    if (foundModal) {
+        foundModal.addEventListener('hidden.bs.modal', function() {
+            if (foundCameraSection) foundCameraSection.style.display = 'none';
+        });
+    }
+}
+
+// Initialize camera handlers when modals are shown
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup camera section toggle first
+    setupCameraSectionToggle();
+    
+    // Initialize when lost modal is shown
+    const lostModal = document.getElementById('lostItemModal');
+    if (lostModal) {
+        lostModal.addEventListener('show.bs.modal', function() {
+            setTimeout(() => {
+                window.lostCameraHandler = new CameraHandler('lost');
+            }, 100);
+        });
+    }
+    
+    // Initialize when found modal is shown
+    const foundModal = document.getElementById('foundItemModal');
+    if (foundModal) {
+        foundModal.addEventListener('show.bs.modal', function() {
+            setTimeout(() => {
+                window.foundCameraHandler = new CameraHandler('found');
+            }, 100);
+        });
+    }
+    
+    // Handle form submission to convert captured image to file
+    document.getElementById('lostItemForm')?.addEventListener('submit', function(e) {
+        // For lost items, image is optional - always allow submission
+        handleCapturedImageSubmission(e, 'lost');
+    });
+
+    document.getElementById('foundItemForm')?.addEventListener('submit', function(e) {
+        // For found items, image is required
+        if (!handleCapturedImageSubmission(e, 'found')) {
+            e.preventDefault();
+        }
+    });
+    
+    // Clear camera when file is selected (bidirectional clearing)
+    document.getElementById('lostItemImage')?.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            clearCamera('lost');
+        }
+    });
+    
+    document.getElementById('foundItemImage')?.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            clearCamera('found');
+        }
+    });
+});
+
+// Handle captured image conversion and submission
+function handleCapturedImageSubmission(event, modalType) {
+    const capturedImageData = document.getElementById(`${modalType}CapturedImageData`).value;
+    const fileInput = document.getElementById(`${modalType}ItemImage`);
+    
+    console.log('Submission check:', {
+        modalType,
+        hasCapturedImage: !!capturedImageData,
+        hasFileInput: !!fileInput,
+        fileCount: fileInput?.files.length || 0
+    });
+    
+    // If user captured a photo but no file is selected
+    if (capturedImageData && (!fileInput || fileInput.files.length === 0)) {
+        console.log('Converting captured photo to file...');
+        
+        // Convert data URL to Blob and create File object
+        const blob = dataURLtoBlob(capturedImageData);
+        const file = new File([blob], `captured_photo_${Date.now()}.jpg`, { 
+            type: 'image/jpeg',
+            lastModified: new Date().getTime()
+        });
+        
+        // Create a DataTransfer object to set the file
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInput.files = dataTransfer.files;
+        
+        console.log('Captured photo converted to file for submission:', file.name);
+    }
+    
+    // For FOUND items only, ensure there's either a file or captured image
+    if (modalType === 'found') {
+        const hasImage = fileInput.files.length > 0 || capturedImageData;
+        console.log('Found item image check:', { hasImage, fileCount: fileInput.files.length, hasCapturedData: !!capturedImageData });
+        
+        if (!hasImage) {
+            // Show user-friendly error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger alert-dismissible fade show mt-3';
+            errorDiv.innerHTML = `
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Image Required:</strong> For found items, please either upload an image file or take a photo with the camera to help identify the item.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert the error message at the top of the modal body
+            const modalBody = document.querySelector(`#${modalType}ItemModal .modal-body`);
+            if (modalBody) {
+                modalBody.insertBefore(errorDiv, modalBody.firstChild);
+                
+                // Scroll to the error message
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            return false;
+        }
+    }
+    
+    // For LOST items, image is optional, so no validation needed
+    return true;
+}
+
+// Utility function to convert data URL to Blob
+function dataURLtoBlob(dataURL) {
+    const parts = dataURL.split(';base64,');
+    const contentType = parts[0].split(':')[1];
+    const raw = window.atob(parts[1]);
+    const rawLength = raw.length;
+    const uInt8Array = new Uint8Array(rawLength);
+    
+    for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+    }
+    
+    return new Blob([uInt8Array], { type: contentType });
+}
+
+// Enhanced form validation for terms agreement and face detection warnings
 document.addEventListener('DOMContentLoaded', function() {
   // Handle terms agreement validation
   const lostTermsCheckbox = document.getElementById('lostTermsAgreed');
@@ -630,9 +1269,68 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize state
     foundSubmitBtn.disabled = !foundTermsCheckbox.checked;
   }
-});
-  
 
+  // Show face detection warnings when file input is focused
+  const lostImageInput = document.getElementById('lostItemImage');
+  const foundImageInput = document.getElementById('foundItemImage');
+  const lostFaceWarning = document.getElementById('lostFaceWarning');
+  const foundFaceWarning = document.getElementById('foundFaceWarning');
+
+  if (lostImageInput && lostFaceWarning) {
+    lostImageInput.addEventListener('focus', function() {
+      lostFaceWarning.style.display = 'block';
+    });
+    lostImageInput.addEventListener('blur', function() {
+      lostFaceWarning.style.display = 'none';
+    });
+  }
+
+  if (foundImageInput && foundFaceWarning) {
+    foundImageInput.addEventListener('focus', function() {
+      foundFaceWarning.style.display = 'block';
+    });
+    foundImageInput.addEventListener('blur', function() {
+      foundFaceWarning.style.display = 'none';
+    });
+  }
+
+  // Clear flash messages when modal is closed
+  const lostModal = document.getElementById('lostItemModal');
+  const foundModal = document.getElementById('foundItemModal');
+
+  if (lostModal) {
+    lostModal.addEventListener('hidden.bs.modal', function() {
+      const alerts = this.querySelectorAll('.alert');
+      alerts.forEach(alert => {
+        alert.remove();
+      });
+    });
+  }
+
+  if (foundModal) {
+    foundModal.addEventListener('hidden.bs.modal', function() {
+      const alerts = this.querySelectorAll('.alert');
+      alerts.forEach(alert => {
+        alert.remove();
+      });
+    });
+  }
+
+  // Add form repopulation when modals open
+  if (lostModal) {
+    lostModal.addEventListener('show.bs.modal', function() {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(repopulateLostForm, 100);
+    });
+  }
+
+  if (foundModal) {
+    foundModal.addEventListener('show.bs.modal', function() {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(repopulateFoundForm, 100);
+    });
+  }
+});
 
 // Function to redirect to item pages - MUST BE GLOBAL
 function redirectToItemPage(itemType, itemId) {
@@ -643,14 +1341,77 @@ function redirectToItemPage(itemType, itemId) {
   }
 }
 
+// Function to repopulate lost form from sessionStorage
+function repopulateLostForm() {
+  const lostFormData = sessionStorage.getItem('lostFormData');
+  if (lostFormData) {
+    try {
+      const data = JSON.parse(lostFormData);
+      
+      // Fill form fields
+      const titleInput = document.querySelector('#lostItemModal input[name="title"]');
+      const categorySelect = document.querySelector('#lostItemModal select[name="category"]');
+      const descriptionTextarea = document.querySelector('#lostItemModal textarea[name="description"]');
+      const locationInput = document.querySelector('#lostItemModal input[name="location_reported"]');
+      const rewardInput = document.querySelector('#lostItemModal input[name="reward"]');
+      
+      if (titleInput) titleInput.value = data.title || '';
+      if (categorySelect) categorySelect.value = data.category || '';
+      if (descriptionTextarea) descriptionTextarea.value = data.description || '';
+      if (locationInput) locationInput.value = data.location_reported || '';
+      if (rewardInput) rewardInput.value = data.reward || '';
+      
+      console.log('✅ Lost form repopulated with stored data');
+      
+      // Clear the stored data after use
+      sessionStorage.removeItem('lostFormData');
+    } catch (e) {
+      console.error('Error repopulating lost form:', e);
+    }
+  }
+}
+
+// Function to repopulate found form from sessionStorage
+function repopulateFoundForm() {
+  const foundFormData = sessionStorage.getItem('foundFormData');
+  if (foundFormData) {
+    try {
+      const data = JSON.parse(foundFormData);
+      
+      // Fill form fields
+      const titleInput = document.querySelector('#foundItemModal input[name="title"]');
+      const categorySelect = document.querySelector('#foundItemModal select[name="category"]');
+      const descriptionTextarea = document.querySelector('#foundItemModal textarea[name="description"]');
+      const locationInput = document.querySelector('#foundItemModal input[name="location_reported"]');
+      
+      if (titleInput) titleInput.value = data.title || '';
+      if (categorySelect) categorySelect.value = data.category || '';
+      if (descriptionTextarea) descriptionTextarea.value = data.description || '';
+      if (locationInput) locationInput.value = data.location_reported || '';
+      
+      console.log('✅ Found form repopulated with stored data');
+      
+      // Clear the stored data after use
+      sessionStorage.removeItem('foundFormData');
+    } catch (e) {
+      console.error('Error repopulating found form:', e);
+    }
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
+  // Auto-open modals based on URL hash and repopulate form data
   if (window.location.hash === "#lostItemModal") {
     const modal = new bootstrap.Modal(document.getElementById('lostItemModal'));
     modal.show();
+    // Repopulate form data after modal is shown
+    setTimeout(repopulateLostForm, 500);
   }
   if (window.location.hash === "#foundItemModal") {
     const modal = new bootstrap.Modal(document.getElementById('foundItemModal'));
     modal.show();
+    // Repopulate form data after modal is shown
+    setTimeout(repopulateFoundForm, 500);
   }
   if (window.location.hash === "#feedbackModal") {
     const modal = new bootstrap.Modal(document.getElementById('feedbackModal'));
@@ -823,7 +1584,6 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
-
 <style>
 .rating-stars {
   display: flex;
@@ -1276,6 +2036,78 @@ document.addEventListener("DOMContentLoaded", function () {
 #modalItemType {
   font-size: 14px !important;
   padding: 8px 12px;
+}
+
+/* Camera Section Styles */
+.camera-section {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    background: #f8f9fa;
+}
+
+.camera-preview video {
+    background: #000;
+    border-radius: 8px;
+}
+
+.camera-controls {
+    margin: 10px 0;
+}
+
+.captured-preview img {
+    max-height: 200px;
+    object-fit: cover;
+}
+
+/* Required field indicator */
+.text-danger {
+    color: #dc3545 !important;
+    font-weight: bold;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .camera-preview video {
+        max-height: 250px;
+    }
+    
+    .camera-controls .btn {
+        margin-bottom: 5px;
+    }
+}
+
+/* Camera Loading States */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Camera Error Styles */
+.camera-error {
+    border-left: 4px solid #ffc107;
+    background: #fffbf0;
+}
+
+.camera-guidance {
+    background: #e7f3ff;
+    border-radius: 6px;
+    padding: 8px 12px;
+    border-left: 4px solid #007bff;
+    font-size: 0.875rem;
+}
+
+/* Smooth transitions */
+.camera-preview, .captured-preview, .alert {
+    transition: all 0.3s ease;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .camera-guidance {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
 }
 </style>
 

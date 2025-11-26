@@ -62,6 +62,7 @@
          data-title="{{ item.title|lower }}" 
          data-description="{{ item.description|lower }}" 
          data-category="{{ item.category|lower }}" 
+         data-location="{{ item.location_reported|lower }}"
          data-status="{{ item.status|lower }}"
          data-bs-toggle="modal" 
          data-bs-target="#itemDetailModal"
@@ -69,42 +70,65 @@
          data-item-title="{{ item.title }}"
          data-item-description="{{ item.description }}"
          data-item-category="{{ item.category }}"
+         data-item-location="{{ item.location_reported }}"
          data-item-status="{{ item.status }}"
          data-item-reward="{{ item.reward or 'No Reward' }}"  
          data-item-date="{{ item.date_reported.strftime('%B %d, %Y at %I:%M %p') }}"
-         data-item-image="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}"
+         data-item-image="{{ url_for('uploaded_item_file', filename=item.image_path.split('/')[-1]) if item.image_path else url_for('static', filename='images/placeholder.png') }}"
          data-reporter-name="{{ item.first_name }} {{ item.last_name }}"
          data-reporter-picture="{{ url_for('uploaded_file', filename=item.profile_picture) if item.profile_picture else '' }}"
          data-reporter-initials="{{ item.first_name[0]|upper }}{{ item.last_name[0]|upper }}"
          style="cursor: pointer;">
       <div class="card shadow-sm h-100 lost-item-card">
-        <img src="{{ '/' + item.image_path if item.image_path else url_for('static', filename='images/placeholder.png') }}" 
+        <img src="{{ url_for('uploaded_item_file', filename=item.image_path.split('/')[-1]) if item.image_path else url_for('static', filename='images/placeholder.png') }}" 
              class="card-img-top" alt="Lost Item Image" 
              style="height: 200px; object-fit: cover;">
 
         <div class="card-body d-flex flex-column">
           <h5 class="card-title">{{ item.title }}</h5>
-          <p class="card-text small text-muted">
+          
+         
+          
+         
+          <p class="card-text flex-grow-1">{{ item.description|truncate(100) }}</p>
+
+           <!-- Location Display -->
+          <div class="mb-2">
+            <i class="fas fa-map-marker-alt text-muted me-1 small"></i>
+            <small class="text-muted">{{ item.location_reported }}</small>
+          </div>
+           <!-- Date Display with Calendar Icon -->
+          <p class="card-text small text-muted mb-2">
+            <i class="fas fa-calendar text-muted me-1"></i>
             Reported on: {{ item.date_reported.strftime('%b %d, %Y') }}
           </p>
-          <p class="card-text flex-grow-1">{{ item.description }}</p>
+          
 
-          <!-- CHANGED: Show "No Reward" when empty -->
+          <!-- Reward Display -->
           {% if item.reward and item.reward.strip() and item.reward != 'No Reward' %}
           <div class="mb-2">
-            <span class="badge bg-success">Reward: {{ item.reward }}</span>
+            <span class="badge bg-success">
+              <i class="fas fa-gift me-1"></i>Reward: {{ item.reward }}
+            </span>
           </div>
           {% else %}
           <div class="mb-2">
-            <span class="badge bg-secondary"> No Reward</span>
+            <span class="badge bg-secondary">
+              <i class="fas fa-gift me-1"></i>No Reward
+            </span>
           </div>
           {% endif %}
 
+          <!-- Status Badge -->
           <div>
             {% if item.status == "claimed" %}
-              <span class="badge bg-success">{{ item.status }}</span>
+              <span class="badge bg-success">
+                <i class="fas fa-check-circle me-1"></i>{{ item.status }}
+              </span>
             {% else %}
-              <span class="badge bg-warning text-dark">{{ item.status }}</span>
+              <span class="badge bg-warning text-dark">
+                <i class="fas fa-search me-1"></i>{{ item.status }}
+              </span>
             {% endif %}
           </div>
         </div>
@@ -116,7 +140,9 @@
                    alt="Profile Picture" 
                    style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
             {% else %}
-              {{ item.first_name[0]|upper }}{{ item.last_name[0]|upper }}
+              <div style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                {{ item.first_name[0]|upper }}{{ item.last_name[0]|upper }}
+              </div>
             {% endif %}
           </div>
           <small class="text-muted">
@@ -154,12 +180,11 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="itemDetailModalLabel">Item Details</h5>
-      
       </div>
       <div class="modal-body">
         <div class="row">
           <div class="col-md-6 mb-3">
-            <img id="modalItemImage" src="static/images/placeholder.png" alt="Lost Item Image" 
+            <img id="modalItemImage" src="{{ url_for('static', filename='images/placeholder.png') }}" alt="Lost Item Image" 
                  class="img-fluid rounded shadow-sm w-100" 
                  style="max-height: 400px; object-fit: contain; background-color: #f8f9fa;">
           </div>
@@ -171,8 +196,17 @@
             </div>
             
             <div class="mb-3">
-              <h6 class="text-muted mb-1">Category</h6>
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-tag me-1"></i>Category
+              </h6>
               <p id="modalItemCategory" class="mb-0"></p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-map-marker-alt me-1"></i>Location Lost
+              </h6>
+              <p id="modalItemLocation" class="mb-0"></p>
             </div>
             
             <div class="mb-3">
@@ -180,14 +214,17 @@
               <p id="modalItemDescription" class="mb-0"></p>
             </div>
 
-            
             <div class="mb-3">
-              <h6 class="text-muted mb-1"> Reward Offered</h6>
-              <p id="modalItemReward" class="mb-0 ">No Reward</p>
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-gift me-1"></i>Reward Offered
+              </h6>
+              <p id="modalItemReward" class="mb-0">No Reward</p>
             </div>
             
             <div class="mb-3">
-              <h6 class="text-muted mb-1">Date Reported</h6>
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-calendar me-1"></i>Date Reported
+              </h6>
               <p id="modalItemDate" class="mb-0"></p>
             </div>
             
@@ -235,9 +272,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const title = item.dataset.title;
       const description = item.dataset.description;
       const category = item.dataset.category;
+      const location = item.dataset.location;
       const status = item.dataset.status;
 
-      const matchesSearch = !searchTerm || title.includes(searchTerm) || description.includes(searchTerm);
+      const matchesSearch = !searchTerm || 
+                           title.includes(searchTerm) || 
+                           description.includes(searchTerm) ||
+                           location.includes(searchTerm);
       const matchesCategory = !selectedCategory || category === selectedCategory;
       const matchesStatus = !selectedStatus || status === selectedStatus;
 
@@ -258,11 +299,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const itemDetailModal = document.getElementById('itemDetailModal');
   
-  // CORRECTED: Fixed parameter order - reward comes before date
-  function populateModal(title, description, category, status, reward, date, image, reporterName, reporterPicture, reporterInitials) {
+  // CORRECTED: Updated parameter order to include location
+  function populateModal(title, description, category, location, status, reward, date, image, reporterName, reporterPicture, reporterInitials) {
     document.getElementById('modalItemTitle').textContent = title;
     document.getElementById('modalItemDescription').textContent = description;
     document.getElementById('modalItemCategory').textContent = category;
+    document.getElementById('modalItemLocation').textContent = location;
     document.getElementById('modalItemDate').textContent = date;
     document.getElementById('modalItemImage').src = image;
     document.getElementById('modalReporterName').textContent = reporterName;
@@ -272,11 +314,11 @@ document.addEventListener('DOMContentLoaded', function() {
     statusBadge.textContent = status;
     statusBadge.className = status === 'claimed' ? 'badge bg-success' : 'badge bg-warning text-dark';
 
-    // Set reward - CORRECTED: Proper handling for "0.0" and empty values
+    // Set reward
     const rewardElement = document.getElementById('modalItemReward');
     if (reward && reward.trim() !== '' && reward !== 'No Reward' && reward !== '0.0') {
       rewardElement.textContent = reward;
-      rewardElement.className = 'mb-0 ';
+      rewardElement.className = 'mb-0 text-success fw-semibold';
     } else {
       rewardElement.textContent = 'No Reward';
       rewardElement.className = 'mb-0 text-muted';
@@ -291,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Modal show event for manual clicks - CORRECTED: Proper parameter order
+  // Modal show event for manual clicks - UPDATED with location
   itemDetailModal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     
@@ -299,19 +341,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const itemTitle = button.dataset.itemTitle;
     const itemDescription = button.dataset.itemDescription;
     const itemCategory = button.dataset.itemCategory;
+    const itemLocation = button.dataset.itemLocation;
     const itemStatus = button.dataset.itemStatus;
-    const itemReward = button.dataset.itemReward; // Reward comes before date
+    const itemReward = button.dataset.itemReward;
     const itemDate = button.dataset.itemDate;
     const itemImage = button.dataset.itemImage;
     const reporterName = button.dataset.reporterName;
     const reporterPicture = button.dataset.reporterPicture;
     const reporterInitials = button.dataset.reporterInitials;
     
-    // CORRECTED: Proper parameter order - reward before date
-    populateModal(itemTitle, itemDescription, itemCategory, itemStatus, itemReward, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
+    // UPDATED: Include location in the call
+    populateModal(itemTitle, itemDescription, itemCategory, itemLocation, itemStatus, itemReward, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
   });
 
-  // Check for show_item in URL and auto-open modal - CORRECTED: Proper parameter order
+  // Check for show_item in URL and auto-open modal - UPDATED with location
   const urlParams = new URLSearchParams(window.location.search);
   const itemId = urlParams.get('show_item') || showItemId;
   
@@ -321,16 +364,17 @@ document.addEventListener('DOMContentLoaded', function() {
       const itemTitle = itemCard.dataset.itemTitle;
       const itemDescription = itemCard.dataset.itemDescription;
       const itemCategory = itemCard.dataset.itemCategory;
+      const itemLocation = itemCard.dataset.itemLocation;
       const itemStatus = itemCard.dataset.itemStatus;
-      const itemReward = itemCard.dataset.itemReward; // Reward comes before date
+      const itemReward = itemCard.dataset.itemReward;
       const itemDate = itemCard.dataset.itemDate;
       const itemImage = itemCard.dataset.itemImage;
       const reporterName = itemCard.dataset.reporterName;
       const reporterPicture = itemCard.dataset.reporterPicture;
       const reporterInitials = itemCard.dataset.reporterInitials;
       
-      // CORRECTED: Proper parameter order - reward before date
-      populateModal(itemTitle, itemDescription, itemCategory, itemStatus, itemReward, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
+      // UPDATED: Include location in the call
+      populateModal(itemTitle, itemDescription, itemCategory, itemLocation, itemStatus, itemReward, itemDate, itemImage, reporterName, reporterPicture, reporterInitials);
       
       const modal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
       modal.show();

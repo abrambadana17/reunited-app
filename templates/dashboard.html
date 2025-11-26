@@ -175,48 +175,7 @@
   </div>
   {% endif %}
 
-    <!-- Recent Activity -->
-  {% if recent_items %}
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="stats-card">
-        <h4 class="mb-4">
-          <i class="bi bi-clock-history me-2"></i>Recent Activity
-        </h4>
-        <div class="row g-3">
-          {% for item in recent_items %}
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm clickable-item" 
-                 data-item-id="{{ item.id }}"
-                 data-item-type="{{ item.type }}"
-                 style="cursor: pointer;"
-                 onclick="redirectToItemPage('{{ item.type }}', '{{ item.id }}')">
-              {% if item.image_path %}
-              <img src="{{ url_for('static', filename='uploads/items/' + item.image_path.split('/')[-1]) }}" 
-                   class="card-img-top" style="height: 150px; object-fit: cover;">
-              {% else %}
-              <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
-                   style="height: 150px;">
-                <i class="bi bi-image fs-1 text-muted"></i>
-              </div>
-              {% endif %}
-              <div class="card-body">
-                <h6 class="card-title mb-2">{{ item.title }}</h6>
-                <div class="d-flex justify-content-between align-items-center">
-                  <span class="badge {% if item.type == 'lost' %}bg-info{% else %}bg-success{% endif %}">
-                    {{ item.type.title() }}
-                  </span>
-                  <small class="text-muted">{{ item.created_at.strftime('%b %d') }}</small>
-                </div>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
+    
 </div>
 
 <!-- Feedback Detail Modal -->

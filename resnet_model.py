@@ -95,33 +95,41 @@ def enhanced_text_similarity(details1, details2):
 def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mail, threshold=0.4):
     """
     Compare new item against opposite type (lost vs found).
-    Uses enhanced matching with:
-    - 60% image similarity (visual matching)
-    - 40% text similarity (description + category + location matching)
-    
-    If match found:
-      - Insert into ai_matches
-      - Insert notifications for both users
-      - Send email alerts
     """
     opposite_type = 'found' if type_ == 'lost' else 'lost'
 
-    # ✅ Fetch opposite items with image features + user details
-    # ✅ EXCLUDE items that are already claimed/returned/resolved
-    cursor.execute('''
-        SELECT i.id, i.user_id, i.title, i.description, i.category, i.location_reported,
-               img.ai_features,
-               CONCAT(u.first_name, ' ', u.last_name) AS fullname,
-               u.email, u.phone
-        FROM items i
-        JOIN images img ON i.id = img.item_id
-        JOIN users u ON i.user_id = u.id
-        WHERE i.type = %s 
-        AND i.status NOT IN ('claimed', 'returned', 'resolved', 'Claimed', 'Returned', 'Resolved')
-    ''', (opposite_type,))
+    # ✅ FIXED: Proper query for opposite items
+    if opposite_type == 'lost':
+        # When matching against lost items, only include paid lost items
+        cursor.execute('''
+            SELECT i.id, i.user_id, i.title, i.description, i.category, i.location_reported,
+                   img.ai_features,
+                   CONCAT(u.first_name, ' ', u.last_name) AS fullname,
+                   u.email, u.phone
+            FROM items i
+            JOIN images img ON i.id = img.item_id
+            JOIN users u ON i.user_id = u.id
+            WHERE i.type = 'lost'
+            AND i.status NOT IN ('claimed', 'returned', 'resolved', 'Claimed', 'Returned', 'Resolved')
+            AND i.payment_status = 'paid'  -- Only paid lost items
+        ''')
+    else:
+        # For found items, no payment restriction
+        cursor.execute('''
+            SELECT i.id, i.user_id, i.title, i.description, i.category, i.location_reported,
+                   img.ai_features,
+                   CONCAT(u.first_name, ' ', u.last_name) AS fullname,
+                   u.email, u.phone
+            FROM items i
+            JOIN images img ON i.id = img.item_id
+            JOIN users u ON i.user_id = u.id
+            WHERE i.type = 'found'
+            AND i.status NOT IN ('claimed', 'returned', 'resolved', 'Claimed', 'Returned', 'Resolved')
+        ''')
+
     others = cursor.fetchall()
 
-    print(f"🔍 Comparing new {type_} item against {len(others)} active {opposite_type} items")
+    print(f"🔍 Comparing new {type_} item {new_item_id} against {len(others)} active {opposite_type} items")
 
     for other in others:
         try:
@@ -143,25 +151,25 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
             # ---- Combined score ----
             final_score = (0.6 * image_score) + (0.4 * text_score)
 
-            # Debug logging (optional - comment out in production)
-            print(f"Comparing items: {new_details['title']} vs {other['title']}")
-            print(f"  Image score: {image_score:.2f}, Text score: {text_score:.2f}, Final: {final_score:.2f}")
+            print(f"Comparing: {new_details['title']} (ID:{new_item_id}) vs {other['title']} (ID:{other['id']})")
+            print(f"  Image: {image_score:.2f}, Text: {text_score:.2f}, Final: {final_score:.2f}")
 
             if final_score >= threshold:
                 lost_id = new_item_id if type_ == 'lost' else other['id']
                 found_id = other['id'] if type_ == 'lost' else new_item_id
 
-                # Check if match already exists to avoid duplicates
+                # ✅ IMPROVED: Better duplicate check
                 cursor.execute('''
                     SELECT id FROM ai_matches 
                     WHERE (lost_item_id = %s AND found_item_id = %s)
                     OR (lost_item_id = %s AND found_item_id = %s)
-                ''', (lost_id, found_id, found_id, lost_id))
+                    OR (lost_item_id = %s AND found_item_id = %s)
+                ''', (lost_id, found_id, found_id, lost_id, new_item_id, other['id']))
                 
                 existing_match = cursor.fetchone()
                 
                 if existing_match:
-                    print(f"⚠️ Match already exists between items {lost_id} and {found_id}, skipping...")
+                    print(f"⚠️ Match already exists between items {lost_id} and {found_id} (Match ID: {existing_match['id']}), skipping...")
                     continue
 
                 # Insert into ai_matches
@@ -250,8 +258,10 @@ Reunited Team
 
                 send_email(mail, subject, [lost_user['email'], found_user['email']], body)
                 
-                print(f"✅ Match created! Score: {final_score:.2f}, Match ID: {match_id}")
+                print(f"✅ Match created! Score: {final_score:.2f}, Match ID: {match_id}, Items: {lost_id}↔{found_id}")
 
         except Exception as e:
             print(f"❌ Error in auto_match for item {other['id']}: {e}")
+            import traceback
+            traceback.print_exc()
             continue

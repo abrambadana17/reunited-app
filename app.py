@@ -17,6 +17,10 @@ from PIL import Image
 import random
 import string
 from flask_mail import Message
+import requests
+import base64
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = '071322'  # Change this to a random secret key
@@ -38,6 +42,10 @@ app.config['MAIL_DEFAULT_SENDER'] = (
     os.getenv('MAIL_DEFAULT_NAME', 'Reunited Team'),
     os.getenv('MAIL_USERNAME', 'reunited.uc@gmail.com')
 )
+
+# PayMongo Configuration
+PAYMONGO_SECRET_KEY = os.getenv('PAYMONGO_SECRET_KEY', 'sk_test_F8aYiQnpZPinT5tsUfKp7kVu')
+PAYMONGO_PUBLIC_KEY = os.getenv('PAYMONGO_PUBLIC_KEY', 'pk_test_ksEpp6fwaQVwZEqAFWqSk7Jh')
 
 mail = Mail(app)
 
@@ -214,7 +222,7 @@ def dashboard():
     # Get recent activity (last 6 items posted by user) with ALL necessary data
     cursor.execute("""SELECT 
         i.id, i.title, i.type, i.category, i.description, i.location_reported, 
-        i.status, i.created_at, i.date_reported,
+        i.status, i.created_at, i.date_reported, i.payment_status,
         img.file_path as image_path,
         u.first_name, u.last_name, u.profile_picture
     FROM items i 
@@ -902,8 +910,8 @@ def lost():
             session['lost_form_data'] = form_data
             return redirect(url_for('dashboard') + '#lostItemModal')
 
-        # insert item
-        cursor.execute('''INSERT INTO items (user_id, title, description, category, type, date_reported, location_reported, reward, status) VALUES (%s, %s, %s, %s, 'lost', %s, %s, %s, %s)''', (session['user_id'], title, description, category, date_reported, location, reward, "Not Yet Found"))
+        # insert item with payment_status = 'pending'
+        cursor.execute('''INSERT INTO items (user_id, title, description, category, type, date_reported, location_reported, reward, status, payment_status) VALUES (%s, %s, %s, %s, 'lost', %s, %s, %s, %s, 'pending')''', (session['user_id'], title, description, category, date_reported, location, reward, "Not Yet Found"))
 
         item_id = cursor.lastrowid
         mysql.connection.commit()
@@ -988,24 +996,14 @@ def lost():
                     cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', (item_id, filepath, str(features.tolist())))
                     mysql.connection.commit()
 
-        # prepare details for text matching
-        new_details = {
-            "title": title,
-            "description": description,
-            "category": category,
-            "location": location
-        }
-
-        # auto match
-        if features is not None:
-            auto_match(item_id, 'lost', features, new_details, cursor, mysql, mail)
-
-        flash('Lost item reported successfully!', 'success')
+      
+        
+        flash('Lost item submitted successfully! Please complete payment to make it visible.', 'success')
         cursor.close()
-        return redirect(url_for('lost'))
+        return redirect(url_for('posted'))
 
-    # GET → show items with reporter info
-    cursor.execute("""SELECT i.*, img.file_path AS image_path, u.first_name, u.last_name, u.profile_picture FROM items i LEFT JOIN images img ON i.id = img.item_id LEFT JOIN users u ON i.user_id = u.id WHERE i.type='lost' ORDER BY i.created_at DESC""")
+    # GET → show items with reporter info (only paid items)
+    cursor.execute("""SELECT i.*, img.file_path AS image_path, u.first_name, u.last_name, u.profile_picture FROM items i LEFT JOIN images img ON i.id = img.item_id LEFT JOIN users u ON i.user_id = u.id WHERE i.type='lost' AND i.payment_status = 'paid' ORDER BY i.created_at DESC""")
     lost_items = cursor.fetchall()
     
     # Get the item_id from URL parameter if present
@@ -1228,6 +1226,7 @@ def get_item(item_id):
                 'location_reported': item['location_reported'],
                 'reward': item['reward'],
                 'status': item['status'],
+                'payment_status': item.get('payment_status', 'pending'),
                 'date_reported': item['date_reported'].strftime('%Y-%m-%d') if item['date_reported'] else None,
                 'created_at': item['created_at'].strftime('%Y-%m-%d %H:%M:%S') if item['created_at'] else None
             }
@@ -1311,7 +1310,310 @@ def update_item(item_id):
         
     except Exception as e:
         return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+
+
+
+
+
+
+# ========== FIXED PAYMONGO PAYMENT ROUTES ==========
+
+@app.route('/api/initiate-payment/<int:item_id>', methods=['POST'])
+def initiate_payment(item_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'errors': ['Not authenticated']}), 401
     
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Verify item belongs to user and payment is pending
+        cursor.execute("SELECT id, title, user_id, payment_status FROM items WHERE id = %s AND user_id = %s", 
+                      (item_id, session['user_id']))
+        item = cursor.fetchone()
+        cursor.close()
+        
+        if not item:
+            return jsonify({'success': False, 'errors': ['Item not found or not authorized']}), 404
+        
+        if item['payment_status'] == 'paid':
+            return jsonify({'success': False, 'errors': ['Payment already completed']}), 400
+        
+        # Create PayMongo Checkout Session
+        auth_string = base64.b64encode(f"{PAYMONGO_SECRET_KEY}:".encode()).decode()
+        headers = {
+            'Authorization': f'Basic {auth_string}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        
+        # Construct success and cancel URLs
+        base_url = request.host_url.rstrip('/')
+        success_url = f"{base_url}/payment-success?item_id={item_id}"
+        cancel_url = f"{base_url}/posted"
+        
+        print(f"🔐 Creating checkout session for item {item_id}")
+        print(f"📍 Base URL: {base_url}")
+        print(f"✅ Success URL: {success_url}")
+        print(f"❌ Cancel URL: {cancel_url}")
+        
+        checkout_data = {
+            "data": {
+                "attributes": {
+                    "line_items": [
+                        {
+                            "currency": "PHP",
+                            "amount": 2000,  # 20 PHP in centavos
+                            "name": f"Lost Item Posting: {item['title'][:50]}",
+                            "quantity": 1
+                        }
+                    ],
+                    "payment_method_types": ["card", "gcash", "paymaya"],
+                    "success_url": success_url,
+                    "cancel_url": cancel_url,
+                    "description": f"Payment for posting lost item: {item['title'][:100]}",
+                    "metadata": {
+                        "item_id": str(item_id),
+                        "user_id": str(session['user_id'])
+                    }
+                }
+            }
+        }
+        
+        print(f"📦 Checkout data: {json.dumps(checkout_data, indent=2)}")
+        
+        # Create checkout session with PayMongo
+        response = requests.post(
+            'https://api.paymongo.com/v1/checkout_sessions',
+            headers=headers,
+            json=checkout_data,
+            timeout=30
+        )
+        
+        print(f"📡 PayMongo Response Status: {response.status_code}")
+        print(f"📡 PayMongo Response Headers: {response.headers}")
+        print(f"📡 PayMongo Response Body: {response.text}")
+        
+        if response.status_code in [200, 201]:
+            checkout_session = response.json()
+            
+            # Extract the correct fields from PayMongo response
+            session_data = checkout_session.get('data', {})
+            attributes = session_data.get('attributes', {})
+            
+            checkout_url = attributes.get('checkout_url')
+            session_id = session_data.get('id')
+            
+            print(f"✅ Checkout URL: {checkout_url}")
+            print(f"✅ Session ID: {session_id}")
+            
+            if not checkout_url or not session_id:
+                print(f"❌ Missing data in response!")
+                print(f"Full response: {json.dumps(checkout_session, indent=2)}")
+                return jsonify({
+                    'success': False, 
+                    'errors': ['Invalid response from payment service']
+                }), 500
+            
+            return jsonify({
+                'success': True,
+                'checkout_url': checkout_url,
+                'session_id': session_id
+            }), 200
+        else:
+            # Handle error response
+            error_data = response.json() if response.text else {}
+            error_messages = []
+            
+            if 'errors' in error_data:
+                for err in error_data['errors']:
+                    detail = err.get('detail', 'Unknown error')
+                    error_messages.append(detail)
+            else:
+                error_messages.append(f"Payment service error: {response.status_code}")
+            
+            error_msg = ', '.join(error_messages)
+            print(f"❌ PayMongo API error: {error_msg}")
+            print(f"❌ Full error response: {response.text}")
+            
+            return jsonify({
+                'success': False, 
+                'errors': [error_msg]
+            }), 500
+            
+    except requests.exceptions.Timeout:
+        print(f"❌ Request timeout")
+        return jsonify({
+            'success': False, 
+            'errors': ['Request timeout. Please try again.']
+        }), 500
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Request exception: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'errors': [f'Network error: {str(e)}']
+        }), 500
+    except Exception as e:
+        error_msg = f"Server error: {str(e)}"
+        print(f"❌ Exception: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False, 
+            'errors': [error_msg]
+        }), 500
+
+
+@app.route('/payment-success')
+def payment_success():
+    """Handle successful payment callback from PayMongo"""
+    if 'user_id' not in session:
+        flash('Session expired. Please log in again.', 'danger')
+        return redirect(url_for('login_page'))
+    
+    item_id = request.args.get('item_id')
+    
+    if not item_id:
+        flash('Invalid payment confirmation.', 'danger')
+        return redirect(url_for('posted'))
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Verify item belongs to user
+        cursor.execute("SELECT id, title, payment_status FROM items WHERE id = %s AND user_id = %s", 
+                      (item_id, session['user_id']))
+        item = cursor.fetchone()
+        
+        if not item:
+            flash('Item not found.', 'danger')
+            cursor.close()
+            return redirect(url_for('posted'))
+        
+        # Update payment status to paid
+        cursor.execute("UPDATE items SET payment_status = 'paid' WHERE id = %s", (item_id,))
+        mysql.connection.commit()
+        
+        # Update dashboard stats
+        update_dashboard_stats(session['user_id'], cursor, mysql)
+        
+        # ✅ NEW: Trigger auto-matching after successful payment
+        print(f"🔄 Triggering auto-matching for paid item {item_id}")
+        
+        # Get item features and details for matching
+        cursor.execute("""
+            SELECT i.*, img.ai_features, img.file_path 
+            FROM items i 
+            LEFT JOIN images img ON i.id = img.item_id 
+            WHERE i.id = %s
+        """, (item_id,))
+        
+        paid_item = cursor.fetchone()
+        
+        if paid_item:
+            print(f"📋 Paid item details: {paid_item['title']}, Category: {paid_item['category']}")
+            
+            if paid_item['ai_features']:
+                # Extract features and details for matching
+                features = np.array(eval(paid_item['ai_features']))
+                details = {
+                    "title": paid_item['title'],
+                    "description": paid_item['description'],
+                    "category": paid_item['category'],
+                    "location": paid_item['location_reported']
+                }
+                
+                print(f"🔍 Starting auto-match for: {details['title']}")
+                # Trigger auto-matching
+                auto_match(item_id, 'lost', features, details, cursor, mysql, mail)
+                print(f"✅ Auto-matching completed for item {item_id}")
+            else:
+                print(f"⚠️ No AI features found for item {item_id}")
+        else:
+            print(f"❌ Could not retrieve paid item details for {item_id}")
+        
+        cursor.close()
+        
+        print(f"✅ Payment successful for item {item_id}")
+        flash(f'✅ Payment successful! Your lost item "{item["title"]}" is now visible to everyone.', 'success')
+        return redirect(url_for('posted'))
+        
+    except Exception as e:
+        print(f"❌ Error in payment success: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('Error confirming payment. Please contact support.', 'danger')
+        return redirect(url_for('posted'))
+
+
+@app.route('/api/verify-payment/<int:item_id>', methods=['POST'])
+def verify_payment(item_id):
+    """Optional: Verify payment status with PayMongo"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'errors': ['Not authenticated']}), 401
+    
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({'success': False, 'errors': ['Session ID required']}), 400
+        
+        # Retrieve checkout session from PayMongo
+        auth_string = base64.b64encode(f"{PAYMONGO_SECRET_KEY}:".encode()).decode()
+        headers = {
+            'Authorization': f'Basic {auth_string}',
+            'Accept': 'application/json'
+        }
+        
+        response = requests.get(
+            f'https://api.paymongo.com/v1/checkout_sessions/{session_id}',
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            session_data = response.json()
+            payment_intent = session_data.get('data', {}).get('attributes', {}).get('payment_intent')
+            
+            if payment_intent:
+                payment_status = payment_intent.get('attributes', {}).get('status')
+                
+                cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+                
+                if payment_status == 'succeeded':
+                    cursor.execute("UPDATE items SET payment_status = 'paid' WHERE id = %s AND user_id = %s", 
+                                  (item_id, session['user_id']))
+                    mysql.connection.commit()
+                    cursor.close()
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': 'Payment verified successfully'
+                    }), 200
+                else:
+                    cursor.execute("UPDATE items SET payment_status = 'failed' WHERE id = %s AND user_id = %s", 
+                                  (item_id, session['user_id']))
+                    mysql.connection.commit()
+                    cursor.close()
+                    
+                    return jsonify({
+                        'success': False,
+                        'errors': [f'Payment not completed: {payment_status}']
+                    }), 400
+            else:
+                return jsonify({
+                    'success': False,
+                    'errors': ['Payment intent not found']
+                }), 400
+        else:
+            return jsonify({
+                'success': False,
+                'errors': ['Failed to verify payment with PayMongo']
+            }), 500
+            
+    except Exception as e:
+        print(f"❌ Verification error: {str(e)}")
+        return jsonify({'success': False, 'errors': [str(e)]}), 500
     
 
 # ---------- MATCH ----------

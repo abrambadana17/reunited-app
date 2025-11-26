@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container-fluid">
   <div class="dashboard-header mb-4">
-    <h1 class="fw-bold mb-2">Match Items 🕵️‍♂️</h1>
+    <h1 class="fw-bold mb-2">Match Items</h1>
     <p class="mb-0 opacity-75">Here are items matched with yours.</p>
   </div>
 
@@ -19,66 +19,99 @@
          data-lost-description="{{ match.lost_description }}"
          data-lost-category="{{ match.lost_category }}"
          data-lost-date="{{ match.lost_date_reported.strftime('%B %d, %Y at %I:%M %p') if match.lost_date_reported else 'N/A' }}"
-         data-lost-image="{{ url_for('static', filename=match.lost_image) if match.lost_image else url_for('static', filename='images/placeholder.png') }}"
+         data-lost-image="{{ url_for('uploaded_item_file', filename=match.lost_image.split('/')[-1]) if match.lost_image else url_for('static', filename='images/placeholder.png') }}"
          data-lost-reporter="{{ match.lost_first_name }} {{ match.lost_last_name }}"
-         data-lost-profile="{{ url_for('static', filename='uploads/profile_pictures/' ~ match.lost_profile) if match.lost_profile else '' }}"
+         data-lost-profile="{{ url_for('uploaded_file', filename=match.lost_profile) if match.lost_profile else '' }}"
          data-lost-initials="{{ match.lost_first_name[0]|upper }}{{ match.lost_last_name[0]|upper }}"
          data-found-title="{{ match.found_title }}"
          data-found-description="{{ match.found_description }}"
          data-found-category="{{ match.found_category }}"
          data-found-date="{{ match.found_date_reported.strftime('%B %d, %Y at %I:%M %p') if match.found_date_reported else 'N/A' }}"
-         data-found-image="{{ url_for('static', filename=match.found_image) if match.found_image else url_for('static', filename='images/placeholder.png') }}"
+         data-found-image="{{ url_for('uploaded_item_file', filename=match.found_image.split('/')[-1]) if match.found_image else url_for('static', filename='images/placeholder.png') }}"
          data-found-reporter="{{ match.found_first_name }} {{ match.found_last_name }}"
-         data-found-profile="{{ url_for('static', filename='uploads/profile_pictures/' ~ match.found_profile) if match.found_profile else '' }}"
+         data-found-profile="{{ url_for('uploaded_file', filename=match.found_profile) if match.found_profile else '' }}"
          data-found-initials="{{ match.found_first_name[0]|upper }}{{ match.found_last_name[0]|upper }}"
          data-match-score="{{ match.match_score }}"
-         data-match-date="{{ match.match_at.strftime('%B %d, %Y at %I:%M %p') if match.match_at else 'N/A' }}">
+         data-match-date="{{ match.match_at.strftime('%B %d, %Y at %I:%M %p') if match.match_at else 'N/A' }}"
+         data-match-status="{{ match.status }}">
       
-      <div class="card shadow-sm h-100" style="min-height: 400px;">
+      <div class="card shadow-sm h-100 match-card-inner {% if match.status == 'resolved' %}resolved-match{% endif %}" style="min-height: 400px; position: relative;">
+        
+        <!-- RESOLVED BADGE - Top Right Corner -->
+        {% if match.status == 'resolved' %}
+        <div class="resolved-badge">
+          <i class="fas fa-check-circle me-1"></i>Resolved
+        </div>
+        {% endif %}
         
         <!-- Images side by side -->
-        <div class="d-flex" style="height:200px; overflow:hidden;">
-          <img src="{{ url_for('static', filename=match.lost_image) if match.lost_image else url_for('static', filename='images/placeholder.png') }}" 
+        <div class="d-flex position-relative" style="height:200px; overflow:hidden;">
+          <!-- RESOLVED OVERLAY for images -->
+          {% if match.status == 'resolved' %}
+          <div class="resolved-overlay"></div>
+          {% endif %}
+          
+          <img src="{{ url_for('uploaded_item_file', filename=match.lost_image.split('/')[-1]) if match.lost_image else url_for('static', filename='images/placeholder.png') }}" 
                class="w-50 border-end object-fit-cover" alt="Lost Item Image">
-          <img src="{{ url_for('static', filename=match.found_image) if match.found_image else url_for('static', filename='images/placeholder.png') }}" 
+          <img src="{{ url_for('uploaded_item_file', filename=match.found_image.split('/')[-1]) if match.found_image else url_for('static', filename='images/placeholder.png') }}" 
                class="w-50 object-fit-cover" alt="Found Item Image">
         </div>
 
         <div class="card-body">
-          <h5 class="card-title">
-            {{ match.lost_title }} ↔ {{ match.found_title }}
-          </h5>
-          <p class="card-text small text-muted">
-            Matched on: {{ match.match_at.strftime('%b %d, %Y') if match.match_at else 'N/A' }}
-          </p>
-          <p class="card-text">
+          <!-- Center ONLY the most important elements -->
+          <div class="text-center mb-3">
+            {% set score = match.match_score %}
+            {% if match.status == 'resolved' %}
+              <span class="badge resolved-score-badge">
+                <i class="fas fa-check-circle me-1"></i>Resolved
+              </span>
+            {% else %}
+              {% if score >= 1 %}
+                <span class="badge bg-success">Exact Match ({{ "%.2f"|format(score) }})</span>
+              {% elif score >= 0.8 %}
+                <span class="badge bg-info">Very High ({{ "%.2f"|format(score) }})</span>
+              {% elif score >= 0.6 %}
+                <span class="badge bg-primary">High ({{ "%.2f"|format(score) }})</span>
+              {% elif score >= 0.4 %}
+                <span class="badge bg-warning text-dark">Medium ({{ "%.2f"|format(score) }})</span>
+              {% else %}
+                <span class="badge bg-secondary">Low ({{ "%.2f"|format(score) }})</span>
+              {% endif %}
+            {% endif %}
+            
+            <h5 class="card-title mt-2 {% if match.status == 'resolved' %}resolved-title{% endif %}">
+              {{ match.lost_title }} ↔ {{ match.found_title }}
+            </h5>
+          </div>
+          
+          <!-- Keep everything else left-aligned -->
+          <p class="card-text {% if match.status == 'resolved' %}resolved-text{% endif %}">
             <b>Lost:</b> {{ match.lost_description[:50] }}{{ '...' if match.lost_description|length > 50 else '' }} <br>
             <b>Found:</b> {{ match.found_description[:50] }}{{ '...' if match.found_description|length > 50 else '' }}
           </p>
-
-          <!-- Match confidence -->
-          {% set score = match.match_score %}
-          {% if score >= 1 %}
-            <span class="badge bg-success">✅ Exact Match ({{ score }})</span>
-          {% elif score >= 0.8 %}
-            <span class="badge bg-success">Very High Possibility ({{ score }})</span>
-          {% elif score >= 0.6 %}
-            <span class="badge bg-success text-dark">High Possibility ({{ score }})</span>
-          {% elif score >= 0.4 %}
-            <span class="badge bg-warning">Medium Possibility ({{ score }})</span>
-          {% else %}
-            <span class="badge bg-secondary">Below Threshold ({{ score }})</span>
-          {% endif %}
+          
+          <p class="card-text small text-muted {% if match.status == 'resolved' %}resolved-date{% endif %}">
+            <i class="far fa-calendar me-1"></i>
+            {% if match.status == 'resolved' %}
+              Resolved: {{ match.match_at.strftime('%b %d, %Y') if match.match_at else 'N/A' }}
+            {% else %}
+              Matched: {{ match.match_at.strftime('%b %d, %Y') if match.match_at else 'N/A' }}
+            {% endif %}
+          </p>
         </div>
 
-        <div class="card-footer d-flex justify-content-between align-items-center">
+        <div class="card-footer d-flex justify-content-between align-items-center {% if match.status == 'resolved' %}resolved-footer{% endif %}">
           <!-- Lost User -->
           <div class="d-flex align-items-center">
             <div class="user-avatar me-2">
               {% if match.lost_profile %}
-                <img src="{{ url_for('static', filename='uploads/profile_pictures/' ~ match.lost_profile) }}" alt="Lost User">
+                <img src="{{ url_for('uploaded_file', filename=match.lost_profile) }}" 
+                     alt="Lost User" 
+                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
               {% else %}
-                {{ match.lost_first_name[0]|upper }}{{ match.lost_last_name[0]|upper }}
+                <div style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                  {{ match.lost_first_name[0]|upper }}{{ match.lost_last_name[0]|upper }}
+                </div>
               {% endif %}
             </div>
             <small class="text-muted">{{ match.lost_first_name }} {{ match.lost_last_name }}</small>
@@ -88,9 +121,13 @@
           <div class="d-flex align-items-center">
             <div class="user-avatar me-2">
               {% if match.found_profile %}
-                <img src="{{ url_for('static', filename='uploads/profile_pictures/' ~ match.found_profile) }}" alt="Found User">
+                <img src="{{ url_for('uploaded_file', filename=match.found_profile) }}" 
+                     alt="Found User" 
+                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
               {% else %}
-                {{ match.found_first_name[0]|upper }}{{ match.found_last_name[0]|upper }}
+                <div style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                  {{ match.found_first_name[0]|upper }}{{ match.found_last_name[0]|upper }}
+                </div>
               {% endif %}
             </div>
             <small class="text-muted">{{ match.found_first_name }} {{ match.found_last_name }}</small>
@@ -118,29 +155,35 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="matchDetailModalLabel">Match Details</h5>
-       
       </div>
       <div class="modal-body">
-        <!-- Match Score Banner -->
+        <!-- Match Status Banner -->
         <div class="text-center mb-4">
-          <h4 class="mb-2">Match Confidence</h4>
-          <span id="modalMatchScore" class="badge fs-5"></span>
-          <p class="text-muted small mt-2">Matched on <span id="modalMatchDate"></span></p>
+          <h4 class="mb-2" id="modalMatchTitle">Match Details</h4>
+          <div id="modalMatchStatus" class="d-flex justify-content-center align-items-center gap-3">
+            <span id="modalMatchScore" class="badge fs-6"></span>
+            <span class="text-muted small">•</span>
+            <span class="text-muted small" id="modalMatchDate"></span>
+          </div>
         </div>
 
         <div class="row">
           <!-- Lost Item Column -->
           <div class="col-md-6 border-end">
             <div class="text-center mb-3">
-              <h5 class="text-danger fw-bold">
-                <i class="fas fa-search me-2"></i>LOST ITEM
+              <h5 class="text-primary fw-bold">
+                <i class="fas fa-search me-2"></i>Lost Item
               </h5>
             </div>
             
-            <div class="mb-3">
+            <div class="mb-3 position-relative">
               <img id="modalLostImage" src="" alt="Lost Item Image" 
                    class="img-fluid rounded shadow-sm w-100" 
                    style="max-height: 300px; object-fit: contain; background-color: #f8f9fa;">
+              <div id="modalLostOverlay" class="resolved-image-overlay" style="display: none;">
+                <i class="fas fa-check-circle me-2"></i>
+                <span>Claimed</span>
+              </div>
             </div>
             
             <div class="mb-3">
@@ -148,7 +191,9 @@
             </div>
             
             <div class="mb-3">
-              <h6 class="text-muted mb-1">Category</h6>
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-tag me-1"></i>Category
+              </h6>
               <p id="modalLostCategory" class="mb-0"></p>
             </div>
             
@@ -158,7 +203,9 @@
             </div>
             
             <div class="mb-3">
-              <h6 class="text-muted mb-1">Date Reported</h6>
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-calendar me-1"></i>Date Reported
+              </h6>
               <p id="modalLostDate" class="mb-0"></p>
             </div>
             
@@ -177,15 +224,19 @@
           <!-- Found Item Column -->
           <div class="col-md-6">
             <div class="text-center mb-3">
-              <h5 class="text-success fw-bold">
-                <i class="fas fa-check-circle me-2"></i>FOUND ITEM
+              <h5 class="text-primary fw-bold">
+                <i class="fas fa-check-circle me-2"></i>Found Item
               </h5>
             </div>
             
-            <div class="mb-3">
+            <div class="mb-3 position-relative">
               <img id="modalFoundImage" src="" alt="Found Item Image" 
                    class="img-fluid rounded shadow-sm w-100" 
                    style="max-height: 300px; object-fit: contain; background-color: #f8f9fa;">
+              <div id="modalFoundOverlay" class="resolved-image-overlay" style="display: none;">
+                <i class="fas fa-check-circle me-2"></i>
+                <span>Returned</span>
+              </div>
             </div>
             
             <div class="mb-3">
@@ -193,7 +244,9 @@
             </div>
             
             <div class="mb-3">
-              <h6 class="text-muted mb-1">Category</h6>
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-tag me-1"></i>Category
+              </h6>
               <p id="modalFoundCategory" class="mb-0"></p>
             </div>
             
@@ -203,7 +256,9 @@
             </div>
             
             <div class="mb-3">
-              <h6 class="text-muted mb-1">Date Reported</h6>
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-calendar me-1"></i>Date Reported
+              </h6>
               <p id="modalFoundDate" class="mb-0"></p>
             </div>
             
@@ -219,6 +274,19 @@
             </div>
           </div>
         </div>
+
+        <!-- Success Section for Resolved Matches -->
+        <div id="successSection" class="text-center mt-4 p-4 rounded" style="display: none;">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="success-content">
+                <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
+                <h5 class="text-success mb-2">Item Successfully Returned</h5>
+                <p class="mb-0 text-muted">This match has been completed and the item has been reunited with its owner.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div class="modal-footer">
@@ -227,6 +295,124 @@
     </div>
   </div>
 </div>
+
+<style>
+/* Resolved Match Styling */
+.resolved-match {
+  border: 2px solid #28a745 !important;
+  background: #f8fff9 !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.resolved-match::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #28a745;
+}
+
+.resolved-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #28a745;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.resolved-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(40, 167, 69, 0.05);
+  z-index: 2;
+}
+
+.resolved-score-badge {
+  background: #28a745 !important;
+  color: white;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border: none;
+}
+
+.resolved-title {
+  color: #28a745 !important;
+}
+
+.resolved-date {
+  color: #28a745 !important;
+  font-weight: 600;
+}
+
+.resolved-footer {
+  background: #f8fff9 !important;
+  border-top: 1px solid #28a745 !important;
+}
+
+/* Modal Resolved Styles */
+.resolved-image-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(40, 167, 69, 0.95);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Success Section */
+#successSection {
+  background: #f8fff9;
+  border: 1px solid #28a745;
+  border-left: 4px solid #28a745;
+}
+
+.success-content {
+  padding: 1rem;
+}
+
+/* Hover effects */
+.match-card-inner {
+  transition: all 0.3s ease;
+}
+
+.match-card-inner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.resolved-match:hover {
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .resolved-badge {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    top: 8px;
+    right: 8px;
+  }
+}
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -238,6 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get match data from the clicked card
     const matchScore = parseFloat(button.dataset.matchScore);
     const matchDate = button.dataset.matchDate;
+    const matchStatus = button.dataset.matchStatus;
     
     // Lost item data
     const lostTitle = button.dataset.lostTitle;
@@ -259,26 +446,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const foundProfile = button.dataset.foundProfile;
     const foundInitials = button.dataset.foundInitials;
     
-    // Populate match score
+    // Handle resolved vs active matches
+    const isResolved = matchStatus === 'resolved';
+    
+    // Update modal title and status
     const scoreBadge = document.getElementById('modalMatchScore');
-    if (matchScore >= 1) {
-      scoreBadge.textContent = `✅ Exact Match (${matchScore})`;
-      scoreBadge.className = 'badge bg-success fs-5';
-    } else if (matchScore >= 0.8) {
-      scoreBadge.textContent = `Very High Possibility (${matchScore})`;
-      scoreBadge.className = 'badge bg-success fs-5';
-    } else if (matchScore >= 0.6) {
-      scoreBadge.textContent = `High Possibility (${matchScore})`;
-      scoreBadge.className = 'badge bg-info fs-5';
-    } else if (matchScore >= 0.4) {
-      scoreBadge.textContent = `Medium Possibility (${matchScore})`;
-      scoreBadge.className = 'badge bg-warning fs-5';
+    const matchDateElement = document.getElementById('modalMatchDate');
+    
+    if (isResolved) {
+      scoreBadge.textContent = 'Resolved';
+      scoreBadge.className = 'badge bg-success fs-6';
+      matchDateElement.textContent = 'Resolved ' + matchDate;
     } else {
-      scoreBadge.textContent = `Below Threshold (${matchScore})`;
-      scoreBadge.className = 'badge bg-secondary fs-5';
+      if (matchScore >= 1) {
+        scoreBadge.textContent = 'Exact Match (' + matchScore.toFixed(2) + ')';
+        scoreBadge.className = 'badge bg-success fs-6';
+      } else if (matchScore >= 0.8) {
+        scoreBadge.textContent = 'Very High (' + matchScore.toFixed(2) + ')';
+        scoreBadge.className = 'badge bg-info fs-6';
+      } else if (matchScore >= 0.6) {
+        scoreBadge.textContent = 'High (' + matchScore.toFixed(2) + ')';
+        scoreBadge.className = 'badge bg-primary fs-6';
+      } else if (matchScore >= 0.4) {
+        scoreBadge.textContent = 'Medium (' + matchScore.toFixed(2) + ')';
+        scoreBadge.className = 'badge bg-warning text-dark fs-6';
+      } else {
+        scoreBadge.textContent = 'Low (' + matchScore.toFixed(2) + ')';
+        scoreBadge.className = 'badge bg-secondary fs-6';
+      }
+      matchDateElement.textContent = 'Matched ' + matchDate;
     }
     
-    document.getElementById('modalMatchDate').textContent = matchDate;
+    // Show/hide success section
+    const successSection = document.getElementById('successSection');
+    successSection.style.display = isResolved ? 'block' : 'none';
     
     // Populate lost item details
     document.getElementById('modalLostTitle').textContent = lostTitle;
@@ -287,6 +488,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('modalLostDate').textContent = lostDate;
     document.getElementById('modalLostImage').src = lostImage;
     document.getElementById('modalLostReporter').textContent = lostReporter;
+    
+    // Show/hide resolved overlay for lost item
+    const lostOverlay = document.getElementById('modalLostOverlay');
+    lostOverlay.style.display = isResolved ? 'flex' : 'none';
     
     // Set lost reporter avatar
     const lostAvatar = document.getElementById('modalLostAvatar');
@@ -303,6 +508,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('modalFoundDate').textContent = foundDate;
     document.getElementById('modalFoundImage').src = foundImage;
     document.getElementById('modalFoundReporter').textContent = foundReporter;
+    
+    // Show/hide resolved overlay for found item
+    const foundOverlay = document.getElementById('modalFoundOverlay');
+    foundOverlay.style.display = isResolved ? 'flex' : 'none';
     
     // Set found reporter avatar
     const foundAvatar = document.getElementById('modalFoundAvatar');

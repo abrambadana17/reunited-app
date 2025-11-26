@@ -44,8 +44,8 @@ app.config['MAIL_DEFAULT_SENDER'] = (
 )
 
 # PayMongo Configuration
-PAYMONGO_SECRET_KEY = os.getenv('PAYMONGO_SECRET_KEY', 'sk_test_F8aYiQnpZPinT5tsUfKp7kVu')
-PAYMONGO_PUBLIC_KEY = os.getenv('PAYMONGO_PUBLIC_KEY', 'pk_test_ksEpp6fwaQVwZEqAFWqSk7Jh')
+PAYMONGO_SECRET_KEY = os.getenv('PAYMONGO_SECRET_KEY')
+PAYMONGO_PUBLIC_KEY = os.getenv('PAYMONGO_PUBLIC_KEY')
 
 mail = Mail(app)
 

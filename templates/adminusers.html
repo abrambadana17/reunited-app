@@ -1,0 +1,738 @@
+{% extends "adminbase.html" %}
+
+{% block title %}User Management - Reunited Admin{% endblock %}
+
+{% block page_title %}User Management{% endblock %}
+{% block page_subtitle %}Manage platform users and permissions{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <!-- Search Section -->
+    <div class="search-section mb-4">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-6">
+          <label class="form-label small fw-semibold text-muted mb-1">Search Users</label>
+          <input type="text" class="form-control" id="searchUsers" placeholder="Search by name, email, or phone...">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small fw-semibold text-muted mb-1">Status</label>
+          <select class="form-select" id="statusFilter">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small fw-semibold text-muted mb-1 d-md-block d-none">&nbsp;</label>
+          <button class="btn btn-admin w-100" onclick="searchUsers()">
+            <i class="fas fa-search me-1"></i>
+            <span class="d-none d-sm-inline">Search</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users Table Container -->
+    <div class="admin-table-container">
+      <div class="admin-table-header p-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold text-gray-700">
+          <i class="fas fa-users me-2 text-primary"></i>
+          <span class="d-none d-sm-inline">All Users</span>
+          <span class="d-sm-none">Users</span>
+        </h5>
+        <span class="text-muted small fw-semibold" id="usersCount">Loading users...</span>
+      </div>
+      
+      <!-- Scrollable Table Area -->
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-header">
+              <tr>
+                <th class="user-col">User</th>
+                <th class="contact-col">Contact Info</th>
+                <th class="date-col">Joined</th>
+                <th class="items-col">Items</th>
+                <th class="status-col">Status</th>
+                <th class="actions-col text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">Loading users...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title text-danger" id="deleteUserModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-0">
+        <div class="alert alert-warning border-0 bg-light-warning mb-3">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <strong>Warning:</strong> This action cannot be undone.
+        </div>
+        <p class="mb-3">Are you sure you want to delete the following user?</p>
+        <div class="user-info-card bg-light rounded p-3 mb-3">
+          <div class="d-flex align-items-center">
+            <div id="deleteUserAvatar" class="user-initials me-3"></div>
+            <div class="flex-grow-1">
+              <h6 id="deleteUserName" class="mb-1 fw-semibold text-truncate">User Name</h6>
+              <small id="deleteUserEmail" class="text-muted d-block text-truncate">user@example.com</small>
+              <small id="deleteUserId" class="text-muted">ID: 0</small>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-danger border-0 bg-light-danger small">
+          <i class="fas fa-info-circle me-2"></i>
+          This will permanently delete the user account and all associated items, images, and data.
+        </div>
+      </div>
+      <div class="modal-footer border-0 flex-column flex-sm-row">
+        <button type="button" class="btn btn-secondary mb-2 mb-sm-0 w-100 w-sm-auto" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger w-100 w-sm-auto" id="confirmDeleteBtn">
+          <i class="fas fa-trash me-1"></i>Delete User
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .user-avatar-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  
+  .user-initials {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  /* Table Container Styles */
+  .admin-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+    height: 70vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .admin-table-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef !important;
+    flex-shrink: 0;
+    padding: 1rem !important;
+  }
+
+  .table-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Horizontal scrolling container */
+  .table-responsive {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    margin: 0;
+    width: 100%;
+    min-width: 800px; /* Minimum width for horizontal scrolling */
+  }
+
+  .table-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  .table thead th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+    color: #6c757d;
+    padding: 12px 16px;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 11;
+  }
+
+  .table tbody td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+    white-space: nowrap;
+  }
+
+  .table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  /* Fixed column widths for horizontal scrolling */
+  .user-col { width: 200px; min-width: 200px; }
+  .contact-col { width: 250px; min-width: 250px; }
+  .date-col { width: 150px; min-width: 150px; }
+  .items-col { width: 100px; min-width: 100px; }
+  .status-col { width: 120px; min-width: 120px; }
+  .actions-col { width: 120px; min-width: 120px; }
+
+  /* Action buttons - Centered */
+  .table-actions {
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .table-actions .btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    min-width: 40px;
+  }
+
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    .admin-table-container {
+      height: 60vh;
+      margin: 0 -10px;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .admin-table-header {
+      padding: 0.75rem !important;
+    }
+
+    .table {
+      min-width: 700px; /* Slightly smaller min-width for mobile */
+    }
+
+    .table thead th {
+      font-size: 0.75rem;
+      padding: 10px 12px;
+    }
+
+    .table tbody td {
+      padding: 10px 12px;
+      font-size: 0.8rem;
+    }
+
+    .user-avatar-sm,
+    .user-initials {
+      width: 35px;
+      height: 35px;
+      font-size: 13px;
+    }
+
+    /* Adjust column widths for mobile */
+    .user-col { width: 180px; min-width: 180px; }
+    .contact-col { width: 220px; min-width: 220px; }
+    .date-col { width: 130px; min-width: 130px; }
+    .items-col { width: 90px; min-width: 90px; }
+    .status-col { width: 110px; min-width: 110px; }
+    .actions-col { width: 110px; min-width: 110px; }
+  }
+
+  @media (max-width: 576px) {
+    .admin-table-container {
+      height: 55vh;
+    }
+
+    .table {
+      min-width: 650px; /* Even smaller for very small phones */
+    }
+
+    .table thead th {
+      font-size: 0.7rem;
+      padding: 8px 10px;
+    }
+
+    .table tbody td {
+      padding: 8px 10px;
+      font-size: 0.75rem;
+    }
+
+    .user-avatar-sm,
+    .user-initials {
+      width: 32px;
+      height: 32px;
+      font-size: 12px;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      padding: 4px 6px;
+    }
+
+    /* Compact column widths for small phones */
+    .user-col { width: 160px; min-width: 160px; }
+    .contact-col { width: 200px; min-width: 200px; }
+    .date-col { width: 120px; min-width: 120px; }
+    .items-col { width: 80px; min-width: 80px; }
+    .status-col { width: 100px; min-width: 100px; }
+    .actions-col { width: 100px; min-width: 100px; }
+  }
+
+  @media (max-width: 400px) {
+    .table {
+      min-width: 600px; /* Minimum readable width */
+    }
+
+    .user-col { width: 140px; min-width: 140px; }
+    .contact-col { width: 180px; min-width: 180px; }
+    .date-col { width: 110px; min-width: 110px; }
+    .items-col { width: 70px; min-width: 70px; }
+    .status-col { width: 90px; min-width: 90px; }
+    .actions-col { width: 90px; min-width: 90px; }
+  }
+
+  /* Landscape mobile optimization */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .admin-table-container {
+      height: 50vh;
+    }
+  }
+
+  /* Horizontal scroll indicator for mobile */
+  .table-responsive::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+
+  .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+
+  /* Modal Styles */
+  .bg-light-warning {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+    border: 1px solid rgba(255, 193, 7, 0.2) !important;
+  }
+
+  .bg-light-danger {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+    border: 1px solid rgba(220, 53, 69, 0.2) !important;
+  }
+
+  .user-info-card {
+    border-left: 4px solid #dc3545;
+  }
+
+  /* Modal mobile adjustments */
+  @media (max-width: 576px) {
+    .modal-dialog {
+      margin: 10px;
+    }
+    
+    .modal-content {
+      border-radius: 12px;
+    }
+    
+    .user-info-card {
+      padding: 1rem !important;
+    }
+    
+    .user-initials {
+      width: 45px;
+      height: 45px;
+      font-size: 16px;
+    }
+    
+    .modal-footer {
+      gap: 10px;
+    }
+    
+    .modal-footer .btn {
+      min-height: 44px;
+    }
+  }
+
+  /* Toast notifications for mobile */
+  .alert-position {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    left: 10px;
+    z-index: 9999;
+    margin: 0 auto;
+    max-width: 400px;
+  }
+
+  @media (min-width: 576px) {
+    .alert-position {
+      top: 20px;
+      right: 20px;
+      left: auto;
+      min-width: 300px;
+    }
+  }
+
+  /* Search section mobile optimization */
+  .search-section .form-control,
+  .search-section .form-select {
+    min-height: 44px;
+  }
+
+  /* Ensure text doesn't overflow */
+  .text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Mobile hint for horizontal scrolling */
+  .mobile-scroll-hint {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .mobile-scroll-hint {
+      display: block;
+      text-align: center;
+      padding: 8px;
+      background: #f8f9fa;
+      border-top: 1px solid #e9ecef;
+      font-size: 0.75rem;
+      color: #6c757d;
+    }
+    
+    .mobile-scroll-hint i {
+      margin-right: 5px;
+    }
+  }
+</style>
+
+<script>
+  // Global variables to track user to delete
+  let userToDelete = null;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin Users page loaded');
+    loadUsers();
+    
+    // Add event listeners for real-time search
+    document.getElementById('searchUsers').addEventListener('input', debounce(searchUsers, 300));
+    document.getElementById('statusFilter').addEventListener('change', searchUsers);
+
+    // Add event listener for confirm delete button
+    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDeleteUser);
+
+    // Adjust table height on resize
+    window.addEventListener('resize', adjustTableHeight);
+    adjustTableHeight();
+
+    // Add mobile scroll hint
+    addMobileScrollHint();
+  });
+
+  function addMobileScrollHint() {
+    if (window.innerWidth <= 768) {
+      const hint = document.createElement('div');
+      hint.className = 'mobile-scroll-hint';
+      hint.innerHTML = '<i class="fas fa-arrows-left-right"></i> Scroll horizontally to view all columns';
+      document.querySelector('.table-container').appendChild(hint);
+    }
+  }
+
+  function adjustTableHeight() {
+    const tableContainer = document.querySelector('.admin-table-container');
+    const headerHeight = document.querySelector('.admin-table-header').offsetHeight;
+    const viewportHeight = window.innerHeight;
+    
+    if (viewportHeight < 600) {
+      tableContainer.style.height = (viewportHeight - 200) + 'px';
+    }
+  }
+
+  // Debounce function for search
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  async function loadUsers(searchParams = {}) {
+    try {
+      console.log('Loading users with params:', searchParams);
+      showLoadingState();
+      
+      const params = new URLSearchParams(searchParams);
+      const apiUrl = `/api/admin/users?${params}`;
+      console.log('Fetching from:', apiUrl);
+      
+      const response = await fetch(apiUrl);
+      console.log('Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('API response:', data);
+      
+      if (data.success) {
+        // Filter out admin user (ID 20)
+        const filteredUsers = data.users.filter(user => user.id !== 20);
+        console.log('Filtered users (excluding admin):', filteredUsers);
+        displayUsers(filteredUsers);
+        document.getElementById('usersCount').textContent = `Showing ${filteredUsers.length} users`;
+      } else {
+        throw new Error(data.error || 'Failed to load users');
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+      showErrorState('Error loading users: ' + error.message);
+    }
+  }
+
+  function showLoadingState() {
+    document.getElementById('usersTableBody').innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center text-muted py-4">
+          <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+          Loading users...
+        </td>
+      </tr>
+    `;
+  }
+
+  function showErrorState(message) {
+    document.getElementById('usersTableBody').innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center text-danger py-4">
+          <i class="fas fa-exclamation-triangle me-2"></i>${message}
+        </td>
+      </tr>
+    `;
+  }
+
+  function displayUsers(users) {
+    const tableBody = document.getElementById('usersTableBody');
+    console.log('Displaying users:', users);
+    
+    if (!users || users.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            <i class="fas fa-users me-2"></i>No users found
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tableBody.innerHTML = users.map(user => {
+      const profilePictureUrl = user.profile_picture ? 
+        `/uploads/profile_pictures/${user.profile_picture}` : 
+        null;
+      
+      const initials = `${user.first_name ? user.first_name[0] : 'U'}${user.last_name ? user.last_name[0] : ''}`;
+      
+      return `
+        <tr>
+          <td class="user-col">
+            <div class="d-flex align-items-center">
+              ${profilePictureUrl ? 
+                `<img src="${profilePictureUrl}" 
+                     class="user-avatar-sm me-2" alt="${user.first_name} ${user.last_name}"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                ''
+              }
+              <div class="user-initials me-2" style="${profilePictureUrl ? 'display: none;' : ''}">
+                ${initials}
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <strong class="text-gray-800 d-block text-truncate">${user.first_name || 'Unknown'} ${user.last_name || ''}</strong>
+                <small class="text-muted">ID: ${user.id}</small>
+              </div>
+            </div>
+          </td>
+          <td class="contact-col">
+            <div class="min-w-0">
+              <small class="text-gray-800 d-block text-truncate">${user.email || 'No email'}</small>
+              <small class="text-muted text-truncate d-block">${user.phone || 'No phone'}</small>
+            </div>
+          </td>
+          <td class="date-col">
+            <small class="text-muted">${user.created_at ? formatDate(user.created_at) : 'Unknown'}</small>
+          </td>
+          <td class="items-col">
+            <span class="badge bg-primary">${user.items_count || 0}</span>
+          </td>
+          <td class="status-col">
+            <span class="badge ${user.is_active ? 'bg-success' : 'bg-secondary'}">
+              ${user.is_active ? 'Active' : 'Inactive'}
+            </span>
+          </td>
+          <td class="actions-col table-actions">
+            <button class="btn btn-danger btn-sm" onclick="showDeleteModal(${user.id}, '${user.first_name || 'Unknown'}', '${user.last_name || ''}', '${user.email || 'No email'}')" title="Delete User">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function formatDate(dateString) {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  function searchUsers() {
+    const searchParams = {
+      q: document.getElementById('searchUsers').value,
+      status: document.getElementById('statusFilter').value
+    };
+    loadUsers(searchParams);
+  }
+
+  function showDeleteModal(userId, firstName, lastName, email) {
+    userToDelete = {
+      id: userId,
+      firstName: firstName,
+      lastName: lastName,
+      email: email
+    };
+
+    // Update modal content
+    const fullName = `${firstName} ${lastName}`;
+    const initials = `${firstName ? firstName[0] : 'U'}${lastName ? lastName[0] : ''}`;
+    
+    document.getElementById('deleteUserName').textContent = fullName;
+    document.getElementById('deleteUserEmail').textContent = email;
+    document.getElementById('deleteUserId').textContent = `ID: ${userId}`;
+    document.getElementById('deleteUserAvatar').textContent = initials;
+
+    // Show the modal
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+    deleteModal.show();
+  }
+
+  async function confirmDeleteUser() {
+    if (!userToDelete) return;
+
+    const userId = userToDelete.id;
+    const userName = `${userToDelete.firstName} ${userToDelete.lastName}`;
+    
+    try {
+      console.log(`Deleting user ${userId}`);
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      console.log('Delete response:', data);
+      
+      if (data.success) {
+        // Close the modal
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteUserModal'));
+        deleteModal.hide();
+        
+        // Show success message
+        showSuccessMessage(`User "${userName}" deleted successfully!`);
+        
+        // Refresh the list
+        loadUsers();
+      } else {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      // Close the modal and show error
+      const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteUserModal'));
+      deleteModal.hide();
+      showErrorMessage('Error deleting user: ' + error.message);
+    } finally {
+      userToDelete = null;
+    }
+  }
+
+  function showSuccessMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show alert-position';
+    alertDiv.innerHTML = `
+      <i class="fas fa-check-circle me-2"></i>${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+      if (alertDiv.parentNode) {
+        alertDiv.remove();
+      }
+    }, 5000);
+  }
+
+  function showErrorMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show alert-position';
+    alertDiv.innerHTML = `
+      <i class="fas fa-exclamation-circle me-2"></i>${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+      if (alertDiv.parentNode) {
+        alertDiv.remove();
+      }
+    }, 5000);
+  }
+</script>
+{% endblock %}

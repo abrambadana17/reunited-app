@@ -1,0 +1,534 @@
+{% extends "adminbase.html" %}
+
+{% block title %}Matches Management - Reunited Admin{% endblock %}
+
+{% block page_title %}Matches Management{% endblock %}
+{% block page_subtitle %}View and manage AI-generated matches{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <!-- Search Section -->
+    <div class="search-section mb-4">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4 mb-2">
+          <label class="form-label small fw-semibold text-muted mb-1">Search Matches</label>
+          <input type="text" class="form-control" id="searchMatches" placeholder="Search by item titles or users..." oninput="debounceSearch()">
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+          <label class="form-label small fw-semibold text-muted mb-1">Match Status</label>
+          <select class="form-select" id="matchStatusFilter" onchange="debounceSearch()">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="resolved">Resolved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+          <label class="form-label small fw-semibold text-muted mb-1">Confidence</label>
+          <select class="form-select" id="confidenceFilter" onchange="debounceSearch()">
+            <option value="">All Levels</option>
+            <option value="high">High (≥ 0.8)</option>
+            <option value="medium">Medium (0.4-0.8)</option>
+            <option value="low">Low (< 0.4)</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2 mb-2">
+          <label class="form-label small fw-semibold text-muted mb-1 d-md-block d-none">&nbsp;</label>
+          <button class="btn btn-outline-admin w-100" onclick="clearSearch()">
+            <i class="fas fa-times me-1"></i>
+            <span class="d-none d-sm-inline">Clear</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Matches Table Container -->
+    <div class="admin-table-container">
+      <div class="admin-table-header p-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold text-gray-700">
+          <i class="fas fa-link me-2 text-primary"></i>
+          <span class="d-none d-sm-inline">AI Matches</span>
+          <span class="d-sm-none">Matches</span>
+        </h5>
+        <span class="text-muted small fw-semibold" id="matchesCount">Loading matches...</span>
+      </div>
+      
+      <!-- Scrollable Table Area -->
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-header">
+              <tr>
+                <th class="match-id-col">Match ID</th>
+                <th class="lost-item-col">Lost Item</th>
+                <th class="found-item-col">Found Item</th>
+                <th class="confidence-col">Confidence</th>
+                <th class="status-col">Status</th>
+                <th class="date-col">Matched On</th>
+              </tr>
+            </thead>
+            <tbody id="matchesTableBody">
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">Loading matches...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Mobile scroll hint -->
+      <div class="mobile-scroll-hint">
+        <i class="fas fa-arrows-left-right me-1"></i>
+        <span>Scroll horizontally to view all columns</span>
+      </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" id="loadingSpinner">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2 text-muted">Loading matches...</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .search-section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: var(--border-light);
+    margin-bottom: 1.5rem;
+  }
+
+  .loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 3rem;
+  }
+
+  .item-image {
+    width: 45px;
+    height: 45px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    flex-shrink: 0;
+  }
+
+  .item-image-placeholder {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #6c757d;
+  }
+
+  .lost-item-image {
+    border-color: #dc3545;
+  }
+
+  .found-item-image {
+    border-color: #28a745;
+  }
+
+  /* Table Container Styles */
+  .admin-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+    height: 70vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .admin-table-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef !important;
+    flex-shrink: 0;
+    padding: 1rem !important;
+  }
+
+  .table-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Horizontal scrolling container */
+  .table-responsive {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    margin: 0;
+    width: 100%;
+    min-width: 800px;
+  }
+
+  .table-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  .table thead th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+    color: #6c757d;
+    padding: 12px 16px;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 11;
+  }
+
+  .table tbody td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+    white-space: nowrap;
+  }
+
+  .table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  /* Fixed column widths for horizontal scrolling */
+  .match-id-col { width: 100px; min-width: 100px; }
+  .lost-item-col { width: 280px; min-width: 280px; }
+  .found-item-col { width: 280px; min-width: 280px; }
+  .confidence-col { width: 120px; min-width: 120px; }
+  .status-col { width: 120px; min-width: 120px; }
+  .date-col { width: 120px; min-width: 120px; }
+
+  /* Item display styles */
+  .item-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .item-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .item-title {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 2px;
+    line-height: 1.3;
+  }
+
+  .item-user {
+    font-size: 0.8rem;
+    color: #6c757d;
+    line-height: 1.2;
+  }
+
+  /* Mobile scroll hint */
+  .mobile-scroll-hint {
+    display: none;
+    text-align: center;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    font-size: 0.75rem;
+    color: #6c757d;
+  }
+
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    .admin-table-container {
+      height: 60vh;
+      margin: 0 -10px;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .admin-table-header {
+      padding: 0.75rem !important;
+    }
+
+    .table {
+      min-width: 750px;
+    }
+
+    .table thead th {
+      font-size: 0.75rem;
+      padding: 10px 12px;
+    }
+
+    .table tbody td {
+      padding: 10px 12px;
+      font-size: 0.8rem;
+    }
+
+    .item-image,
+    .item-image-placeholder {
+      width: 40px;
+      height: 40px;
+    }
+
+    .mobile-scroll-hint {
+      display: block;
+    }
+
+    /* Adjust column widths for mobile */
+    .match-id-col { width: 90px; min-width: 90px; }
+    .lost-item-col { width: 250px; min-width: 250px; }
+    .found-item-col { width: 250px; min-width: 250px; }
+    .confidence-col { width: 110px; min-width: 110px; }
+    .status-col { width: 110px; min-width: 110px; }
+    .date-col { width: 110px; min-width: 110px; }
+  }
+
+  @media (max-width: 576px) {
+    .admin-table-container {
+      height: 55vh;
+    }
+
+    .table {
+      min-width: 700px;
+    }
+
+    .table thead th {
+      font-size: 0.7rem;
+      padding: 8px 10px;
+    }
+
+    .table tbody td {
+      padding: 8px 10px;
+      font-size: 0.75rem;
+    }
+
+    .item-image,
+    .item-image-placeholder {
+      width: 35px;
+      height: 35px;
+    }
+
+    .item-display {
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      padding: 4px 6px;
+    }
+
+    /* Compact column widths for small phones */
+    .match-id-col { width: 80px; min-width: 80px; }
+    .lost-item-col { width: 230px; min-width: 230px; }
+    .found-item-col { width: 230px; min-width: 230px; }
+    .confidence-col { width: 100px; min-width: 100px; }
+    .status-col { width: 100px; min-width: 100px; }
+    .date-col { width: 100px; min-width: 100px; }
+  }
+</style>
+
+<script>
+  let searchTimeout;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    loadMatches();
+    
+    // Adjust table height on resize
+    window.addEventListener('resize', adjustTableHeight);
+    adjustTableHeight();
+  });
+
+  function adjustTableHeight() {
+    const tableContainer = document.querySelector('.admin-table-container');
+    const viewportHeight = window.innerHeight;
+    
+    if (viewportHeight < 600) {
+      tableContainer.style.height = (viewportHeight - 200) + 'px';
+    } else {
+      tableContainer.style.height = '70vh';
+    }
+  }
+
+  function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      searchMatches();
+    }, 300);
+  }
+
+  async function loadMatches(searchParams = {}) {
+    const tableBody = document.getElementById('matchesTableBody');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const matchesCount = document.getElementById('matchesCount');
+
+    loadingSpinner.style.display = 'block';
+    tableBody.innerHTML = '';
+
+    try {
+      const params = new URLSearchParams(searchParams);
+      const response = await fetch(`/api/admin/matches?${params}`);
+      const data = await response.json();
+
+      if (data.success) {
+        displayMatches(data.matches);
+        matchesCount.textContent = `Showing ${data.matches.length} matches`;
+      } else {
+        throw new Error(data.error || 'Failed to load matches');
+      }
+    } catch (error) {
+      console.error('Error loading matches:', error);
+      tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Error loading matches: ' + error.message + '</td></tr>';
+      matchesCount.textContent = 'Error loading matches';
+    } finally {
+      loadingSpinner.style.display = 'none';
+    }
+  }
+
+  function displayMatches(matches) {
+    const tableBody = document.getElementById('matchesTableBody');
+    
+    if (!matches || matches.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No matches found matching your criteria</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = matches.map(match => {
+      // Process image paths exactly like in admin/items
+      const lostImageFilename = processImagePath(match.lost_image_path);
+      const foundImageFilename = processImagePath(match.found_image_path);
+      
+      return `
+        <tr>
+          <td class="match-id-col">
+            <strong class="text-gray-800">#${match.id}</strong>
+          </td>
+          <td class="lost-item-col">
+            <div class="item-display">
+              ${lostImageFilename ? 
+                `<img src="/uploads/items/${lostImageFilename}" class="item-image lost-item-image" alt="${match.lost_title || 'Lost item'}">` : 
+                `<div class="item-image-placeholder lost-item-image">
+                  <i class="fas fa-search fa-xs"></i>
+                </div>`
+              }
+              <div class="item-info">
+                <div class="item-title text-truncate">${match.lost_title || 'No title'}</div>
+                <div class="item-user text-truncate">by ${match.lost_user_name || 'Unknown'}</div>
+              </div>
+            </div>
+          </td>
+          <td class="found-item-col">
+            <div class="item-display">
+              ${foundImageFilename ? 
+                `<img src="/uploads/items/${foundImageFilename}" class="item-image found-item-image" alt="${match.found_title || 'Found item'}">` : 
+                `<div class="item-image-placeholder found-item-image">
+                  <i class="fas fa-box fa-xs"></i>
+                </div>`
+              }
+              <div class="item-info">
+                <div class="item-title text-truncate">${match.found_title || 'No title'}</div>
+                <div class="item-user text-truncate">by ${match.found_user_name || 'Unknown'}</div>
+              </div>
+            </div>
+          </td>
+          <td class="confidence-col">
+            <span class="badge ${getConfidenceBadgeClass(match.match_score)}">
+              ${(match.match_score * 100).toFixed(1)}%
+            </span>
+          </td>
+          <td class="status-col">
+            <span class="badge ${getMatchStatusBadgeClass(match.status)}">
+              ${match.status || 'pending'}
+            </span>
+          </td>
+          <td class="date-col">
+            <small class="text-muted">${match.match_at ? formatDate(match.match_at) : 'Unknown'}</small>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function processImagePath(imagePath) {
+    if (!imagePath) return null;
+    
+    let filename = imagePath;
+    
+    // Convert backslashes to forward slashes
+    filename = filename.replace("\\", "/");
+    
+    // Extract just the filename from different path formats
+    if (filename.includes('static/uploads/items/')) {
+      filename = filename.split('static/uploads/items/')[1];
+    } else if (filename.includes('uploads/items/')) {
+      filename = filename.split('uploads/items/')[1];
+    }
+    
+    // Remove any remaining path components and get just the filename
+    const pathParts = filename.split('/');
+    filename = pathParts[pathParts.length - 1];
+    
+    return filename;
+  }
+
+  function formatDate(dateString) {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  function getConfidenceBadgeClass(score) {
+    if (score >= 0.8) return 'bg-success';
+    if (score >= 0.4) return 'bg-warning text-dark';
+    return 'bg-secondary';
+  }
+
+  function getMatchStatusBadgeClass(status) {
+    const statusClasses = {
+      'resolved': 'bg-success',
+      'rejected': 'bg-danger',
+      'pending': 'bg-warning text-dark',
+      'default': 'bg-secondary'
+    };
+    return statusClasses[status] || statusClasses.default;
+  }
+
+  function searchMatches() {
+    const searchParams = {
+      q: document.getElementById('searchMatches').value,
+      status: document.getElementById('matchStatusFilter').value,
+      confidence: document.getElementById('confidenceFilter').value
+    };
+    loadMatches(searchParams);
+  }
+
+  function clearSearch() {
+    document.getElementById('searchMatches').value = '';
+    document.getElementById('matchStatusFilter').value = '';
+    document.getElementById('confidenceFilter').value = '';
+    searchMatches();
+  }
+</script>
+{% endblock %}

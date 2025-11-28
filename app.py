@@ -209,6 +209,777 @@ def update_dashboard_stats(user_id, cursor, mysql):
     }
 
 
+# Admin dashboard route - FIXED
+@app.route('/admindashboard')
+def admin_dashboard():
+    # Check if user is admin
+    if not session.get('is_admin'):
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('login_page'))
+    
+    # ✅ REMOVE the database queries - let the API handle it
+    # The frontend will fetch data via JavaScript APIs
+    
+    return render_template('admindashboard.html', active_page='admin_dashboard')
+
+# API route for admin statistics - FIXED
+# API route for admin statistics - FIXED
+@app.route('/api/admin/stats')
+def admin_stats():
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    
+    # Get period parameter (default to 6 months)
+    period = request.args.get('period', '6')
+    
+    # Validate period parameter
+    try:
+        period_int = int(period)
+        if period_int not in [6, 12, 24]:
+            period_int = 6
+    except ValueError:
+        period_int = 6
+    
+    # Real-time statistics
+    cursor.execute("SELECT COUNT(*) as total_users FROM users WHERE is_active = TRUE")
+    total_users = cursor.fetchone()['total_users']
+    
+    cursor.execute("SELECT COUNT(*) as total_items FROM items")
+    total_items = cursor.fetchone()['total_items']
+    
+    cursor.execute("""
+        SELECT COUNT(*) as total_matches 
+        FROM ai_matches 
+        WHERE status = 'resolved'
+    """)
+    total_matches = cursor.fetchone()['total_matches']
+    
+    cursor.execute("""
+        SELECT COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN 20 ELSE 0 END), 0) as total_revenue
+        FROM items 
+        WHERE type = 'lost'
+    """)
+    total_revenue = cursor.fetchone()['total_revenue']
+    
+    # Get item counts for quick stats
+    cursor.execute("""
+        SELECT 
+            SUM(CASE WHEN type = 'lost' THEN 1 ELSE 0 END) as lost_items,
+            SUM(CASE WHEN type = 'found' THEN 1 ELSE 0 END) as found_items,
+            SUM(CASE WHEN status IN ('claimed', 'returned') THEN 1 ELSE 0 END) as resolved_items,
+            SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) as paid_items
+        FROM items
+    """)
+    item_counts = cursor.fetchone()
+    
+    # Monthly items data for chart (both lost and found)
+    cursor.execute(f"""
+        SELECT 
+            DATE_FORMAT(created_at, '%b %Y') as month_name,
+            COUNT(*) as total_items,
+            SUM(CASE WHEN type = 'lost' THEN 1 ELSE 0 END) as lost_items,
+            SUM(CASE WHEN type = 'found' THEN 1 ELSE 0 END) as found_items
+        FROM items 
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL {period_int} MONTH)
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m'), month_name
+        ORDER BY MIN(created_at) ASC
+        LIMIT 12
+    """)
+    monthly_data = cursor.fetchall()
+    
+    # Get recent activity for the dashboard - FIXED: using created_at instead of updated_at
+    cursor.execute("""
+        (
+            SELECT 
+                'user_registered' as type,
+                CONCAT('New user registered: ', first_name, ' ', last_name) as message,
+                created_at as timestamp
+            FROM users 
+            ORDER BY created_at DESC 
+            LIMIT 3
+        )
+        UNION ALL
+        (
+            SELECT 
+                'item_posted' as type,
+                CONCAT('New ', type, ' item: ', title) as message,
+                created_at as timestamp
+            FROM items 
+            ORDER BY created_at DESC 
+            LIMIT 3
+        )
+        UNION ALL
+        (
+            SELECT 
+                'match_created' as type,
+                'New AI match created' as message,
+                match_at as timestamp
+            FROM ai_matches 
+            ORDER BY match_at DESC 
+            LIMIT 2
+        )
+        UNION ALL
+        (
+            SELECT 
+                'item_resolved' as type,
+                CONCAT('Item resolved: ', title) as message,
+                created_at as timestamp  -- Using created_at since updated_at doesn't exist
+            FROM items 
+            WHERE status IN ('claimed', 'returned')
+            ORDER BY created_at DESC 
+            LIMIT 2
+        )
+        ORDER BY timestamp DESC 
+        LIMIT 10
+    """)
+    recent_activity = cursor.fetchall()
+    
+    cursor.close()
+    
+    return jsonify({
+        'success': True,
+        'stats': {
+            'total_users': total_users,
+            'total_items': total_items,
+            'total_matches': total_matches,
+            'total_revenue': total_revenue
+        },
+        'item_counts': item_counts,
+        'monthly_data': monthly_data,
+        'recent_activity': recent_activity,
+        'period': period_int
+    })
+# API route for searching items - FIXED
+@app.route('/api/admin/search-items')
+def admin_search_items():
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        search_query = request.args.get('q', '')
+        item_type = request.args.get('type', '')
+        status = request.args.get('status', '')
+        
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        query = """
+            SELECT 
+                i.*,
+                u.first_name,
+                u.last_name,
+                u.email,
+                img.file_path as image_path
+            FROM items i
+            LEFT JOIN users u ON i.user_id = u.id
+            LEFT JOIN images img ON i.id = img.item_id
+            WHERE 1=1
+        """
+        params = []
+        
+        if search_query:
+            query += " AND (i.title LIKE %s OR i.description LIKE %s OR u.first_name LIKE %s OR u.last_name LIKE %s)"
+            params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
+        
+        if item_type:
+            query += " AND i.type = %s"
+            params.append(item_type)
+        
+        if status:
+            query += " AND i.status = %s"
+            params.append(status)
+        
+        query += " ORDER BY i.created_at DESC LIMIT 100"
+        
+        cursor.execute(query, params)
+        items = cursor.fetchall()
+        cursor.close()
+        
+        # Fix image paths for display
+        for item in items:
+            if item['image_path']:
+                # Normalize path and extract just the filename
+                item['image_path'] = item['image_path'].replace("\\", "/")
+                # ✅ FIX: Use the correct path structure
+                if 'static/uploads/items/' in item['image_path']:
+                    item['image_path'] = item['image_path'].split('static/uploads/items/')[-1]
+                elif 'uploads/items/' in item['image_path']:
+                    item['image_path'] = item['image_path'].split('uploads/items/')[-1]
+                # Remove any leading slashes or directories
+                item['image_path'] = item['image_path'].split('/')[-1]
+        
+        return jsonify({
+            'success': True,
+            'items': items
+        })
+        
+    except Exception as e:
+        print(f"Error in admin search: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Fixed admin routes with correct template names
+@app.route('/admin/users')
+def admin_users():
+    if not session.get('is_admin'):
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('login_page'))
+    return render_template('adminusers.html', active_page='admin_users')  # ✅ Correct filename
+@app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
+def delete_admin_user(user_id):
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Prevent deleting admin user (ID 20)
+        if user_id == 20:
+            return jsonify({'success': False, 'error': 'Cannot delete admin user'}), 400
+        
+        # Check if user exists
+        cursor.execute("SELECT id, first_name, last_name, profile_picture FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.close()
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        # Delete user's items and images first
+        cursor.execute("SELECT id FROM items WHERE user_id = %s", (user_id,))
+        items = cursor.fetchall()
+        
+        for item in items:
+            # Delete item images
+            cursor.execute("SELECT file_path FROM images WHERE item_id = %s", (item['id'],))
+            images = cursor.fetchall()
+            
+            for image in images:
+                if image['file_path'] and os.path.exists(image['file_path']):
+                    try:
+                        os.remove(image['file_path'])
+                    except Exception as e:
+                        print(f"Warning: Could not delete image file {image['file_path']}: {e}")
+            
+            cursor.execute("DELETE FROM images WHERE item_id = %s", (item['id'],))
+        
+        # Delete user's items
+        cursor.execute("DELETE FROM items WHERE user_id = %s", (user_id,))
+        
+        # Delete user's profile picture
+        if user['profile_picture']:
+            profile_path = os.path.join(app.config['UPLOAD_FOLDER'], user['profile_picture'])
+            if os.path.exists(profile_path):
+                try:
+                    os.remove(profile_path)
+                except Exception as e:
+                    print(f"Warning: Could not delete profile picture {profile_path}: {e}")
+        
+        # Delete user
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'User {user["first_name"]} {user["last_name"]} deleted successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error deleting user: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/items')
+def admin_items():
+    if not session.get('is_admin'):
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('login_page'))
+    return render_template('adminitems.html', active_page='admin_items')  # ✅ Correct filename
+
+@app.route('/api/admin/items/<int:item_id>', methods=['DELETE'])
+def delete_admin_item(item_id):
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Check if item exists
+        cursor.execute("SELECT id, title, user_id FROM items WHERE id = %s", (item_id,))
+        item = cursor.fetchone()
+        
+        if not item:
+            cursor.close()
+            return jsonify({'success': False, 'error': 'Item not found'}), 404
+        
+        # Delete item images first
+        cursor.execute("SELECT file_path FROM images WHERE item_id = %s", (item_id,))
+        images = cursor.fetchall()
+        
+        for image in images:
+            if image['file_path'] and os.path.exists(image['file_path']):
+                try:
+                    os.remove(image['file_path'])
+                except Exception as e:
+                    print(f"Warning: Could not delete image file {image['file_path']}: {e}")
+        
+        # Delete images from database
+        cursor.execute("DELETE FROM images WHERE item_id = %s", (item_id,))
+        
+        # Delete the item
+        cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Item "{item["title"]}" deleted successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error deleting item: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/matches')
+def admin_matches():
+    if not session.get('is_admin'):
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('login_page'))
+    return render_template('adminmatches.html', active_page='admin_matches')  # ✅ Correct filename
+
+
+
+
+
+@app.route('/admin/analytics')
+def admin_analytics():
+    if not session.get('is_admin'):
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('login_page'))
+    return render_template('adminanalytics.html', active_page='admin_analytics')  # ✅ Correct filename
+
+@app.route('/api/admin/analytics')
+def api_admin_analytics():
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        period = request.args.get('period', '4')  # Default to 4 weeks
+        
+        # Validate period parameter
+        try:
+            period_int = int(period)
+            if period_int not in [4, 8, 12]:
+                period_int = 4
+        except ValueError:
+            period_int = 4
+        
+        # Key Metrics
+        cursor.execute("SELECT COUNT(*) as total_users FROM users WHERE is_active = TRUE")
+        total_users = cursor.fetchone()['total_users']
+        
+        cursor.execute("SELECT COUNT(*) as total_items FROM items")
+        total_items = cursor.fetchone()['total_items']
+        
+        cursor.execute("SELECT COUNT(*) as total_matches FROM ai_matches WHERE status = 'resolved'")
+        total_matches = cursor.fetchone()['total_matches']
+        
+        cursor.execute("SELECT COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN 20 ELSE 0 END), 0) as total_revenue FROM items WHERE type = 'lost'")
+        total_revenue = cursor.fetchone()['total_revenue']
+        
+        # Weekly Items Data
+        cursor.execute(f"""
+            SELECT 
+                CONCAT('Week ', WEEK(created_at), ' - ', DATE_FORMAT(MIN(created_at), '%b %d')) as week_name,
+                COUNT(*) as total_items,
+                SUM(CASE WHEN type = 'lost' THEN 1 ELSE 0 END) as lost_items,
+                SUM(CASE WHEN type = 'found' THEN 1 ELSE 0 END) as found_items
+            FROM items 
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL {period_int} WEEK)
+            GROUP BY YEAR(created_at), WEEK(created_at)
+            ORDER BY MIN(created_at) ASC
+            LIMIT {period_int}
+        """)
+        weekly_data = cursor.fetchall()
+        
+        # Item Distribution
+        cursor.execute("""
+            SELECT 
+                SUM(CASE WHEN type = 'lost' THEN 1 ELSE 0 END) as lost_items,
+                SUM(CASE WHEN type = 'found' THEN 1 ELSE 0 END) as found_items,
+                SUM(CASE WHEN status IN ('claimed', 'returned') THEN 1 ELSE 0 END) as resolved_items
+            FROM items
+        """)
+        item_distribution = cursor.fetchone()
+        
+        # Success Rate (matches resolved vs total matches)
+        cursor.execute("""
+            SELECT 
+                COUNT(*) as total_matches,
+                SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved_matches
+            FROM ai_matches
+        """)
+        match_data = cursor.fetchone()
+        success_rate = (match_data['resolved_matches'] / match_data['total_matches'] * 100) if match_data['total_matches'] > 0 else 0
+        
+        # Recent Activity (last 10 activities)
+        cursor.execute("""
+            (
+                SELECT 
+                    'user_registered' as type,
+                    CONCAT('New user registered: ', first_name, ' ', last_name) as message,
+                    created_at as timestamp
+                FROM users 
+                ORDER BY created_at DESC 
+                LIMIT 3
+            )
+            UNION ALL
+            (
+                SELECT 
+                    'item_posted' as type,
+                    CONCAT('New ', type, ' item: ', title) as message,
+                    created_at as timestamp
+                FROM items 
+                ORDER BY created_at DESC 
+                LIMIT 3
+            )
+            UNION ALL
+            (
+                SELECT 
+                    'match_created' as type,
+                    'New AI match created' as message,
+                    match_at as timestamp
+                FROM ai_matches 
+                ORDER BY match_at DESC 
+                LIMIT 2
+            )
+            UNION ALL
+            (
+                SELECT 
+                    'item_resolved' as type,
+                    CONCAT('Item resolved: ', title) as message,
+                    created_at as timestamp
+                FROM items 
+                WHERE status IN ('claimed', 'returned')
+                ORDER BY created_at DESC 
+                LIMIT 2
+            )
+            ORDER BY timestamp DESC 
+            LIMIT 10
+        """)
+        recent_activity = cursor.fetchall()
+        
+        cursor.close()
+        
+        # Prepare chart data
+        weekly_items = {
+            'labels': [item['week_name'] for item in weekly_data],
+            'lost': [item['lost_items'] for item in weekly_data],
+            'found': [item['found_items'] for item in weekly_data]
+        }
+        
+        return jsonify({
+            'success': True,
+            'metrics': {
+                'total_users': total_users,
+                'total_items': total_items,
+                'total_matches': total_matches,
+                'total_revenue': total_revenue
+            },
+            'charts': {
+                'weekly_items': weekly_items,  # Changed from monthly_items to weekly_items
+                'item_distribution': item_distribution,
+                'success_rate': round(success_rate, 1)
+            },
+            'recent_activity': recent_activity
+        })
+        
+    except Exception as e:
+        print(f"Error in admin analytics API: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ✅ CHANGED: Reports to Feedbacks
+@app.route('/admin/feedbacks')
+def admin_feedbacks():
+    if not session.get('is_admin'):
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('login_page'))
+    return render_template('adminfeedbacks.html', active_page='admin_feedbacks')  # ✅ New filename
+
+# ✅ REMOVED: admin_settings route (replaced with logout in sidebar)
+
+# Add placeholder APIs for new admin pages
+@app.route('/api/admin/users')
+def api_admin_users():
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Get query parameters
+        search_query = request.args.get('q', '')
+        status_filter = request.args.get('status', '')
+        
+        # Build base query
+        base_query = """
+            SELECT 
+                u.id, u.first_name, u.last_name, u.email, u.phone, 
+                u.profile_picture, u.is_active, u.created_at,
+                COUNT(i.id) as items_count
+            FROM users u
+            LEFT JOIN items i ON u.id = i.user_id
+        """
+        
+        # Build WHERE conditions
+        where_conditions = []
+        params = []
+        
+        if search_query:
+            where_conditions.append("(u.first_name LIKE %s OR u.last_name LIKE %s OR u.email LIKE %s OR u.phone LIKE %s)")
+            params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
+        
+        if status_filter == 'active':
+            where_conditions.append("u.is_active = TRUE")
+        elif status_filter == 'inactive':
+            where_conditions.append("u.is_active = FALSE")
+        
+        # Construct final query
+        where_clause = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+        group_by = " GROUP BY u.id"
+        order_by = " ORDER BY u.created_at DESC"
+        
+        final_query = base_query + where_clause + group_by + order_by
+        
+        print(f"Executing query: {final_query}")  # Debug
+        print(f"With params: {params}")  # Debug
+        
+        cursor.execute(final_query, params)
+        users = cursor.fetchall()
+        cursor.close()
+        
+        print(f"Found {len(users)} users")  # Debug
+        
+        return jsonify({
+            'success': True,
+            'users': users
+        })
+        
+    except Exception as e:
+        print(f"Error in admin users API: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/matches')
+def api_admin_matches():
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Get query parameters
+        search_query = request.args.get('q', '')
+        status_filter = request.args.get('status', '')
+        confidence_filter = request.args.get('confidence', '')
+        
+        # Build query
+        query = """
+            SELECT 
+                m.id, m.match_score, m.match_at, m.status,
+                lost.id as lost_item_id, lost.title as lost_title,
+                found.id as found_item_id, found.title as found_title,
+                CONCAT(u1.first_name, ' ', u1.last_name) as lost_user_name,
+                CONCAT(u2.first_name, ' ', u2.last_name) as found_user_name,
+                lost_img.file_path as lost_image_path,
+                found_img.file_path as found_image_path
+            FROM ai_matches m
+            JOIN items lost ON m.lost_item_id = lost.id
+            JOIN items found ON m.found_item_id = found.id
+            JOIN users u1 ON lost.user_id = u1.id
+            JOIN users u2 ON found.user_id = u2.id
+            LEFT JOIN images lost_img ON lost.id = lost_img.item_id
+            LEFT JOIN images found_img ON found.id = found_img.item_id
+            WHERE 1=1
+        """
+        params = []
+        
+        # Add search filters
+        if search_query:
+            query += " AND (lost.title LIKE %s OR found.title LIKE %s OR u1.first_name LIKE %s OR u1.last_name LIKE %s OR u2.first_name LIKE %s OR u2.last_name LIKE %s)"
+            params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%', f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
+        
+        # Add status filter
+        if status_filter:
+            query += " AND m.status = %s"
+            params.append(status_filter)
+        
+        # Add confidence filter
+        if confidence_filter == 'high':
+            query += " AND m.match_score >= 0.8"
+        elif confidence_filter == 'medium':
+            query += " AND m.match_score >= 0.4 AND m.match_score < 0.8"
+        elif confidence_filter == 'low':
+            query += " AND m.match_score < 0.4"
+        
+        query += " ORDER BY m.match_at DESC"
+        
+        cursor.execute(query, params)
+        matches = cursor.fetchall()
+        cursor.close()
+        
+        # Process image paths exactly like in admin/items
+        for match in matches:
+            # Process lost item image path
+            if match.get('lost_image_path'):
+                match['lost_image_path'] = match['lost_image_path'].replace("\\", "/")
+                if 'static/uploads/items/' in match['lost_image_path']:
+                    match['lost_image_path'] = match['lost_image_path'].split('static/uploads/items/')[-1]
+                elif 'uploads/items/' in match['lost_image_path']:
+                    match['lost_image_path'] = match['lost_image_path'].split('uploads/items/')[-1]
+                # Remove any leading slashes or directories
+                match['lost_image_path'] = match['lost_image_path'].split('/')[-1]
+            
+            # Process found item image path
+            if match.get('found_image_path'):
+                match['found_image_path'] = match['found_image_path'].replace("\\", "/")
+                if 'static/uploads/items/' in match['found_image_path']:
+                    match['found_image_path'] = match['found_image_path'].split('static/uploads/items/')[-1]
+                elif 'uploads/items/' in match['found_image_path']:
+                    match['found_image_path'] = match['found_image_path'].split('uploads/items/')[-1]
+                # Remove any leading slashes or directories
+                match['found_image_path'] = match['found_image_path'].split('/')[-1]
+        
+        return jsonify({
+            'success': True,
+            'matches': matches
+        })
+        
+    except Exception as e:
+        print(f"Error in admin matches API: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/matches/<int:match_id>/approve', methods=['PUT'])
+def approve_admin_match(match_id):
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Update match status to resolved
+        cursor.execute("UPDATE ai_matches SET status = 'resolved' WHERE id = %s", (match_id,))
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Match approved successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error approving match: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/matches/<int:match_id>/reject', methods=['PUT'])
+def reject_admin_match(match_id):
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Update match status to rejected
+        cursor.execute("UPDATE ai_matches SET status = 'rejected' WHERE id = %s", (match_id,))
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Match rejected successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error rejecting match: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/feedbacks')
+def api_admin_feedbacks():
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        cursor.execute("""
+            SELECT 
+                f.id, f.user_id, f.message, f.rating, f.is_public, f.created_at,
+                u.first_name, u.last_name, u.email, u.profile_picture
+            FROM feedback f
+            JOIN users u ON f.user_id = u.id
+            ORDER BY f.created_at DESC
+        """)
+        
+        feedbacks = cursor.fetchall()
+        cursor.close()
+        
+        return jsonify({
+            'success': True,
+            'feedbacks': feedbacks
+        })
+        
+    except Exception as e:
+        print(f"Error in admin feedbacks API: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/feedbacks/<int:feedback_id>/visibility', methods=['PUT'])
+def update_feedback_visibility(feedback_id):
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.get_json()
+        is_public = data.get('is_public', False)
+        
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("UPDATE feedback SET is_public = %s WHERE id = %s", (is_public, feedback_id))
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Feedback visibility updated successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error updating feedback visibility: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/feedbacks/<int:feedback_id>', methods=['DELETE'])
+def delete_admin_feedback(feedback_id):
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Delete the feedback
+        cursor.execute("DELETE FROM feedback WHERE id = %s", (feedback_id,))
+        mysql.connection.commit()
+        cursor.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Feedback deleted successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error deleting feedback: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -454,6 +1225,190 @@ def verify_otp():
     except Exception as e:
         return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
 
+# Add this function to send password reset emails
+def send_password_reset_email(email, otp, first_name):
+    """Send password reset OTP via email"""
+    try:
+        msg = Message(
+            subject='Password Reset - Reunited',
+            recipients=[email],
+            html=f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #1E3A8A; margin-bottom: 10px;">🤝 Reunited</h1>
+                    <h2 style="color: #374151; font-weight: normal;">Password Reset</h2>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; text-align: center;">
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                        Hi {first_name},
+                    </p>
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 30px;">
+                        You requested to reset your password. Use the verification code below:
+                    </p>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h1 style="font-size: 36px; color: #1E3A8A; letter-spacing: 8px; margin: 0; font-family: monospace;">
+                            {otp}
+                        </h1>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
+                        This code will expire in 10 minutes. If you didn't request this, please ignore this email.
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="font-size: 12px; color: #9ca3af;">
+                        © 2025 Reunited. Helping reconnect lost items with their owners.
+                    </p>
+                </div>
+            </div>
+            '''
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending password reset email: {e}")
+        return False
+
+# Add these routes to your Flask app
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    """Send OTP for password reset"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'success': False, 'errors': ['Email is required']}), 400
+        
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('SELECT id, first_name, email FROM users WHERE email = %s AND is_active = TRUE', (email,))
+        user = cursor.fetchone()
+        cursor.close()
+        
+        if not user:
+            # Don't reveal if email exists or not for security
+            return jsonify({
+                'success': True, 
+                'message': 'If your email is registered, you will receive a verification code shortly.'
+            }), 200
+        
+        # Generate and store OTP
+        otp = generate_otp()
+        session['reset_otp'] = otp
+        session['reset_email'] = email
+        session['reset_otp_timestamp'] = datetime.now().timestamp()
+        
+        # Send OTP email
+        if send_password_reset_email(email, otp, user['first_name']):
+            return jsonify({
+                'success': True, 
+                'message': 'Verification code sent to your email!'
+            }), 200
+        else:
+            return jsonify({'success': False, 'errors': ['Failed to send verification email. Please try again.']}), 500
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+
+@app.route('/api/verify-reset-otp', methods=['POST'])
+def verify_reset_otp():
+    """Verify OTP for password reset"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        entered_otp = data.get('otp_code', '').strip()
+        
+        if not email or not entered_otp:
+            return jsonify({'success': False, 'errors': ['Email and OTP code are required']}), 400
+        
+        # Check if OTP exists in session
+        if ('reset_otp' not in session or 'reset_email' not in session or 
+            session.get('reset_email') != email):
+            return jsonify({'success': False, 'errors': ['Invalid reset session. Please request a new code.']}), 400
+        
+        # Check OTP expiry (10 minutes)
+        otp_timestamp = session.get('reset_otp_timestamp', 0)
+        current_timestamp = datetime.now().timestamp()
+        if current_timestamp - otp_timestamp > 600:  # 10 minutes
+            session.pop('reset_otp', None)
+            session.pop('reset_email', None)
+            session.pop('reset_otp_timestamp', None)
+            return jsonify({'success': False, 'errors': ['Verification code expired. Please request a new one.']}), 400
+        
+        # Verify OTP
+        stored_otp = session.get('reset_otp')
+        if entered_otp != stored_otp:
+            return jsonify({'success': False, 'errors': ['Invalid verification code. Please try again.']}), 400
+        
+        # OTP is valid, mark as verified for password reset
+        session['reset_verified'] = True
+        session['reset_email'] = email
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Verification successful! You can now reset your password.'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+
+@app.route('/api/reset-password', methods=['POST'])
+def reset_password():
+    """Reset password after OTP verification"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        new_password = data.get('new_password', '')
+        
+        if not email or not new_password:
+            return jsonify({'success': False, 'errors': ['Email and new password are required']}), 400
+        
+        # Check if reset session is verified
+        if (not session.get('reset_verified') or 
+            session.get('reset_email') != email):
+            return jsonify({'success': False, 'errors': ['Reset session not verified. Please start over.']}), 400
+        
+        # Password validation
+        if len(new_password) < 8:
+            return jsonify({'success': False, 'errors': ['Password must be at least 8 characters long']}), 400
+        
+        if not re.search(r'[A-Z]', new_password):
+            return jsonify({'success': False, 'errors': ['Password must contain at least one uppercase letter']}), 400
+        
+        if not re.search(r'[a-z]', new_password):
+            return jsonify({'success': False, 'errors': ['Password must contain at least one lowercase letter']}), 400
+        
+        if not re.search(r'\d', new_password):
+            return jsonify({'success': False, 'errors': ['Password must contain at least one number']}), 400
+        
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Update password
+        hashed_password = generate_password_hash(new_password)
+        cursor.execute('UPDATE users SET password = %s WHERE email = %s', (hashed_password, email))
+        mysql.connection.commit()
+        cursor.close()
+        
+        # Clear reset session
+        session.pop('reset_otp', None)
+        session.pop('reset_email', None)
+        session.pop('reset_otp_timestamp', None)
+        session.pop('reset_verified', None)
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Password reset successfully! You can now log in with your new password.'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+
+
+
+# Update your login function to handle admin redirect
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
@@ -467,7 +1422,24 @@ def login():
         if not username or not password:
             return jsonify({'success': False, 'errors': ['Username and password are required']}), 400
         
-        # Check if user exists (by email or username)
+        # Check for admin credentials
+        if username.lower() == 'admin@reunited.com' and password == 'Admin@123':
+            # Create admin session
+            session['user_id'] = 'admin'
+            session['first_name'] = 'Admin'
+            session['last_name'] = 'User'
+            session['email'] = 'admin@reunited.com'
+            session['full_name'] = 'Admin User'
+            session['is_admin'] = True
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Admin login successful!',
+                'redirect': '/admindashboard',
+                'is_admin': True
+            }), 200
+        
+        # Check if user exists (by email or username) - regular user login
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('SELECT * FROM users WHERE email = %s AND is_active = TRUE', (username.lower(),))
         user = cursor.fetchone()
@@ -476,7 +1448,7 @@ def login():
         if not user or not check_password_hash(user['password'], password):
             return jsonify({'success': False, 'errors': ['Invalid credentials']}), 401
         
-        # Create session
+        # Create session for regular user
         session['user_id'] = user['id']
         session['first_name'] = user['first_name']
         session['last_name'] = user['last_name']
@@ -484,6 +1456,7 @@ def login():
         session['full_name'] = f"{user['first_name']} {user['last_name']}"
         session['phone'] = user['phone']
         session['profile_picture'] = user['profile_picture']
+        session['is_admin'] = False
         
         return jsonify({
             'success': True, 

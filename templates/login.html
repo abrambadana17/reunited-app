@@ -375,20 +375,20 @@
     }
 
     .form-footer {
-      margin-top: 2rem;
-      font-size: 0.9rem;
-      color: var(--color-gray-500);
-    }
+  margin-top: 2rem;
+  font-size: 0.9rem;
+  color: var(--color-gray-500);
+}
 
-    .form-footer a {
-      color: var(--color-primary);
-      text-decoration: underline;
-      font-weight: 600;
-    }
+.form-footer a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  font-weight: 600;
+}
 
-    .form-footer a:hover {
-      color: var(--color-primary-hover);
-    }
+.form-footer a:hover {
+  color: var(--color-primary-hover);
+}
 
     .alert {
       background: #fef2f2;
@@ -411,47 +411,87 @@
     }
 
     /* === MOBILE RESPONSIVENESS FOR LOGIN === */
-@media (max-width: 768px) {
-  .form-section {
-    width: 100%;
-    max-width: 100%;
-    padding: 20px 15px;
-    margin: 0;
-    border-radius: var(--radius-md);
-    box-shadow: none;
-  }
+    @media (max-width: 768px) {
+      .form-section {
+        width: 100%;
+        max-width: 100%;
+        padding: 20px 15px;
+        margin: 0;
+        border-radius: var(--radius-md);
+        box-shadow: none;
+      }
 
-  .form-section h1 {
-    font-size: 1.5rem; /* smaller heading */
-  }
+      .form-section h1 {
+        font-size: 1.5rem; /* smaller heading */
+      }
 
-  .form-section p {
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-  }
+      .form-section p {
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+      }
 
-  .form-label {
-    font-size: 0.8rem;
-  }
+      .form-label {
+        font-size: 0.8rem;
+      }
 
-  .form-control {
-    padding: 10px 12px;
-    font-size: 14px;
-  }
+      .form-control {
+        padding: 10px 12px;
+        font-size: 14px;
+      }
 
-  .btn-primary {
-    padding: 10px;
-    font-size: 14px;
-    width: 100%; /* full width button */
-  }
+      .btn-primary {
+        padding: 10px;
+        font-size: 14px;
+        width: 100%; /* full width button */
+      }
 
-  .form-footer {
-    font-size: 0.8rem;
-    margin-top: 1.5rem;
-    text-align: center;
-  }
-}
+      .form-footer {
+        font-size: 0.8rem;
+        margin-top: 1.5rem;
+        text-align: center;
+      }
+    }
 
+    /* Forgot Password Modal Styles */
+    .modal-content {
+      border-radius: var(--radius-lg);
+      border: var(--border-light);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+      border-bottom: var(--border-light);
+      padding: 1.5rem;
+    }
+
+    .modal-title {
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    #resendCodeBtn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .countdown-timer {
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    /* Success message */
+    .alert-success {
+      background: #f0fdf4;
+      border: 2px solid #bbf7d0;
+      color: #166534;
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      margin-bottom: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -521,13 +561,79 @@
           </form>
           
           <div class="form-footer">
-            Don't have an account?<br> <a href="/register">Create one here</a>
+            Don't have an account? <a href="/register">Create one here</a><br>
+            <a href="#"  data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot your password?</a>
           </div>
         </div>
       </div>
     </div>
   </div>
 </main>
+
+<!-- Forgot Password Modal -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="forgotPasswordModalLabel">Reset Your Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Step 1: Email Input -->
+        <div id="forgotPasswordStep1">
+          <p class="text-muted mb-4">Enter your email address and we'll send you a verification code to reset your password.</p>
+          <form id="forgotPasswordForm">
+            <div class="form-group mb-3">
+              <label class="form-label" for="resetEmail">Email Address</label>
+              <input type="email" class="form-control" id="resetEmail" name="email" placeholder="Enter your email address" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="sendCodeBtn">
+              <span class="btn-text">Send Verification Code</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Step 2: OTP Verification -->
+        <div id="forgotPasswordStep2" style="display: none;">
+          <p class="text-muted mb-4">We've sent a 6-digit verification code to your email.</p>
+          <form id="verifyOtpForm">
+            <div class="form-group mb-3">
+              <label class="form-label" for="otpCode">Verification Code</label>
+              <input type="text" class="form-control" id="otpCode" name="otp_code" placeholder="Enter 6-digit code" maxlength="6" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="verifyOtpBtn">
+              <span class="btn-text">Verify Code</span>
+            </button>
+          </form>
+          <div class="text-center mt-3">
+            <button type="button" class="btn btn-link p-0" id="resendCodeBtn">
+              Didn't receive code? Resend
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: New Password -->
+        <div id="forgotPasswordStep3" style="display: none;">
+          <p class="text-muted mb-4">Create your new password.</p>
+          <form id="newPasswordForm">
+            <div class="form-group mb-3">
+              <label class="form-label" for="newPassword">New Password</label>
+              <input type="password" class="form-control" id="newPassword" name="new_password" placeholder="Enter new password" required>
+              <div class="form-text">Password must be at least 8 characters with uppercase, lowercase, and number</div>
+            </div>
+            <div class="form-group mb-3">
+              <label class="form-label" for="confirmPassword">Confirm Password</label>
+              <input type="password" class="form-control" id="confirmPassword" name="confirm_password" placeholder="Confirm new password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="resetPasswordBtn">
+              <span class="btn-text">Reset Password</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -653,47 +759,295 @@
   }
 
   loginForm.addEventListener('submit', async function(e) {
-  e.preventDefault();
+    e.preventDefault();
 
-  const formData = new FormData(loginForm);
-  const data = {
-    username: formData.get('username'),
-    password: formData.get('password')
-  };
+    const formData = new FormData(loginForm);
+    const data = {
+      username: formData.get('username'),
+      password: formData.get('password')
+    };
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const response = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
 
-    const result = await response.json();
+      const result = await response.json();
 
-    // artificial delay (e.g., 1.5 seconds)
+      setTimeout(() => {
+        setLoading(false);
+
+        if (result.success) {
+          showAlert('Login successful! Redirecting...', 'success');
+          
+          // Check if it's admin login
+          if (result.redirect === '/admindashboard') {
+            window.location.href = '/admindashboard';
+          } else {
+            window.location.href = '/dashboard';
+          }
+        } else {
+          showAlert(result.errors ? result.errors[0] : 'Invalid credentials');
+        }
+      }, 1500);
+
+    } catch (err) {
+      setTimeout(() => {
+        setLoading(false);
+        showAlert('Something went wrong. Please try again.');
+      }, 1500);
+    }
+  });
+
+  // Forgot Password Functionality
+  const forgotPasswordModal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
+  const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+  const verifyOtpForm = document.getElementById('verifyOtpForm');
+  const newPasswordForm = document.getElementById('newPasswordForm');
+  const sendCodeBtn = document.getElementById('sendCodeBtn');
+  const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+  const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+  const resendCodeBtn = document.getElementById('resendCodeBtn');
+
+  let resetEmail = '';
+
+  function showStep(stepNumber) {
+    document.getElementById('forgotPasswordStep1').style.display = stepNumber === 1 ? 'block' : 'none';
+    document.getElementById('forgotPasswordStep2').style.display = stepNumber === 2 ? 'block' : 'none';
+    document.getElementById('forgotPasswordStep3').style.display = stepNumber === 3 ? 'block' : 'none';
+  }
+
+  function setForgotPasswordLoading(button, loading) {
+    const btnText = button.querySelector('.btn-text');
+    if (loading) {
+      button.disabled = true;
+      btnText.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Processing...';
+    } else {
+      button.disabled = false;
+      btnText.innerHTML = button === sendCodeBtn ? 'Send Verification Code' : 
+                          button === verifyOtpBtn ? 'Verify Code' : 
+                          'Reset Password';
+    }
+  }
+
+  function showAlertInModal(message, type = 'danger') {
+    // Remove existing alerts
+    const existingAlerts = document.querySelectorAll('.modal-alert');
+    existingAlerts.forEach(alert => alert.remove());
+
+    const alertClass = type === 'success' ? 'alert-success' : '';
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `modal-alert alert ${alertClass}`;
+    alertDiv.innerHTML = message;
+    
+    // Insert at the top of modal body
+    const modalBody = document.querySelector('.modal-body');
+    modalBody.insertBefore(alertDiv, modalBody.firstChild);
+
+    // Auto remove after 5 seconds
     setTimeout(() => {
-      setLoading(false);
+      alertDiv.remove();
+    }, 5000);
+  }
+
+  // Step 1: Request OTP
+  forgotPasswordForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    resetEmail = document.getElementById('resetEmail').value.trim();
+    
+    if (!resetEmail) {
+      showAlertInModal('Please enter your email address');
+      return;
+    }
+
+    setForgotPasswordLoading(sendCodeBtn, true);
+
+    try {
+      const response = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail })
+      });
+
+      const result = await response.json();
 
       if (result.success) {
-        showAlert('Login successful! Redirecting...', 'success');
-        window.location.href = '/dashboard'; // redirect if needed
+        showStep(2);
+        showAlertInModal(result.message, 'success');
+        startResendTimer();
       } else {
-        showAlert(result.message || 'Invalid credentials');
+        showAlertInModal(result.errors ? result.errors[0] : 'Failed to send verification code');
       }
-    }, 1500);
+    } catch (err) {
+      showAlertInModal('Something went wrong. Please try again.');
+    } finally {
+      setForgotPasswordLoading(sendCodeBtn, false);
+    }
+  });
 
-  } catch (err) {
-    setTimeout(() => {
-      setLoading(false);
-      showAlert('Something went wrong. Please try again.');
-    }, 1500);
+  // Step 2: Verify OTP
+  verifyOtpForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const otpCode = document.getElementById('otpCode').value.trim();
+    
+    if (!otpCode || otpCode.length !== 6) {
+      showAlertInModal('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setForgotPasswordLoading(verifyOtpBtn, true);
+
+    try {
+      const response = await fetch('/api/verify-reset-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: resetEmail, 
+          otp_code: otpCode 
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showStep(3);
+        showAlertInModal(result.message, 'success');
+      } else {
+        showAlertInModal(result.errors ? result.errors[0] : 'Invalid verification code');
+      }
+    } catch (err) {
+      showAlertInModal('Something went wrong. Please try again.');
+    } finally {
+      setForgotPasswordLoading(verifyOtpBtn, false);
+    }
+  });
+
+  // Step 3: Reset Password
+  newPasswordForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    // Password validation
+    if (newPassword.length < 8) {
+      showAlertInModal('Password must be at least 8 characters long');
+      return;
+    }
+    
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      showAlertInModal('Password must contain uppercase, lowercase letters and numbers');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      showAlertInModal('Passwords do not match');
+      return;
+    }
+
+    setForgotPasswordLoading(resetPasswordBtn, true);
+
+    try {
+      const response = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: resetEmail, 
+          new_password: newPassword 
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showAlertInModal(result.message, 'success');
+        
+        // Close modal and redirect to login after success
+        setTimeout(() => {
+          forgotPasswordModal.hide();
+          // Clear forms
+          forgotPasswordForm.reset();
+          verifyOtpForm.reset();
+          newPasswordForm.reset();
+          showStep(1);
+          
+          // Show success message on main page
+          showAlert('Password reset successfully! You can now log in with your new password.', 'success');
+        }, 2000);
+      } else {
+        showAlertInModal(result.errors ? result.errors[0] : 'Failed to reset password');
+      }
+    } catch (err) {
+      showAlertInModal('Something went wrong. Please try again.');
+    } finally {
+      setForgotPasswordLoading(resetPasswordBtn, false);
+    }
+  });
+
+  // Resend OTP functionality
+  resendCodeBtn.addEventListener('click', async function() {
+    if (resendCodeBtn.disabled) return;
+
+    setForgotPasswordLoading(sendCodeBtn, true);
+
+    try {
+      const response = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showAlertInModal('Verification code sent successfully!', 'success');
+        startResendTimer();
+      } else {
+        showAlertInModal(result.errors ? result.errors[0] : 'Failed to resend code');
+      }
+    } catch (err) {
+      showAlertInModal('Something went wrong. Please try again.');
+    } finally {
+      setForgotPasswordLoading(sendCodeBtn, false);
+    }
+  });
+
+  // Resend timer
+  function startResendTimer() {
+    let timeLeft = 60;
+    resendCodeBtn.disabled = true;
+    resendCodeBtn.innerHTML = `Resend in <span class="countdown-timer">${timeLeft}</span>s`;
+
+    const timer = setInterval(() => {
+      timeLeft--;
+      resendCodeBtn.innerHTML = `Resend in <span class="countdown-timer">${timeLeft}</span>s`;
+
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        resendCodeBtn.disabled = false;
+        resendCodeBtn.innerHTML = 'Didn\'t receive code? Resend';
+      }
+    }, 1000);
   }
-});
 
+  // Reset modal when closed
+  document.getElementById('forgotPasswordModal').addEventListener('hidden.bs.modal', function() {
+    forgotPasswordForm.reset();
+    verifyOtpForm.reset();
+    newPasswordForm.reset();
+    showStep(1);
+    
+    // Clear any alerts
+    const existingAlerts = document.querySelectorAll('.modal-alert');
+    existingAlerts.forEach(alert => alert.remove());
+  });
 </script>
-
 
 </body>
 </html>

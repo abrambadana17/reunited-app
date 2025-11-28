@@ -1,0 +1,583 @@
+{% extends "adminbase.html" %}
+
+{% block title %}Analytics - Reunited Admin{% endblock %}
+
+{% block page_title %}Analytics Dashboard{% endblock %}
+{% block page_subtitle %}Platform insights and performance metrics{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <!-- Key Metrics Cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="stats-card text-center">
+          <div class="stats-icon bg-primary bg-opacity-10 text-primary mx-auto">
+            <i class="fas fa-users"></i>
+          </div>
+          <h2 class="stats-number text-primary" id="totalUsers">0</h2>
+          <p class="mb-0 text-muted">Total Users</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stats-card text-center">
+          <div class="stats-icon bg-success bg-opacity-10 text-success mx-auto">
+            <i class="fas fa-box"></i>
+          </div>
+          <h2 class="stats-number text-success" id="totalItems">0</h2>
+          <p class="mb-0 text-muted">Total Items</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stats-card text-center">
+          <div class="stats-icon bg-info bg-opacity-10 text-info mx-auto">
+            <i class="fas fa-link"></i>
+          </div>
+          <h2 class="stats-number text-info" id="totalMatches">0</h2>
+          <p class="mb-0 text-muted">Successful Matches</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stats-card text-center">
+          <div class="stats-icon bg-warning bg-opacity-10 text-warning mx-auto">
+            <i class="fas fa-money-bill-wave"></i>
+          </div>
+          <h2 class="stats-number text-warning" id="totalRevenue">₱0</h2>
+          <p class="mb-0 text-muted">Total Revenue</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row g-4">
+      <!-- Weekly Items Chart -->
+      <div class="col-12 col-lg-8">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h5 class="mb-0 fw-semibold">
+              <i class="fas fa-chart-line me-2 text-primary"></i>Weekly Items Posted
+            </h5>
+            <div class="chart-controls">
+              <select class="form-select form-select-sm" id="chartPeriod" onchange="loadAnalytics()">
+                <option value="4">Last 4 Weeks</option>
+                <option value="8">Last 8 Weeks</option>
+                <option value="12">Last 12 Weeks</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="weeklyItemsChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item Distribution -->
+      <div class="col-12 col-lg-4">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h5 class="mb-0 fw-semibold">
+              <i class="fas fa-chart-pie me-2 text-success"></i>Item Distribution
+            </h5>
+          </div>
+          <div class="chart-container">
+            <canvas id="itemDistributionChart"></canvas>
+          </div>
+          <div class="chart-footer p-3 border-top bg-light">
+            <div class="row text-center small">
+              <div class="col-4">
+                <div class="text-danger">
+                  <i class="fas fa-circle me-1"></i>
+                  <span id="lostCount">0</span> Lost
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="text-success">
+                  <i class="fas fa-circle me-1"></i>
+                  <span id="foundCount">0</span> Found
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="text-primary">
+                  <i class="fas fa-circle me-1"></i>
+                  <span id="resolvedCount">0</span> Resolved
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Match Success Rate -->
+      <div class="col-12 col-md-6">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h5 class="mb-0 fw-semibold">
+              <i class="fas fa-percentage me-2 text-info"></i>Match Success Rate
+            </h5>
+          </div>
+          <div class="chart-container">
+            <canvas id="successRateChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="col-12 col-md-6">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h5 class="mb-0 fw-semibold">
+              <i class="fas fa-history me-2 text-warning"></i>Recent Activity
+            </h5>
+          </div>
+          <div class="activity-list" id="recentActivity">
+            <div class="text-center text-muted py-4">Loading activity...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Spinner -->
+<div class="loading-spinner" id="loadingSpinner">
+  <div class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+  <p class="mt-2 text-muted">Loading analytics...</p>
+</div>
+
+<style>
+  .stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .stats-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .stats-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .chart-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chart-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .chart-container {
+    flex: 1;
+    padding: 1.5rem;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chart-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+  }
+
+  .chart-controls .form-select {
+    width: auto;
+    min-width: 140px;
+  }
+
+  .activity-list {
+    padding: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .activity-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s ease;
+  }
+
+  .activity-item:hover {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+  }
+
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+
+  .activity-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  .activity-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .activity-text {
+    font-size: 0.875rem;
+    margin-bottom: 2px;
+    color: #374151;
+  }
+
+  .activity-time {
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+
+  .loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 3rem;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .stats-card {
+      padding: 1rem;
+    }
+
+    .stats-number {
+      font-size: 1.5rem;
+    }
+
+    .stats-icon {
+      width: 50px;
+      height: 50px;
+      font-size: 1.25rem;
+    }
+
+    .chart-header {
+      padding: 1rem;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .chart-container {
+      padding: 1rem;
+      min-height: 250px;
+    }
+
+    .chart-controls .form-select {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .stats-card {
+      margin-bottom: 1rem;
+    }
+
+    .chart-container {
+      min-height: 200px;
+    }
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  let weeklyItemsChart = null;
+  let itemDistributionChart = null;
+  let successRateChart = null;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    loadAnalytics();
+  });
+
+  async function loadAnalytics() {
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const period = document.getElementById('chartPeriod').value;
+
+    loadingSpinner.style.display = 'block';
+
+    try {
+      const response = await fetch(`/api/admin/analytics?period=${period}`);
+      const data = await response.json();
+
+      if (data.success) {
+        updateMetrics(data.metrics);
+        updateCharts(data.charts);
+        updateRecentActivity(data.recent_activity);
+      } else {
+        throw new Error(data.error || 'Failed to load analytics');
+      }
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      showErrorMessage('Error loading analytics: ' + error.message);
+    } finally {
+      loadingSpinner.style.display = 'none';
+    }
+  }
+
+  function updateMetrics(metrics) {
+    document.getElementById('totalUsers').textContent = metrics.total_users.toLocaleString();
+    document.getElementById('totalItems').textContent = metrics.total_items.toLocaleString();
+    document.getElementById('totalMatches').textContent = metrics.total_matches.toLocaleString();
+    document.getElementById('totalRevenue').textContent = `₱${metrics.total_revenue.toLocaleString()}`;
+  }
+
+  function updateCharts(charts) {
+    // Destroy existing charts
+    if (weeklyItemsChart) weeklyItemsChart.destroy();
+    if (itemDistributionChart) itemDistributionChart.destroy();
+    if (successRateChart) successRateChart.destroy();
+
+    // Weekly Items Chart
+    const weeklyCtx = document.getElementById('weeklyItemsChart').getContext('2d');
+    weeklyItemsChart = new Chart(weeklyCtx, {
+      type: 'line',
+      data: {
+        labels: charts.weekly_items?.labels || charts.monthly_items?.labels || ['No Data'],
+        datasets: [
+          {
+            label: 'Lost Items',
+            data: charts.weekly_items?.lost || charts.monthly_items?.lost || [0],
+            borderColor: '#dc3545',
+            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            tension: 0.4,
+            fill: true
+          },
+          {
+            label: 'Found Items',
+            data: charts.weekly_items?.found || charts.monthly_items?.found || [0],
+            borderColor: '#28a745',
+            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            tension: 0.4,
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        }
+      }
+    });
+
+    // Item Distribution Chart
+    const distributionData = {
+      lost: charts.item_distribution?.lost_items || charts.item_distribution?.lost || 0,
+      found: charts.item_distribution?.found_items || charts.item_distribution?.found || 0,
+      resolved: charts.item_distribution?.resolved_items || charts.item_distribution?.resolved || 0
+    };
+
+    // Update the counts in the footer
+    document.getElementById('lostCount').textContent = distributionData.lost;
+    document.getElementById('foundCount').textContent = distributionData.found;
+    document.getElementById('resolvedCount').textContent = distributionData.resolved;
+
+    const distributionCtx = document.getElementById('itemDistributionChart').getContext('2d');
+    itemDistributionChart = new Chart(distributionCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Lost Items', 'Found Items', 'Resolved Items'],
+        datasets: [{
+          data: [
+            distributionData.lost,
+            distributionData.found,
+            distributionData.resolved
+          ],
+          backgroundColor: [
+            '#dc3545',
+            '#28a745',
+            '#007bff'
+          ],
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.raw;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                return `${label}: ${value} (${percentage}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Success Rate Chart (original version)
+    const successCtx = document.getElementById('successRateChart').getContext('2d');
+    successRateChart = new Chart(successCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Match Success Rate'],
+        datasets: [{
+          label: 'Success Rate',
+          data: [charts.success_rate || 0],
+          backgroundColor: [
+            charts.success_rate >= 70 ? '#28a745' : 
+            charts.success_rate >= 40 ? '#ffc107' : '#dc3545'
+          ],
+          borderWidth: 0,
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `Success Rate: ${context.raw}%`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            ticks: {
+              callback: function(value) {
+                return value + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function updateRecentActivity(activities) {
+    const activityContainer = document.getElementById('recentActivity');
+    
+    if (!activities || activities.length === 0) {
+      activityContainer.innerHTML = '<div class="text-center text-muted py-4">No recent activity</div>';
+      return;
+    }
+
+    activityContainer.innerHTML = activities.map(activity => {
+      const iconConfig = getActivityIcon(activity.type);
+      return `
+        <div class="activity-item">
+          <div class="activity-icon ${iconConfig.bg}">
+            <i class="${iconConfig.icon} ${iconConfig.color}"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-text">${activity.message}</div>
+            <div class="activity-time">${formatTimeAgo(activity.timestamp)}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function getActivityIcon(type) {
+    const icons = {
+      'user_registered': { icon: 'fas fa-user-plus', bg: 'bg-primary bg-opacity-10', color: 'text-primary' },
+      'item_posted': { icon: 'fas fa-box', bg: 'bg-success bg-opacity-10', color: 'text-success' },
+      'match_created': { icon: 'fas fa-link', bg: 'bg-info bg-opacity-10', color: 'text-info' },
+      'item_resolved': { icon: 'fas fa-check-circle', bg: 'bg-warning bg-opacity-10', color: 'text-warning' },
+      'payment_received': { icon: 'fas fa-money-bill-wave', bg: 'bg-success bg-opacity-10', color: 'text-success' }
+    };
+    return icons[type] || { icon: 'fas fa-bell', bg: 'bg-secondary bg-opacity-10', color: 'text-secondary' };
+  }
+
+  function formatTimeAgo(timestamp) {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInSeconds = Math.floor((now - time) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return time.toLocaleDateString();
+  }
+
+  function showErrorMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.innerHTML = `
+      <i class="fas fa-exclamation-circle me-2"></i>${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+      if (alertDiv.parentNode) {
+        alertDiv.remove();
+      }
+    }, 5000);
+  }
+
+  // Auto-refresh analytics every 5 minutes
+  setInterval(loadAnalytics, 300000);
+</script>
+{% endblock %}

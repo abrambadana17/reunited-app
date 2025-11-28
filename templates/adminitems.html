@@ -1,0 +1,697 @@
+{% extends "adminbase.html" %}
+
+{% block title %}Items Management - Reunited Admin{% endblock %}
+
+{% block page_title %}Items Management{% endblock %}
+{% block page_subtitle %}Manage all lost and found items{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <!-- Search Section -->
+    <div class="search-section mb-4">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4 mb-2">
+          <label class="form-label small fw-semibold text-muted mb-1">Search Items & Users</label>
+          <input type="text" class="form-control" id="searchInput" placeholder="Enter item title, description, or user name..." oninput="debounceSearch()">
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+          <label class="form-label small fw-semibold text-muted mb-1">Item Type</label>
+          <select class="form-select" id="typeFilter" onchange="debounceSearch()">
+            <option value="">All Types</option>
+            <option value="lost">Lost</option>
+            <option value="found">Found</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+          <label class="form-label small fw-semibold text-muted mb-1">Status</label>
+          <select class="form-select" id="statusFilter" onchange="debounceSearch()">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="claimed">Claimed</option>
+            <option value="returned">Returned</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2 mb-2">
+          <label class="form-label small fw-semibold text-muted mb-1 d-md-block d-none">&nbsp;</label>
+          <button class="btn btn-outline-admin w-100" onclick="clearSearch()">
+            <i class="fas fa-times me-1"></i>
+            <span class="d-none d-sm-inline">Clear</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items Table Container -->
+    <div class="admin-table-container">
+      <div class="admin-table-header p-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold text-gray-700">
+          <i class="fas fa-list me-2 text-primary"></i>
+          <span class="d-none d-sm-inline">All Items</span>
+          <span class="d-sm-none">Items</span>
+        </h5>
+        <span class="text-muted small fw-semibold" id="itemsCount">Loading items...</span>
+      </div>
+      
+      <!-- Scrollable Table Area -->
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-header">
+              <tr>
+                <th class="item-col">Item</th>
+                <th class="type-col">Type</th>
+                <th class="user-col">User</th>
+                <th class="status-col">Status</th>
+                <th class="payment-col">Payment</th>
+                <th class="date-col">Date</th>
+                <th class="actions-col text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="itemsTableBody">
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">Loading items...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Mobile scroll hint -->
+      <div class="mobile-scroll-hint">
+        <i class="fas fa-arrows-left-right me-1"></i>
+        <span>Scroll horizontally to view all columns</span>
+      </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" id="loadingSpinner">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2 text-muted">Loading items...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteItemModal" tabindex="-1" aria-labelledby="deleteItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title text-danger" id="deleteItemModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-0">
+        <div class="alert alert-warning border-0 bg-light-warning mb-3">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <strong>Warning:</strong> This action cannot be undone.
+        </div>
+        <p class="mb-3">Are you sure you want to delete the following item?</p>
+        <div class="item-info-card bg-light rounded p-3 mb-3">
+          <div class="d-flex align-items-center">
+            <div id="deleteItemImage" class="item-image-placeholder me-3"></div>
+            <div class="flex-grow-1">
+              <h6 id="deleteItemTitle" class="mb-1 fw-semibold text-truncate">Item Title</h6>
+              <small id="deleteItemType" class="text-muted d-block text-truncate">Type: Unknown</small>
+              <small id="deleteItemId" class="text-muted">ID: 0</small>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-danger border-0 bg-light-danger small">
+          <i class="fas fa-info-circle me-2"></i>
+          This will permanently delete the item and all associated images and data.
+        </div>
+      </div>
+      <div class="modal-footer border-0 flex-column flex-sm-row">
+        <button type="button" class="btn btn-secondary mb-2 mb-sm-0 w-100 w-sm-auto" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger w-100 w-sm-auto" id="confirmDeleteBtn">
+          <i class="fas fa-trash me-1"></i>Delete Item
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .search-section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: var(--border-light);
+    margin-bottom: 1.5rem;
+  }
+
+  .loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 3rem;
+  }
+
+  .item-image {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: var(--border-light);
+    flex-shrink: 0;
+  }
+
+  .item-image-placeholder {
+    width: 50px;
+    height: 50px;
+    background: #f8f9fa;
+    border-radius: var(--radius-md);
+    border: var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Table Container Styles */
+  .admin-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+    height: 70vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .admin-table-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef !important;
+    flex-shrink: 0;
+    padding: 1rem !important;
+  }
+
+  .table-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Horizontal scrolling container */
+  .table-responsive {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    margin: 0;
+    width: 100%;
+    min-width: 850px; /* Adjusted minimum width */
+  }
+
+  .table-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  .table thead th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+    color: #6c757d;
+    padding: 12px 16px;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 11;
+  }
+
+  .table tbody td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+    white-space: nowrap;
+  }
+
+  .table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  /* Fixed column widths for horizontal scrolling */
+  .item-col { width: 220px; min-width: 220px; }
+  .type-col { width: 100px; min-width: 100px; }
+  .user-col { width: 200px; min-width: 200px; }
+  .status-col { width: 120px; min-width: 120px; }
+  .payment-col { width: 120px; min-width: 120px; }
+  .date-col { width: 120px; min-width: 120px; }
+  .actions-col { width: 100px; min-width: 100px; } /* Reduced width for single button */
+
+  /* Action buttons - Centered */
+  .table-actions {
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .table-actions .btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    min-width: 40px;
+  }
+
+  /* Mobile scroll hint */
+  .mobile-scroll-hint {
+    display: none;
+    text-align: center;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    font-size: 0.75rem;
+    color: #6c757d;
+  }
+
+  .mobile-scroll-hint i {
+    margin-right: 5px;
+  }
+
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    .admin-table-container {
+      height: 60vh;
+      margin: 0 -10px;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .admin-table-header {
+      padding: 0.75rem !important;
+    }
+
+    .table {
+      min-width: 750px;
+    }
+
+    .table thead th {
+      font-size: 0.75rem;
+      padding: 10px 12px;
+    }
+
+    .table tbody td {
+      padding: 10px 12px;
+      font-size: 0.8rem;
+    }
+
+    .item-image,
+    .item-image-placeholder {
+      width: 40px;
+      height: 40px;
+    }
+
+    .mobile-scroll-hint {
+      display: block;
+    }
+
+    /* Adjust column widths for mobile */
+    .item-col { width: 200px; min-width: 200px; }
+    .type-col { width: 90px; min-width: 90px; }
+    .user-col { width: 180px; min-width: 180px; }
+    .status-col { width: 110px; min-width: 110px; }
+    .payment-col { width: 110px; min-width: 110px; }
+    .date-col { width: 110px; min-width: 110px; }
+    .actions-col { width: 90px; min-width: 90px; }
+  }
+
+  @media (max-width: 576px) {
+    .admin-table-container {
+      height: 55vh;
+    }
+
+    .table {
+      min-width: 700px;
+    }
+
+    .table thead th {
+      font-size: 0.7rem;
+      padding: 8px 10px;
+    }
+
+    .table tbody td {
+      padding: 8px 10px;
+      font-size: 0.75rem;
+    }
+
+    .item-image,
+    .item-image-placeholder {
+      width: 35px;
+      height: 35px;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      padding: 4px 6px;
+    }
+
+    /* Compact column widths for small phones */
+    .item-col { width: 180px; min-width: 180px; }
+    .type-col { width: 80px; min-width: 80px; }
+    .user-col { width: 160px; min-width: 160px; }
+    .status-col { width: 100px; min-width: 100px; }
+    .payment-col { width: 100px; min-width: 100px; }
+    .date-col { width: 100px; min-width: 100px; }
+    .actions-col { width: 80px; min-width: 80px; }
+  }
+
+  @media (max-width: 400px) {
+    .table {
+      min-width: 650px;
+    }
+
+    .item-col { width: 160px; min-width: 160px; }
+    .type-col { width: 70px; min-width: 70px; }
+    .user-col { width: 150px; min-width: 150px; }
+    .status-col { width: 90px; min-width: 90px; }
+    .payment-col { width: 90px; min-width: 90px; }
+    .date-col { width: 90px; min-width: 90px; }
+    .actions-col { width: 70px; min-width: 70px; }
+  }
+
+  /* Modal Styles */
+  .bg-light-warning {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+    border: 1px solid rgba(255, 193, 7, 0.2) !important;
+  }
+
+  .bg-light-danger {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+    border: 1px solid rgba(220, 53, 69, 0.2) !important;
+  }
+
+  .item-info-card {
+    border-left: 4px solid #dc3545;
+  }
+
+  /* Toast notifications */
+  .alert-position {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    left: 10px;
+    z-index: 9999;
+    margin: 0 auto;
+    max-width: 400px;
+  }
+
+  @media (min-width: 576px) {
+    .alert-position {
+      top: 20px;
+      right: 20px;
+      left: auto;
+      min-width: 300px;
+    }
+  }
+</style>
+
+<script>
+  let searchTimeout;
+  let itemToDelete = null;
+
+  // Load initial data
+  document.addEventListener('DOMContentLoaded', function() {
+    loadItems();
+    
+    // Adjust table height on resize
+    window.addEventListener('resize', adjustTableHeight);
+    adjustTableHeight();
+
+    // Add event listener for confirm delete button
+    document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDeleteItem);
+  });
+
+  function adjustTableHeight() {
+    const tableContainer = document.querySelector('.admin-table-container');
+    const viewportHeight = window.innerHeight;
+    
+    if (viewportHeight < 600) {
+      tableContainer.style.height = (viewportHeight - 200) + 'px';
+    } else {
+      tableContainer.style.height = '70vh';
+    }
+  }
+
+  // Debounce search to prevent too many API calls
+  function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      searchItems();
+    }, 300);
+  }
+
+  // Load and search items
+  async function loadItems(searchParams = {}) {
+    const tableBody = document.getElementById('itemsTableBody');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const itemsCount = document.getElementById('itemsCount');
+
+    loadingSpinner.style.display = 'block';
+    tableBody.innerHTML = '';
+
+    try {
+      const params = new URLSearchParams(searchParams);
+      const response = await fetch(`/api/admin/search-items?${params}`);
+      const data = await response.json();
+
+      if (data.success) {
+        displayItems(data.items);
+        itemsCount.textContent = `Showing ${data.items.length} items`;
+      } else {
+        throw new Error(data.error || 'Failed to load items');
+      }
+    } catch (error) {
+      console.error('Error loading items:', error);
+      tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Error loading items: ' + error.message + '</td></tr>';
+      itemsCount.textContent = 'Error loading items';
+    } finally {
+      loadingSpinner.style.display = 'none';
+    }
+  }
+
+  // Display items in table
+  function displayItems(items) {
+    const tableBody = document.getElementById('itemsTableBody');
+    
+    if (!items || items.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No items found matching your criteria</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = items.map(item => {
+      // Handle image path - extract just the filename
+      let imageFilename = '';
+      if (item.image_path) {
+        const pathParts = item.image_path.split('/');
+        imageFilename = pathParts[pathParts.length - 1];
+      }
+      
+      return `
+        <tr>
+          <td class="item-col">
+            <div class="d-flex align-items-center">
+              ${imageFilename ? 
+                `<img src="/uploads/items/${imageFilename}" class="item-image me-2" alt="${item.title || 'Item image'}" 
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                ''
+              }
+              <div class="item-image-placeholder me-2 ${imageFilename ? 'd-none' : 'd-flex'}">
+                <i class="fas fa-image text-muted"></i>
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <strong class="text-gray-800 d-block text-truncate">${item.title || 'No title'}</strong>
+                <small class="text-muted d-block text-truncate">${item.category || 'No category'}</small>
+              </div>
+            </div>
+          </td>
+          <td class="type-col">
+            <span class="badge ${item.type === 'lost' ? 'bg-danger' : 'bg-success'}">
+              ${item.type || 'unknown'}
+            </span>
+          </td>
+          <td class="user-col">
+            <div class="min-w-0">
+              <strong class="text-gray-800 d-block text-truncate">${item.first_name || 'Unknown'} ${item.last_name || ''}</strong>
+              <small class="text-muted d-block text-truncate">${item.email || 'No email'}</small>
+            </div>
+          </td>
+          <td class="status-col">
+            <span class="badge ${getStatusBadgeClass(item.status)}">
+              ${item.status || 'active'}
+            </span>
+          </td>
+          <td class="payment-col">
+            <span class="badge ${item.payment_status === 'paid' ? 'bg-success' : item.payment_status === 'pending' ? 'bg-warning text-dark' : 'bg-secondary'}">
+              ${item.payment_status || 'N/A'}
+            </span>
+          </td>
+          <td class="date-col">
+            <small class="text-muted">${item.created_at ? formatDate(item.created_at) : 'Unknown'}</small>
+          </td>
+          <td class="actions-col table-actions">
+            <button class="btn btn-danger btn-sm" onclick="showDeleteModal(${item.id}, '${item.title || 'Unknown'}', '${item.type || 'unknown'}', '${imageFilename}')" title="Delete Item">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function formatDate(dateString) {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  // Helper function for status badge classes
+  function getStatusBadgeClass(status) {
+    const statusClasses = {
+      'claimed': 'bg-success',
+      'returned': 'bg-success', 
+      'active': 'bg-warning text-dark',
+      'Not Yet Found': 'bg-warning text-dark',
+      'Unclaimed': 'bg-warning text-dark',
+      'default': 'bg-secondary'
+    };
+    return statusClasses[status] || statusClasses.default;
+  }
+
+  // Search items automatically
+  function searchItems() {
+    const searchParams = {
+      q: document.getElementById('searchInput').value,
+      type: document.getElementById('typeFilter').value,
+      status: document.getElementById('statusFilter').value
+    };
+    loadItems(searchParams);
+  }
+
+  // Clear search
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('typeFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    searchItems();
+  }
+
+  // Show delete confirmation modal
+  function showDeleteModal(itemId, title, type, imageFilename) {
+    itemToDelete = {
+      id: itemId,
+      title: title,
+      type: type,
+      image: imageFilename
+    };
+
+    // Update modal content
+    document.getElementById('deleteItemTitle').textContent = title || 'Unknown Item';
+    document.getElementById('deleteItemType').textContent = `Type: ${type || 'unknown'}`;
+    document.getElementById('deleteItemId').textContent = `ID: ${itemId}`;
+
+    // Update image in modal
+    const imageContainer = document.getElementById('deleteItemImage');
+    if (imageFilename) {
+      imageContainer.innerHTML = `<img src="/uploads/items/${imageFilename}" class="item-image" alt="${title}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-image text-muted\\'></i>'">`;
+    } else {
+      imageContainer.innerHTML = '<i class="fas fa-image text-muted"></i>';
+    }
+
+    // Show the modal
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteItemModal'));
+    deleteModal.show();
+  }
+
+  // Confirm and delete item
+  async function confirmDeleteItem() {
+    if (!itemToDelete) return;
+
+    const itemId = itemToDelete.id;
+    const itemTitle = itemToDelete.title;
+    
+    try {
+      console.log(`Deleting item ${itemId}`);
+      const response = await fetch(`/api/admin/items/${itemId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      console.log('Delete response:', data);
+      
+      if (data.success) {
+        // Close the modal
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteItemModal'));
+        deleteModal.hide();
+        
+        // Show success message
+        showSuccessMessage(`Item "${itemTitle}" deleted successfully!`);
+        
+        // Refresh the list
+        loadItems();
+      } else {
+        throw new Error(data.error || 'Failed to delete item');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      // Close the modal and show error
+      const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteItemModal'));
+      deleteModal.hide();
+      showErrorMessage('Error deleting item: ' + error.message);
+    } finally {
+      itemToDelete = null;
+    }
+  }
+
+  function showSuccessMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show alert-position';
+    alertDiv.innerHTML = `
+      <i class="fas fa-check-circle me-2"></i>${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+      if (alertDiv.parentNode) {
+        alertDiv.remove();
+      }
+    }, 5000);
+  }
+
+  function showErrorMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show alert-position';
+    alertDiv.innerHTML = `
+      <i class="fas fa-exclamation-circle me-2"></i>${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+      if (alertDiv.parentNode) {
+        alertDiv.remove();
+      }
+    }, 5000);
+  }
+</script>
+{% endblock %}

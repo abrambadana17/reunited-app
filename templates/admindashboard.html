@@ -1,0 +1,491 @@
+{% extends "adminbase.html" %}
+
+{% block title %}Admin Dashboard - Reunited{% endblock %}
+
+{% block page_title %}Admin Dashboard{% endblock %}
+{% block page_subtitle %}Manage Reunited Platform{% endblock %}
+
+{% block content %}
+<!-- Stats Overview -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="stats-card">
+      <div class="stats-icon bg-primary bg-opacity-10 text-primary">
+        <i class="fas fa-users"></i>
+      </div>
+      <h2 class="stats-number text-primary" id="totalUsers">0</h2>
+      <p class="mb-0 text-muted">Total Users</p>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="stats-card">
+      <div class="stats-icon bg-success bg-opacity-10 text-success">
+        <i class="fas fa-box"></i>
+      </div>
+      <h2 class="stats-number text-success" id="totalItems">0</h2>
+      <p class="mb-0 text-muted">Total Items</p>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="stats-card">
+      <div class="stats-icon bg-info bg-opacity-10 text-info">
+        <i class="fas fa-link"></i>
+      </div>
+      <h2 class="stats-number text-info" id="totalMatches">0</h2>
+      <p class="mb-0 text-muted">Successful Matches</p>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="stats-card">
+      <div class="stats-icon bg-warning bg-opacity-10 text-warning">
+        <i class="fas fa-money-bill-wave"></i>
+      </div>
+      <h2 class="stats-number text-warning" id="totalRevenue">₱0</h2>
+      <p class="mb-0 text-muted">Total Revenue</p>
+    </div>
+  </div>
+</div>
+
+<!-- Charts and Analytics Section -->
+<div class="row g-3 mb-4">
+  <!-- Monthly Items Chart -->
+  <div class="col-12 col-lg-8">
+    <div class="chart-container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0 fw-semibold text-gray-700">
+          <i class="fas fa-chart-line me-2 text-primary"></i>Monthly Items Overview
+        </h5>
+        <select class="form-select form-select-sm w-auto" id="chartPeriod">
+          <option value="6">Last 6 Months</option>
+          <option value="12">Last 12 Months</option>
+          <option value="24">Last 24 Months</option>
+        </select>
+      </div>
+      <canvas id="monthlyChart" height="250"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent Platform Activity -->
+  <div class="col-12 col-lg-4">
+    <div class="chart-container">
+      <h5 class="mb-3 fw-semibold text-gray-700">
+        <i class="fas fa-clock me-2 text-primary"></i>Recent Platform Activity
+      </h5>
+      <div id="recentActivity" class="recent-activity-container">
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mb-0">Loading recent activity...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Your Theme Variables */
+  :root {
+    --color-primary: #1E3A8A;
+    --color-primary-hover: #1e40af;
+    --color-accent: #3B82F6;
+    --color-success: #10B981;
+    --color-danger: #EF4444;
+    --color-warning: #facc15;
+    --color-info: #1E3A8A;
+    --color-white: #ffffff;
+    --color-bg-light: #F8F9FA;
+    --color-gray-50: #f9fafb;
+    --color-gray-100: #f3f4f6;
+    --color-gray-200: #e5e7eb;
+    --color-gray-300: #d1d5db;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #6b7280;
+    --color-gray-700: #374151;
+    --color-gray-800: #1f2937;
+    --color-gray-900: #111827;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --border-light: 1px solid var(--color-gray-200);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
+  .stats-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: var(--border-light);
+    transition: all 0.3s ease;
+    height: 100%;
+  }
+
+  .stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .stats-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .stats-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-table {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: var(--border-light);
+  }
+
+  .btn-admin {
+    background: var(--color-primary);
+    border: none;
+    color: var(--color-white);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+  }
+
+  .btn-admin:hover {
+    background: var(--color-primary-hover);
+    color: var(--color-white);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-outline-admin {
+    background: transparent;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+  }
+
+  .btn-outline-admin:hover {
+    background: var(--color-primary);
+    color: var(--color-white);
+  }
+
+  .chart-container {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: var(--border-light);
+    height: 100%;
+  }
+
+  .recent-activity-container {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .activity-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-gray-200);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+
+  .activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  .activity-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .activity-message {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+    word-wrap: break-word;
+  }
+
+  .activity-time {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .stats-card {
+      padding: 1rem;
+    }
+
+    .stats-number {
+      font-size: 1.5rem;
+    }
+
+    .stats-icon {
+      width: 50px;
+      height: 50px;
+      font-size: 1.25rem;
+    }
+
+    .chart-container {
+      padding: 1rem;
+    }
+
+    .activity-item {
+      padding: 0.5rem;
+    }
+
+    .activity-message {
+      font-size: 0.8rem;
+    }
+
+    .activity-time {
+      font-size: 0.7rem;
+    }
+
+    .btn-admin,
+    .btn-outline-admin {
+      font-size: 0.8rem;
+      padding: 0.75rem 0.5rem;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .stats-card {
+      text-align: center;
+    }
+
+    .stats-icon {
+      margin: 0 auto 1rem auto;
+    }
+
+    .row.g-3 > .col-12 {
+      margin-bottom: 0.5rem;
+    }
+  }
+</style>
+
+<script>
+  let monthlyChart;
+
+  // Load initial data
+  document.addEventListener('DOMContentLoaded', function() {
+    loadAdminStats();
+    initializeChart();
+    
+    // Event listeners
+    document.getElementById('chartPeriod').addEventListener('change', function() {
+      loadAdminStats();
+    });
+  });
+
+  // Load admin statistics
+  async function loadAdminStats() {
+    try {
+      const period = document.getElementById('chartPeriod').value;
+      const response = await fetch(`/api/admin/stats?period=${period}`);
+      const data = await response.json();
+
+      if (data.success) {
+        const stats = data.stats;
+        
+        document.getElementById('totalUsers').textContent = stats.total_users.toLocaleString();
+        document.getElementById('totalItems').textContent = stats.total_items.toLocaleString();
+        document.getElementById('totalMatches').textContent = stats.total_matches.toLocaleString();
+        document.getElementById('totalRevenue').textContent = '₱' + stats.total_revenue.toLocaleString();
+
+        // Update chart with monthly data
+        if (data.monthly_data && data.monthly_data.length > 0) {
+          updateChart(data.monthly_data);
+        } else {
+          updateChart([]);
+        }
+
+        // Update recent activity
+        if (data.recent_activity && data.recent_activity.length > 0) {
+          displayRecentActivity(data.recent_activity);
+        } else {
+          displayRecentActivity([]);
+        }
+      } else {
+        console.error('Failed to load stats:', data.error);
+        showError('Failed to load statistics');
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      showError('Error loading statistics');
+    }
+  }
+
+  // Display recent activity
+  function displayRecentActivity(activities) {
+    const container = document.getElementById('recentActivity');
+    
+    if (!activities || activities.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-4">
+          <i class="fas fa-inbox fa-2x text-muted mb-3"></i>
+          <p class="text-muted mb-0">No recent activity</p>
+        </div>
+      `;
+      return;
+    }
+
+    const activityHtml = activities.map(activity => {
+      const icon = getActivityIcon(activity.type);
+      const timeAgo = getTimeAgo(activity.timestamp);
+      
+      return `
+        <div class="activity-item">
+          <div class="activity-icon ${icon.color}">
+            <i class="${icon.icon}"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-message">${activity.message}</div>
+            <div class="activity-time">${timeAgo}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = activityHtml;
+  }
+
+  // Get activity icon and color
+  function getActivityIcon(type) {
+    const icons = {
+      'user_registered': { icon: 'fas fa-user-plus', color: 'bg-success bg-opacity-10 text-success' },
+      'item_posted': { icon: 'fas fa-box', color: 'bg-primary bg-opacity-10 text-primary' },
+      'match_created': { icon: 'fas fa-link', color: 'bg-info bg-opacity-10 text-info' },
+      'item_resolved': { icon: 'fas fa-check-circle', color: 'bg-warning bg-opacity-10 text-warning' }
+    };
+    return icons[type] || { icon: 'fas fa-circle', color: 'bg-gray-200 text-gray-600' };
+  }
+
+  // Calculate time ago
+  function getTimeAgo(timestamp) {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return time.toLocaleDateString();
+  }
+
+  // Initialize chart
+  function initializeChart() {
+    const ctx = document.getElementById('monthlyChart').getContext('2d');
+    monthlyChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Lost Items',
+            data: [],
+            backgroundColor: 'rgba(30, 58, 138, 0.6)',
+            borderColor: 'rgba(30, 58, 138, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'Found Items',
+            data: [],
+            backgroundColor: 'rgba(16, 185, 129, 0.6)',
+            borderColor: 'rgba(16, 185, 129, 1)',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          },
+          title: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Update chart with data
+  function updateChart(monthlyData) {
+    if (!monthlyData || monthlyData.length === 0) {
+      monthlyChart.data.labels = ['No Data Available'];
+      monthlyChart.data.datasets[0].data = [0];
+      monthlyChart.data.datasets[1].data = [0];
+    } else {
+      const labels = monthlyData.map(item => item.month_name);
+      const lostData = monthlyData.map(item => item.lost_items || 0);
+      const foundData = monthlyData.map(item => item.found_items || 0);
+
+      monthlyChart.data.labels = labels;
+      monthlyChart.data.datasets[0].data = lostData;
+      monthlyChart.data.datasets[1].data = foundData;
+    }
+    monthlyChart.update();
+  }
+
+  // Error handling
+  function showError(message) {
+    console.error(message);
+  }
+
+  // Auto-refresh stats every 30 seconds
+  setInterval(loadAdminStats, 30000);
+</script>
+{% endblock %}

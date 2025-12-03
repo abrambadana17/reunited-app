@@ -94,6 +94,94 @@
   </div>
 </div>
 
+<!-- Item Details Modal -->
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-labelledby="itemDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="itemDetailModalLabel">Item Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <img id="modalItemImage" src="{{ url_for('static', filename='images/placeholder.png') }}" alt="Item Image" 
+                 class="img-fluid rounded shadow-sm w-100" 
+                 style="max-height: 400px; object-fit: contain; background-color: #f8f9fa;">
+          </div>
+          
+          <div class="col-md-6">
+            <div class="mb-3">
+              <h4 id="modalItemTitle" class="fw-bold text-primary"></h4>
+              <span id="modalItemStatus" class="badge"></span>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-tag me-1"></i>Category
+              </h6>
+              <p id="modalItemCategory" class="mb-0"></p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-map-marker-alt me-1"></i>Location
+              </h6>
+              <p id="modalItemLocation" class="mb-0"></p>
+            </div>
+            
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">Description</h6>
+              <p id="modalItemDescription" class="mb-0"></p>
+            </div>
+
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-gift me-1"></i>Reward Offered
+              </h6>
+              <p id="modalItemReward" class="mb-0">No Reward</p>
+            </div>
+
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-credit-card me-1"></i>Payment Status
+              </h6>
+              <span id="modalPaymentStatus" class="badge"></span>
+            </div>
+
+            <div class="mb-3">
+              <h6 class="text-muted mb-1">
+                <i class="fas fa-calendar me-1"></i>Date Reported
+              </h6>
+              <p id="modalItemDate" class="mb-0"></p>
+            </div>
+            
+            <div class="border-top pt-3">
+              <h6 class="text-muted mb-2">Reported By</h6>
+              <div class="d-flex align-items-center">
+                <div class="user-avatar me-3" id="modalReporterAvatar">
+                </div>
+                <div>
+                  <p id="modalReporterName" class="mb-0 fw-semibold"></p>
+                  <small id="modalReporterEmail" class="text-muted d-block"></small>
+                  <small id="modalReporterPhone" class="text-muted"></small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-danger" id="deleteFromModalBtn">
+          <i class="fas fa-trash me-1"></i>Delete Item
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteItemModal" tabindex="-1" aria-labelledby="deleteItemModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -124,9 +212,17 @@
           <i class="fas fa-info-circle me-2"></i>
           This will permanently delete the item and all associated images and data.
         </div>
+        
+        <!-- Loading Animation (Hidden by default) -->
+        <div class="text-center mt-3 mb-2" id="deleteLoading" style="display: none;">
+          <div class="spinner-border text-danger" role="status">
+            <span class="visually-hidden">Deleting...</span>
+          </div>
+          <p class="text-muted small mt-2 mb-0">Deleting item...</p>
+        </div>
       </div>
       <div class="modal-footer border-0 flex-column flex-sm-row">
-        <button type="button" class="btn btn-secondary mb-2 mb-sm-0 w-100 w-sm-auto" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-secondary mb-2 mb-sm-0 w-100 w-sm-auto" id="cancelDeleteBtn" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger w-100 w-sm-auto" id="confirmDeleteBtn">
           <i class="fas fa-trash me-1"></i>Delete Item
         </button>
@@ -136,6 +232,67 @@
 </div>
 
 <style>
+  /* Add to the existing CSS in adminitems.py */
+.user-avatar img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e0e0e0;
+    background-color: #f8f9fa;
+}
+
+.user-avatar div {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    border: 2px solid #e0e0e0;
+}
+
+/* Make the modal body scrollable on mobile */
+@media (max-width: 768px) {
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    
+    .user-avatar img,
+    .user-avatar div {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+}
+  
+  /* Delete loading animation styles */
+  #deleteLoading {
+    transition: all 0.3s ease;
+  }
+
+  #deleteLoading .spinner-border {
+    width: 2rem;
+    height: 2rem;
+    border-width: 3px;
+  }
+
+  /* Disabled button styles */
+  #confirmDeleteBtn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  #cancelDeleteBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .search-section {
     background: var(--color-white);
     border-radius: var(--radius-lg);
@@ -158,6 +315,12 @@
     border-radius: var(--radius-md);
     border: var(--border-light);
     flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .item-image:hover {
+    transform: scale(1.05);
   }
 
   .item-image-placeholder {
@@ -170,6 +333,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    cursor: pointer;
   }
 
   /* Table Container Styles */
@@ -210,7 +374,7 @@
   .table {
     margin: 0;
     width: 100%;
-    min-width: 850px; /* Adjusted minimum width */
+    min-width: 850px;
   }
 
   .table-header {
@@ -238,10 +402,16 @@
     vertical-align: middle;
     border-bottom: 1px solid #f0f0f0;
     white-space: nowrap;
+    cursor: pointer;
   }
 
   .table tbody tr:hover {
     background-color: #f8f9fa;
+  }
+
+  /* Make the first column (Item) clickable only for image, not the entire cell */
+  .item-col .d-flex {
+    cursor: pointer;
   }
 
   /* Fixed column widths for horizontal scrolling */
@@ -251,7 +421,7 @@
   .status-col { width: 120px; min-width: 120px; }
   .payment-col { width: 120px; min-width: 120px; }
   .date-col { width: 120px; min-width: 120px; }
-  .actions-col { width: 100px; min-width: 100px; } /* Reduced width for single button */
+  .actions-col { width: 100px; min-width: 100px; }
 
   /* Action buttons - Centered */
   .table-actions {
@@ -282,6 +452,41 @@
 
   .mobile-scroll-hint i {
     margin-right: 5px;
+  }
+
+  /* Modal Styles */
+  .bg-light-warning {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+    border: 1px solid rgba(255, 193, 7, 0.2) !important;
+  }
+
+  .bg-light-danger {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+    border: 1px solid rgba(220, 53, 69, 0.2) !important;
+  }
+
+  .item-info-card {
+    border-left: 4px solid #dc3545;
+  }
+
+  /* Toast notifications */
+  .alert-position {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    left: 10px;
+    z-index: 9999;
+    margin: 0 auto;
+    max-width: 400px;
+  }
+
+  @media (min-width: 576px) {
+    .alert-position {
+      top: 20px;
+      right: 20px;
+      left: auto;
+      min-width: 300px;
+    }
   }
 
   /* Mobile-specific styles */
@@ -371,60 +576,12 @@
     .date-col { width: 100px; min-width: 100px; }
     .actions-col { width: 80px; min-width: 80px; }
   }
-
-  @media (max-width: 400px) {
-    .table {
-      min-width: 650px;
-    }
-
-    .item-col { width: 160px; min-width: 160px; }
-    .type-col { width: 70px; min-width: 70px; }
-    .user-col { width: 150px; min-width: 150px; }
-    .status-col { width: 90px; min-width: 90px; }
-    .payment-col { width: 90px; min-width: 90px; }
-    .date-col { width: 90px; min-width: 90px; }
-    .actions-col { width: 70px; min-width: 70px; }
-  }
-
-  /* Modal Styles */
-  .bg-light-warning {
-    background-color: rgba(255, 193, 7, 0.1) !important;
-    border: 1px solid rgba(255, 193, 7, 0.2) !important;
-  }
-
-  .bg-light-danger {
-    background-color: rgba(220, 53, 69, 0.1) !important;
-    border: 1px solid rgba(220, 53, 69, 0.2) !important;
-  }
-
-  .item-info-card {
-    border-left: 4px solid #dc3545;
-  }
-
-  /* Toast notifications */
-  .alert-position {
-    position: fixed;
-    top: 70px;
-    right: 10px;
-    left: 10px;
-    z-index: 9999;
-    margin: 0 auto;
-    max-width: 400px;
-  }
-
-  @media (min-width: 576px) {
-    .alert-position {
-      top: 20px;
-      right: 20px;
-      left: auto;
-      min-width: 300px;
-    }
-  }
 </style>
 
 <script>
   let searchTimeout;
   let itemToDelete = null;
+  let currentItemDetails = null;
 
   // Load initial data
   document.addEventListener('DOMContentLoaded', function() {
@@ -434,8 +591,18 @@
     window.addEventListener('resize', adjustTableHeight);
     adjustTableHeight();
 
-    // Add event listener for confirm delete button
+    // Add event listeners
     document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDeleteItem);
+    document.getElementById('deleteFromModalBtn').addEventListener('click', showDeleteFromModal);
+
+    // Initialize item detail modal
+    initItemDetailModal();
+    
+    // Add event listener to reset delete button state when modal is hidden
+    const deleteModal = document.getElementById('deleteItemModal');
+    deleteModal.addEventListener('hidden.bs.modal', function () {
+        resetDeleteButton();
+    });
   });
 
   function adjustTableHeight() {
@@ -491,20 +658,41 @@
     const tableBody = document.getElementById('itemsTableBody');
     
     if (!items || items.length === 0) {
-      tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No items found matching your criteria</td></tr>';
-      return;
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No items found matching your criteria</td></tr>';
+        return;
     }
 
     tableBody.innerHTML = items.map(item => {
-      // Handle image path - extract just the filename
-      let imageFilename = '';
-      if (item.image_path) {
-        const pathParts = item.image_path.split('/');
-        imageFilename = pathParts[pathParts.length - 1];
-      }
-      
-      return `
-        <tr>
+        // Handle image path - extract just the filename
+        let imageFilename = '';
+        if (item.image_path) {
+            const pathParts = item.image_path.split('/');
+            imageFilename = pathParts[pathParts.length - 1];
+        }
+
+        // Handle profile picture - ensure it's properly passed
+        let profilePicture = item.profile_picture || '';
+        console.log('Item:', item.title, 'Profile Picture:', profilePicture); // Debug log
+        
+        return `
+        <tr onclick="showItemDetails(
+          ${item.id},
+          '${escapeString(item.title || '')}',
+          '${escapeString(item.type || '')}',
+          '${escapeString(item.status || '')}',
+          '${escapeString(item.payment_status || '')}',
+          '${escapeString(item.category || '')}',
+          '${escapeString(item.reward || '')}',
+          '${escapeString(item.description || '')}',
+          '${escapeString(item.location_reported || '')}',
+          '${escapeString(item.date_reported || '')}',
+          '${escapeString(item.first_name || '')}',
+          '${escapeString(item.last_name || '')}',
+          '${escapeString(item.email || '')}',
+          '${escapeString(item.phone || '')}',
+          '${escapeString(imageFilename)}',
+          '${escapeString(profilePicture)}'
+        )">
           <td class="item-col">
             <div class="d-flex align-items-center">
               ${imageFilename ? 
@@ -546,7 +734,7 @@
             <small class="text-muted">${item.created_at ? formatDate(item.created_at) : 'Unknown'}</small>
           </td>
           <td class="actions-col table-actions">
-            <button class="btn btn-danger btn-sm" onclick="showDeleteModal(${item.id}, '${item.title || 'Unknown'}', '${item.type || 'unknown'}', '${imageFilename}')" title="Delete Item">
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); showDeleteModal(${item.id}, '${escapeString(item.title || 'Unknown')}', '${escapeString(item.type || 'unknown')}', '${escapeString(imageFilename)}')" title="Delete Item">
               <i class="fas fa-trash"></i>
             </button>
           </td>
@@ -555,10 +743,23 @@
     }).join('');
   }
 
+  function escapeString(str) {
+    return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+  }
+
   function formatDate(dateString) {
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString();
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  function formatDateTime(dateString) {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString();
     } catch (e) {
       return 'Unknown';
     }
@@ -595,6 +796,145 @@
     searchItems();
   }
 
+  // Show item details modal
+  function showItemDetails(id, title, type, status, paymentStatus, category, reward, description, location, dateReported, firstName, lastName, email, phone, imageFilename, profilePicture) {
+    currentItemDetails = {
+      id: id,
+      title: title,
+      type: type,
+      status: status,
+      paymentStatus: paymentStatus,
+      category: category,
+      reward: reward,
+      description: description,
+      location: location,
+      dateReported: dateReported,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+      image: imageFilename,
+      profilePicture: profilePicture
+    };
+
+    // Populate modal with item details including profile picture
+    populateModal(title, description, category, location, status, reward, paymentStatus, dateReported, imageFilename, `${firstName} ${lastName}`, email, phone, profilePicture);
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
+    modal.show();
+  }
+
+
+  // Populate modal function with fixed profile picture display
+function populateModal(title, description, category, location, status, reward, paymentStatus, dateReported, image, reporterName, reporterEmail, reporterPhone, profilePicture) {
+    document.getElementById('modalItemTitle').textContent = title;
+    document.getElementById('modalItemDescription').textContent = description;
+    document.getElementById('modalItemCategory').textContent = category;
+    document.getElementById('modalItemLocation').textContent = location;
+    document.getElementById('modalItemDate').textContent = formatDateTime(dateReported);
+    
+    // Set item image with error handling
+    const itemImage = document.getElementById('modalItemImage');
+    if (image && image.trim() !== '') {
+        itemImage.src = `/uploads/items/${image}`;
+        itemImage.onerror = function() {
+            this.src = "{{ url_for('static', filename='images/placeholder.png') }}";
+        };
+    } else {
+        itemImage.src = "{{ url_for('static', filename='images/placeholder.png') }}";
+    }
+    
+    // Set status badge
+    const statusBadge = document.getElementById('modalItemStatus');
+    statusBadge.textContent = status;
+    statusBadge.className = getStatusBadgeClass(status) + ' ms-2';
+
+    // Set payment status badge
+    const paymentBadge = document.getElementById('modalPaymentStatus');
+    paymentBadge.textContent = paymentStatus || 'N/A';
+    paymentBadge.className = paymentStatus === 'paid' ? 'badge bg-success' : paymentStatus === 'pending' ? 'badge bg-warning text-dark' : 'badge bg-secondary';
+
+    // Set reward
+    const rewardElement = document.getElementById('modalItemReward');
+    if (reward && reward.trim() !== '' && reward !== 'No Reward' && reward !== '0.0') {
+        rewardElement.textContent = reward;
+        rewardElement.className = 'mb-0 text-success fw-semibold';
+    } else {
+        rewardElement.textContent = 'No Reward';
+        rewardElement.className = 'mb-0 text-muted';
+    }
+    
+    // Set reporter info
+    document.getElementById('modalReporterName').textContent = reporterName;
+    document.getElementById('modalReporterEmail').textContent = reporterEmail || 'No email';
+    document.getElementById('modalReporterPhone').textContent = reporterPhone || 'No phone';
+    
+    // ✅ FIXED: Set reporter avatar - SIMPLIFIED VERSION
+    const reporterAvatar = document.getElementById('modalReporterAvatar');
+    
+    // Clear any existing content
+    reporterAvatar.innerHTML = '';
+    
+    if (profilePicture && profilePicture.trim() !== '') {
+        // User has a profile picture - create img element
+        const img = document.createElement('img');
+        img.src = `/uploads/profile_pictures/${profilePicture}`;
+        img.alt = 'Profile Picture';
+        img.style.cssText = 'width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #e0e0e0;';
+        
+        // Add error handler
+        img.onerror = function() {
+            // If image fails to load, replace with initials
+            showUserInitials(reporterAvatar, reporterName);
+        };
+        
+        // Add load handler to ensure it works
+        img.onload = function() {
+            console.log('Profile picture loaded successfully:', profilePicture);
+        };
+        
+        reporterAvatar.appendChild(img);
+    } else {
+        // No profile picture - show initials
+        showUserInitials(reporterAvatar, reporterName);
+    }
+    
+}
+
+// Helper function to show user initials
+function showUserInitials(container, reporterName) {
+    const initials = reporterName ? reporterName.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
+    container.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;">${initials}</div>`;
+}
+
+  function initItemDetailModal() {
+    const itemDetailModal = document.getElementById('itemDetailModal');
+    
+    // Clear currentItemDetails when modal is hidden
+    itemDetailModal.addEventListener('hidden.bs.modal', function () {
+      currentItemDetails = null;
+    });
+  }
+
+  // Show delete modal from details modal
+  function showDeleteFromModal() {
+    if (currentItemDetails) {
+      showDeleteModal(
+        currentItemDetails.id,
+        currentItemDetails.title,
+        currentItemDetails.type,
+        currentItemDetails.image
+      );
+      
+      // Close details modal
+      const detailModal = bootstrap.Modal.getInstance(document.getElementById('itemDetailModal'));
+      if (detailModal) {
+        detailModal.hide();
+      }
+    }
+  }
+
   // Show delete confirmation modal
   function showDeleteModal(itemId, title, type, imageFilename) {
     itemToDelete = {
@@ -611,55 +951,116 @@
 
     // Update image in modal
     const imageContainer = document.getElementById('deleteItemImage');
-    if (imageFilename) {
+    if (imageFilename && imageFilename.trim() !== '') {
       imageContainer.innerHTML = `<img src="/uploads/items/${imageFilename}" class="item-image" alt="${title}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-image text-muted\\'></i>'">`;
     } else {
       imageContainer.innerHTML = '<i class="fas fa-image text-muted"></i>';
     }
+    
+    // Ensure loading animation is hidden when modal opens
+    const loadingDiv = document.getElementById('deleteLoading');
+    if (loadingDiv) {
+        loadingDiv.style.display = 'none';
+    }
+    
+    // Ensure delete button is in original state
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete Item';
+    }
+    
+    // Ensure cancel button is enabled
+    const cancelBtn = document.getElementById('cancelDeleteBtn');
+    if (cancelBtn) {
+        cancelBtn.disabled = false;
+    }
 
     // Show the modal
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteItemModal'));
-    deleteModal.show();
+    const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteItemModal'));
+    if (deleteModal) {
+      deleteModal.show();
+    } else {
+      const newDeleteModal = new bootstrap.Modal(document.getElementById('deleteItemModal'));
+      newDeleteModal.show();
+    }
   }
 
-  // Confirm and delete item
+  // Confirm and delete item with user notification
   async function confirmDeleteItem() {
     if (!itemToDelete) return;
 
     const itemId = itemToDelete.id;
     const itemTitle = itemToDelete.title;
     
+    // Get elements
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const cancelBtn = document.getElementById('cancelDeleteBtn');
+    const loadingDiv = document.getElementById('deleteLoading');
+    
     try {
-      console.log(`Deleting item ${itemId}`);
-      const response = await fetch(`/api/admin/items/${itemId}`, {
-        method: 'DELETE'
-      });
-      
-      const data = await response.json();
-      console.log('Delete response:', data);
-      
-      if (data.success) {
-        // Close the modal
-        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteItemModal'));
-        deleteModal.hide();
+        console.log(`Deleting item ${itemId}`);
         
-        // Show success message
-        showSuccessMessage(`Item "${itemTitle}" deleted successfully!`);
+        // Disable buttons and show loading animation
+        confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Deleting...';
+        loadingDiv.style.display = 'block';
         
-        // Refresh the list
-        loadItems();
-      } else {
-        throw new Error(data.error || 'Failed to delete item');
-      }
+        const response = await fetch(`/api/admin/items/${itemId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        console.log('Delete response:', data);
+        
+        if (data.success) {
+            // Close the modal after a brief delay to show success
+            setTimeout(() => {
+                const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteItemModal'));
+                if (deleteModal) {
+                    deleteModal.hide();
+                }
+                
+                // Show success message with user notification info
+                let successMessage = `Item "${itemTitle}" deleted successfully!`;
+                if (data.user_notified) {
+                    successMessage += `<br><small class="text-muted">Notification sent to ${data.user_name} (User ID: ${data.user_id})</small>`;
+                }
+                showSuccessMessage(successMessage);
+                
+                // Refresh the list
+                loadItems();
+                
+                // Reset button states
+                resetDeleteButton();
+            }, 1000);
+            
+        } else {
+            throw new Error(data.error || 'Failed to delete item');
+        }
     } catch (error) {
-      console.error('Delete error:', error);
-      // Close the modal and show error
-      const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteItemModal'));
-      deleteModal.hide();
-      showErrorMessage('Error deleting item: ' + error.message);
-    } finally {
-      itemToDelete = null;
+        console.error('Delete error:', error);
+        
+        // Reset button states immediately on error
+        resetDeleteButton();
+        loadingDiv.style.display = 'none';
+        
+        // Show error
+        showErrorMessage('Error deleting item: ' + error.message);
     }
+  }
+
+  // Function to reset delete button to original state
+  function resetDeleteButton() {
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const cancelBtn = document.getElementById('cancelDeleteBtn');
+    const loadingDiv = document.getElementById('deleteLoading');
+    
+    confirmBtn.disabled = false;
+    cancelBtn.disabled = false;
+    confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete Item';
+    loadingDiv.style.display = 'none';
   }
 
   function showSuccessMessage(message) {

@@ -48,18 +48,24 @@
 
 <!-- Charts and Analytics Section -->
 <div class="row g-3 mb-4">
-  <!-- Monthly Items Chart -->
+  <!-- Monthly Items by Category Chart -->
   <div class="col-12 col-lg-8">
     <div class="chart-container">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0 fw-semibold text-gray-700">
-          <i class="fas fa-chart-line me-2 text-primary"></i>Monthly Items Overview
+          <i class="fas fa-chart-bar me-2 text-primary"></i>Monthly Items by Category
         </h5>
-        <select class="form-select form-select-sm w-auto" id="chartPeriod">
-          <option value="6">Last 6 Months</option>
-          <option value="12">Last 12 Months</option>
-          <option value="24">Last 24 Months</option>
-        </select>
+        <div class="d-flex gap-2">
+          <!-- Change this select dropdown -->
+          <select class="form-select form-select-sm w-auto" id="categoryChartPeriod">
+              <option value="all_time" selected>All Time</option>
+              <option value="current_month">This Month</option>
+              <option value="last_month">Last Month</option>
+          </select>
+          <button class="btn btn-sm btn-outline-admin" onclick="loadCategoryChartData()">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
       </div>
       <canvas id="monthlyChart" height="250"></canvas>
     </div>
@@ -294,24 +300,40 @@
 </style>
 
 <script>
+
+  
   let monthlyChart;
 
-  // Load initial data
-  document.addEventListener('DOMContentLoaded', function() {
+  // Check if Chart.js is loaded
+  if (typeof Chart === 'undefined') {
+    console.error('❌ Chart.js is not loaded!');
+    // Load Chart.js dynamically
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = initializeApp;
+    document.head.appendChild(script);
+  } else {
+    initializeApp();
+  }
+
+  function initializeApp() {
+    console.log('✅ Chart.js loaded, initializing app...');
+    
+    // Load initial data
     loadAdminStats();
     initializeChart();
+    loadCategoryChartData();
     
     // Event listeners
-    document.getElementById('chartPeriod').addEventListener('change', function() {
-      loadAdminStats();
+    document.getElementById('categoryChartPeriod').addEventListener('change', function() {
+      loadCategoryChartData();
     });
-  });
+  }
 
   // Load admin statistics
   async function loadAdminStats() {
     try {
-      const period = document.getElementById('chartPeriod').value;
-      const response = await fetch(`/api/admin/stats?period=${period}`);
+      const response = await fetch('/api/admin/stats?period=6');
       const data = await response.json();
 
       if (data.success) {
@@ -321,13 +343,6 @@
         document.getElementById('totalItems').textContent = stats.total_items.toLocaleString();
         document.getElementById('totalMatches').textContent = stats.total_matches.toLocaleString();
         document.getElementById('totalRevenue').textContent = '₱' + stats.total_revenue.toLocaleString();
-
-        // Update chart with monthly data
-        if (data.monthly_data && data.monthly_data.length > 0) {
-          updateChart(data.monthly_data);
-        } else {
-          updateChart([]);
-        }
 
         // Update recent activity
         if (data.recent_activity && data.recent_activity.length > 0) {
@@ -343,6 +358,171 @@
       console.error('Error loading stats:', error);
       showError('Error loading statistics');
     }
+  }
+
+
+  // Load chart data by category - SIMPLIFIED VERSION
+  async function loadCategoryChartData() {
+    try {
+      const period = document.getElementById('categoryChartPeriod').value;
+      console.log(`📊 Loading category chart for: ${period}`);
+      
+      const response = await fetch(`/api/admin/category-monthly?period=${period}`);
+      const result = await response.json();
+      
+      console.log('📦 API Response:', result);
+      
+      if (result.success) {
+        const chartData = result.chart_data;
+        console.log('✅ Data loaded:', {
+          months: chartData.months,
+          categories: chartData.categories,
+          dataCount: chartData.data.length
+        });
+        
+        // Directly update chart with the data
+        updateChartSimple(chartData);
+      } else {
+        console.error('❌ API Error:', result.error);
+        showError('Failed to load chart data');
+      }
+    } catch (error) {
+      console.error('❌ Fetch Error:', error);
+      showError('Error loading chart data');
+    }
+  }
+
+  // Initialize chart
+  function initializeChart() {
+    const ctx = document.getElementById('monthlyChart').getContext('2d');
+    monthlyChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: []
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          },
+          title: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1,
+              callback: function(value) {
+                return Number.isInteger(value) ? value : '';
+              }
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // SIMPLE and WORKING update chart function
+  function updateChartSimple(chartData) {
+    console.log('🎨 Updating chart with:', chartData);
+    
+    // Clear previous data
+    monthlyChart.data.labels = [];
+    monthlyChart.data.datasets = [];
+    
+    // If no data, show message
+    if (!chartData || !chartData.months || chartData.months.length === 0) {
+      console.warn('⚠️ No data available');
+      monthlyChart.data.labels = ['No Data'];
+      monthlyChart.data.datasets = [{
+        label: 'No Items',
+        data: [0],
+        backgroundColor: 'rgba(200, 200, 200, 0.6)'
+      }];
+      monthlyChart.update();
+      return;
+    }
+    
+    // Set months as labels
+    monthlyChart.data.labels = chartData.months;
+    
+    // If no categories but we have months, show empty months
+    if (!chartData.categories || chartData.categories.length === 0) {
+      console.warn('⚠️ No categories found');
+      monthlyChart.data.datasets = [{
+        label: 'No Categories',
+        data: new Array(chartData.months.length).fill(0),
+        backgroundColor: 'rgba(200, 200, 200, 0.6)'
+      }];
+      monthlyChart.update();
+      return;
+    }
+    
+    // Color palette
+    const colorPalette = [
+      'rgba(30, 58, 138, 0.6)',    // Electronics - Dark Blue
+      'rgba(59, 130, 246, 0.6)',   // Wallet - Blue
+      'rgba(16, 185, 129, 0.6)',   // Keys - Green
+      'rgba(245, 158, 11, 0.6)',   // Phone - Yellow
+      'rgba(239, 68, 68, 0.6)',    // Laptop/Tablet - Red
+      'rgba(139, 92, 246, 0.6)',   // Bag/Backpack - Purple
+      'rgba(236, 72, 153, 0.6)',   // Clothing - Pink
+      'rgba(20, 184, 166, 0.6)',   // Jewelry - Teal
+      'rgba(249, 115, 22, 0.6)',   // Documents - Orange
+      'rgba(132, 204, 22, 0.6)',   // Books - Light Green
+      'rgba(99, 102, 241, 0.6)',   // Glasses - Indigo
+      'rgba(139, 92, 246, 0.6)',   // Sports Equipment - Purple
+      'rgba(236, 72, 153, 0.6)',   // Pet Items - Pink
+      'rgba(156, 163, 175, 0.6)'   // Other - Gray
+    ];
+    
+    // Create a map for quick data lookup
+    const dataMap = {};
+    chartData.data.forEach(item => {
+      const key = `${item.month_name}-${item.category}`;
+      dataMap[key] = item.total_items || 0;
+    });
+    
+    // Create datasets for each category
+    const datasets = chartData.categories.map((category, index) => {
+      // Create data array for this category across all months
+      const data = chartData.months.map(month => {
+        const key = `${month}-${category}`;
+        return dataMap[key] || 0;
+      });
+      
+      console.log(`📈 "${category}":`, data);
+      
+      // Get color (cycle through palette)
+      const color = colorPalette[index % colorPalette.length];
+      
+      return {
+        label: category,
+        data: data,
+        backgroundColor: color,
+        borderColor: color.replace('0.6', '1'),
+        borderWidth: 1
+      };
+    });
+    
+    // Update chart
+    monthlyChart.data.datasets = datasets;
+    monthlyChart.update();
+    
+    console.log(`✅ Chart updated with ${datasets.length} categories`);
   }
 
   // Display recent activity
@@ -390,100 +570,115 @@
     return icons[type] || { icon: 'fas fa-circle', color: 'bg-gray-200 text-gray-600' };
   }
 
-  // Calculate time ago
-  function getTimeAgo(timestamp) {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffMs = now - time;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return time.toLocaleDateString();
+ // Replace your existing getTimeAgo function with this fixed version
+function getTimeAgo(timestamp) {
+  const now = new Date();
+  
+  // Parse the timestamp - MySQL datetime format needs to be converted
+  let time;
+  if (typeof timestamp === 'string' && timestamp.includes(' ')) {
+    // MySQL format: "2025-12-04 00:01:35" - replace space with T for ISO
+    time = new Date(timestamp.replace(' ', 'T'));
+  } else {
+    time = new Date(timestamp);
   }
-
-  // Initialize chart
-  function initializeChart() {
-    const ctx = document.getElementById('monthlyChart').getContext('2d');
-    monthlyChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: [],
-        datasets: [
-          {
-            label: 'Lost Items',
-            data: [],
-            backgroundColor: 'rgba(30, 58, 138, 0.6)',
-            borderColor: 'rgba(30, 58, 138, 1)',
-            borderWidth: 1
-          },
-          {
-            label: 'Found Items',
-            data: [],
-            backgroundColor: 'rgba(16, 185, 129, 0.6)',
-            borderColor: 'rgba(16, 185, 129, 1)',
-            borderWidth: 1
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top'
-          },
-          title: {
-            display: false
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              stepSize: 1
-            },
-            grid: {
-              color: 'rgba(0, 0, 0, 0.1)'
-            }
-          },
-          x: {
-            grid: {
-              display: false
-            }
-          }
-        }
-      }
-    });
+  
+  // Check if date is valid
+  if (isNaN(time.getTime())) {
+    console.error('Invalid timestamp:', timestamp);
+    return 'Unknown time';
   }
-
-  // Update chart with data
-  function updateChart(monthlyData) {
-    if (!monthlyData || monthlyData.length === 0) {
-      monthlyChart.data.labels = ['No Data Available'];
-      monthlyChart.data.datasets[0].data = [0];
-      monthlyChart.data.datasets[1].data = [0];
-    } else {
-      const labels = monthlyData.map(item => item.month_name);
-      const lostData = monthlyData.map(item => item.lost_items || 0);
-      const foundData = monthlyData.map(item => item.found_items || 0);
-
-      monthlyChart.data.labels = labels;
-      monthlyChart.data.datasets[0].data = lostData;
-      monthlyChart.data.datasets[1].data = foundData;
-    }
-    monthlyChart.update();
+  
+  // Calculate difference in milliseconds
+  const diffMs = now - time;
+  
+  // If negative (future date), return "Just now"
+  if (diffMs < 0) {
+    return 'Just now';
   }
+  
+  // Calculate different time units
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
+  
+  // Return appropriate time string
+  if (diffSeconds < 10) return 'Just now';
+  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  if (diffMins === 1) return '1m ago';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours === 1) return '1h ago';
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return '1d ago';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffWeeks === 1) return '1w ago';
+  if (diffWeeks < 4) return `${diffWeeks}w ago`;
+  if (diffMonths === 1) return '1mo ago';
+  if (diffMonths < 12) return `${diffMonths}mo ago`;
+  if (diffYears === 1) return '1y ago';
+  return `${diffYears}y ago`;
+}
 
+  
   // Error handling
   function showError(message) {
-    console.error(message);
+    console.error('❌ Error:', message);
+    // Show toast notification
+    const toast = document.createElement('div');
+    toast.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
   }
+
+  // Test function - run this in console to debug
+  window.debugChart = async function() {
+    console.log('🔍 Debugging chart...');
+    
+    // Test API directly
+    const periods = ['all_time', 'current_month', 'last_month'];
+    
+    for (const period of periods) {
+      console.log(`\n=== Testing ${period} ===`);
+      try {
+        const response = await fetch(`/api/admin/category-monthly?period=${period}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(`✅ ${period}: Success`);
+          console.log('📅 Months:', data.chart_data.months);
+          console.log('📋 Categories:', data.chart_data.categories);
+          console.log('📊 Data count:', data.chart_data.data.length);
+          
+          // Show first few data items
+          console.log('📝 Sample data:', data.chart_data.data.slice(0, 3));
+          
+          // Check for Documents and Jewelry
+          const hasDocs = data.chart_data.categories.includes('Documents');
+          const hasJewelry = data.chart_data.categories.includes('Jewelry');
+          console.log(`📄 Has Documents: ${hasDocs}`);
+          console.log(`💎 Has Jewelry: ${hasJewelry}`);
+          
+          if (hasDocs) {
+            const docsData = data.chart_data.data.filter(d => d.category === 'Documents');
+            console.log('📄 Documents data:', docsData);
+          }
+        } else {
+          console.log(`❌ ${period}:`, data.error);
+        }
+      } catch (error) {
+        console.log(`❌ ${period} fetch error:`, error);
+      }
+    }
+  };
 
   // Auto-refresh stats every 30 seconds
   setInterval(loadAdminStats, 30000);

@@ -4,6 +4,7 @@
 <!-- Adding Bootstrap Icons CSS for icon display -->
 {% block head %}
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
 {% endblock %}
 
 {% block content %}
@@ -13,52 +14,51 @@
     <p class="mb-0 opacity-75">Welcome to Reunited, {{ session.first_name }}!</p>
   </div>
 
-  <!-- Stats Cards -->
-  <div class="row g-4 mb-4">
-    <!-- Items Posted -->
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="stats-card">
-        <div class="stats-icon">
-          <i class="bi bi-plus-circle text-info"></i>
-        </div>
-        <h2 class="stats-number text-info">{{ stats.total_posted }}</h2>
-        <p class="mb-0 opacity-75">Items Posted</p>
+<div class="row g-4 mb-4">
+  <!-- Items Posted -->
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="stats-card clickable-stat" data-url="{{ url_for('posted') }}">
+      <div class="stats-icon">
+        <i class="bi bi-plus-circle text-info"></i>
       </div>
-    </div>
-    
-    <!-- Items Found/Claimed -->
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="stats-card">
-        <div class="stats-icon">
-          <i class="bi bi-check-circle text-success"></i>
-        </div>
-        <h2 class="stats-number text-success">{{ stats.total_claimed }}</h2>
-        <p class="mb-0 opacity-75">Items Claimed</p>
-      </div>
-    </div>
-    
-    <!-- Total Activity/Matches -->
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="stats-card">
-        <div class="stats-icon">
-          <i class="bi bi-puzzle" style="color: #9b59b6;"></i>
-        </div>
-        <h2 class="stats-number" style="color: #9b59b6;">{{ stats.total_activity }}</h2>
-        <p class="mb-0 opacity-75">Potential Matches</p>
-      </div>
-    </div>
-    
-    <!-- Returned Items -->
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="stats-card">
-        <div class="stats-icon">
-          <i class="bi bi-arrow-return-left text-danger"></i>
-        </div>
-        <h2 class="stats-number text-danger">{{ stats.total_returned }}</h2>
-        <p class="mb-0 opacity-75">Items Returned</p>
-      </div>
+      <h2 class="stats-number text-info">{{ stats.total_posted }}</h2>
+      <p class="mb-0 opacity-75">Items Posted</p>
     </div>
   </div>
+  
+  <!-- Items Found/Claimed -->
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="stats-card clickable-stat" data-url="{{ url_for('notifications') }}">
+      <div class="stats-icon">
+        <i class="bi bi-check-circle text-success"></i>
+      </div>
+      <h2 class="stats-number text-success">{{ stats.total_claimed }}</h2>
+      <p class="mb-0 opacity-75">Items Claimed</p>
+    </div>
+  </div>
+  
+  <!-- Total Activity/Matches -->
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="stats-card clickable-stat" data-url="{{ url_for('match') }}">
+      <div class="stats-icon">
+        <i class="bi bi-puzzle" style="color: #9b59b6;"></i>
+      </div>
+      <h2 class="stats-number" style="color: #9b59b6;">{{ stats.total_activity }}</h2>
+      <p class="mb-0 opacity-75">Potential Matches</p>
+    </div>
+  </div>
+  
+  <!-- Returned Items -->
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="stats-card clickable-stat" data-url="{{ url_for('notifications') }}">
+      <div class="stats-icon">
+        <i class="bi bi-arrow-return-left text-danger"></i>
+      </div>
+      <h2 class="stats-number text-danger">{{ stats.total_returned }}</h2>
+      <p class="mb-0 opacity-75">Items Returned</p>
+    </div>
+  </div>
+</div>
 
   <!-- Quick Actions -->
   <div class="row g-4 mb-4">
@@ -721,6 +721,35 @@
 
 <script>
 // Camera functionality for lost and found modals
+  document.addEventListener('DOMContentLoaded', function() {
+    // Make stats cards clickable
+    const statCards = document.querySelectorAll('.clickable-stat');
+    
+    statCards.forEach(card => {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', function() {
+        const url = this.getAttribute('data-url');
+        if (url) {
+          // Optional: Add a click animation
+          this.style.transform = 'scale(0.95)';
+          setTimeout(() => {
+            window.location.href = url;
+          }, 150);
+        }
+      });
+      
+      // Add hover effect
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-5px)';
+        this.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)';
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = 'none';
+      });
+    });
+  });
 class CameraHandler {
     constructor(modalType) {
         this.modalType = modalType;

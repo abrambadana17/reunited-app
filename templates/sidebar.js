@@ -75,26 +75,26 @@ overlay.addEventListener('click', function () {
 window.addEventListener('resize', function() {
   updateLayout();
   // Force height recalculation on resize
-  setTimeout(forceSidebarHeight, 50);
+  
 });
 
 // Fix height on page load and after navigation
 window.addEventListener('load', function() {
   updateLayout();
-  setTimeout(forceSidebarHeight, 100);
+  
 });
 
 // Fix for navigation changes (if using client-side routing)
 window.addEventListener('popstate', function() {
   setTimeout(() => {
     updateLayout();
-    forceSidebarHeight();
+    
   }, 10);
 });
 
 // Initialize
 updateLayout();
-setTimeout(forceSidebarHeight, 50);
+
 
 // Logout function
 async function logout() {

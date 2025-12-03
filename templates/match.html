@@ -60,24 +60,25 @@
         <div class="card-body">
           <!-- Center ONLY the most important elements -->
           <div class="text-center mb-3">
-            {% set score = match.match_score %}
-            {% if match.status == 'resolved' %}
-              <span class="badge resolved-score-badge">
-                <i class="fas fa-check-circle me-1"></i>Resolved
-              </span>
-            {% else %}
-              {% if score >= 1 %}
-                <span class="badge bg-success">Exact Match ({{ "%.2f"|format(score) }})</span>
-              {% elif score >= 0.8 %}
-                <span class="badge bg-info">Very High ({{ "%.2f"|format(score) }})</span>
-              {% elif score >= 0.6 %}
-                <span class="badge bg-primary">High ({{ "%.2f"|format(score) }})</span>
-              {% elif score >= 0.4 %}
-                <span class="badge bg-warning text-dark">Medium ({{ "%.2f"|format(score) }})</span>
+              {% set score = match.match_score %}
+              {% set percentage = (score * 100)|round|int %}
+              {% if match.status == 'resolved' %}
+                <span class="badge resolved-score-badge">
+                  <i class="fas fa-check-circle me-1"></i>Resolved
+                </span>
               {% else %}
-                <span class="badge bg-secondary">Low ({{ "%.2f"|format(score) }})</span>
+                {% if percentage >= 95 %}
+                  <span class="badge bg-success">Perfect Match ({{ percentage }}%)</span>
+                {% elif percentage >= 80 %}
+                  <span class="badge bg-info">Very High ({{ percentage }}%)</span>
+                {% elif percentage >= 60 %}
+                  <span class="badge bg-primary">High ({{ percentage }}%)</span>
+                {% elif percentage >= 40 %}
+                  <span class="badge bg-warning text-dark">Medium ({{ percentage }}%)</span>
+                {% else %}
+                  <span class="badge bg-secondary">Low ({{ percentage }}%)</span>
+                {% endif %}
               {% endif %}
-            {% endif %}
             
             <h5 class="card-title mt-2 {% if match.status == 'resolved' %}resolved-title{% endif %}">
               {{ match.lost_title }} ↔ {{ match.found_title }}
@@ -454,28 +455,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const matchDateElement = document.getElementById('modalMatchDate');
     
     if (isResolved) {
-      scoreBadge.textContent = 'Resolved';
-      scoreBadge.className = 'badge bg-success fs-6';
-      matchDateElement.textContent = 'Resolved ' + matchDate;
-    } else {
-      if (matchScore >= 1) {
-        scoreBadge.textContent = 'Exact Match (' + matchScore.toFixed(2) + ')';
-        scoreBadge.className = 'badge bg-success fs-6';
-      } else if (matchScore >= 0.8) {
-        scoreBadge.textContent = 'Very High (' + matchScore.toFixed(2) + ')';
-        scoreBadge.className = 'badge bg-info fs-6';
-      } else if (matchScore >= 0.6) {
-        scoreBadge.textContent = 'High (' + matchScore.toFixed(2) + ')';
-        scoreBadge.className = 'badge bg-primary fs-6';
-      } else if (matchScore >= 0.4) {
-        scoreBadge.textContent = 'Medium (' + matchScore.toFixed(2) + ')';
-        scoreBadge.className = 'badge bg-warning text-dark fs-6';
-      } else {
-        scoreBadge.textContent = 'Low (' + matchScore.toFixed(2) + ')';
-        scoreBadge.className = 'badge bg-secondary fs-6';
-      }
-      matchDateElement.textContent = 'Matched ' + matchDate;
-    }
+  scoreBadge.textContent = 'Resolved';
+  scoreBadge.className = 'badge bg-success fs-6';
+  matchDateElement.textContent = 'Resolved ' + matchDate;
+} else {
+  // Convert to percentage
+  const percentage = Math.round(matchScore * 100);
+  
+  if (percentage >= 95) {
+    scoreBadge.textContent = 'Perfect Match (' + percentage + '%)';
+    scoreBadge.className = 'badge bg-success fs-6';
+  } else if (percentage >= 80) {
+    scoreBadge.textContent = 'Very High (' + percentage + '%)';
+    scoreBadge.className = 'badge bg-info fs-6';
+  } else if (percentage >= 60) {
+    scoreBadge.textContent = 'High (' + percentage + '%)';
+    scoreBadge.className = 'badge bg-primary fs-6';
+  } else if (percentage >= 40) {
+    scoreBadge.textContent = 'Medium (' + percentage + '%)';
+    scoreBadge.className = 'badge bg-warning text-dark fs-6';
+  } else {
+    scoreBadge.textContent = 'Low (' + percentage + '%)';
+    scoreBadge.className = 'badge bg-secondary fs-6';
+  }
+  matchDateElement.textContent = 'Matched ' + matchDate;
+}
     
     // Show/hide success section
     const successSection = document.getElementById('successSection');

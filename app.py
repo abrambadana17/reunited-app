@@ -73,10 +73,14 @@ def resize_image(image_path, max_size=(400, 400)):
 
 #human detection
 
+#human detection
+
+#human detection
+
 def contains_human_faces(image_path):
     """
-    Simple face detection: reject only obvious personal photos with large faces
-    Allow IDs and documents with small faces
+    Smart face detection that ALLOWS ID cards but REJECTS personal photos.
+    IDs are identified by their rectangular shape, text, and small face proportions.
     """
     try:
         print(f"🖼️ Checking image: {image_path}")
@@ -86,15 +90,63 @@ def contains_human_faces(image_path):
             return False
             
         height, width = img.shape[:2]
+        print(f"📏 Image dimensions: {width}x{height}")
         
+        # Convert to grayscale for multiple analyses
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         
-        if face_cascade.empty():
+        # Load face cascade classifiers
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_profileface.xml')
+        
+        if face_cascade.empty() or profile_cascade.empty():
+            print("⚠️ Cascade classifiers not loaded properly")
             return False
         
-        # Detect all faces
-        faces = face_cascade.detectMultiScale(
+        # ---------------------------------------------------------
+        # STEP 1: Check if this looks like an ID CARD (ALLOW if yes)
+        # ---------------------------------------------------------
+        
+        # 1A. Check for rectangular document-like shape (ID cards are usually rectangular)
+        # Convert to binary for contour detection
+        _, binary = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        
+        # Find contours
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Look for large, rectangular contours (potential ID card)
+        id_card_detected = False
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area > (width * height * 0.1):  # At least 10% of image area
+                perimeter = cv2.arcLength(contour, True)
+                approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+                
+                # Check if it's roughly rectangular (4 corners)
+                if len(approx) == 4:
+                    x, y, w, h = cv2.boundingRect(contour)
+                    aspect_ratio = w / h
+                    
+                    # ID cards typically have aspect ratios between 1.4 and 1.8 (credit card: 1.586)
+                    if 1.3 <= aspect_ratio <= 1.9:
+                        id_card_detected = True
+                        print(f"📇 ID Card detected: {w}x{h} (aspect: {aspect_ratio:.2f})")
+                        
+                        # Additional check: ID cards often have text/edges around the border
+                        # Extract the potential ID region
+                        id_region = img[y:y+h, x:x+w]
+                        
+                        # Check for text-like features (high edge density)
+                        edges = cv2.Canny(id_region, 50, 150)
+                        edge_density = np.sum(edges > 0) / (w * h) * 100
+                        
+                        if edge_density > 5:  # IDs have lots of text/edges
+                            print(f"   📝 High edge density ({edge_density:.1f}%) - looks like document")
+                            return False  # ALLOW ID cards immediately
+        
+        # 1B. Check for ID-like features: Small face in a structured document
+        # Detect ALL faces in the image
+        faces_frontal = face_cascade.detectMultiScale(
             gray,
             scaleFactor=1.1,
             minNeighbors=4,
@@ -102,33 +154,117 @@ def contains_human_faces(image_path):
             flags=cv2.CASCADE_SCALE_IMAGE
         )
         
-        print(f"👤 Faces found: {len(faces)}")
+        # Check if this is an ID photo (small face in structured layout)
+        for (x, y, w, h) in faces_frontal:
+            face_area = w * h
+            image_area = width * height
+            face_percentage = (face_area / image_area) * 100
+            
+            print(f"👤 Face detected: {w}x{h} ({face_percentage:.2f}% of image)")
+            
+            # ID photos typically have faces that are 2-4% of total image area
+            if 1.5 <= face_percentage <= 4.5:
+                print(f"📇 Face size suggests ID photo ({face_percentage:.2f}%)")
+                
+                # Check if face is in upper portion (typical for IDs)
+                face_center_y = y + h/2
+                if face_center_y < height * 0.4:  # Face in top 40% of image
+                    print(f"   📍 Face position suggests ID layout")
+                    return False  # ALLOW ID cards
         
-        if len(faces) == 0:
-            print("✅ No faces - allowing")
+        # ---------------------------------------------------------
+        # STEP 2: Only if NOT an ID, check for personal photos to REJECT
+        # ---------------------------------------------------------
+        
+        # Detect faces with stricter parameters for personal photos
+        faces_frontal = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.2,  # Increased for stricter detection
+            minNeighbors=6,   # Increased to reduce false positives
+            minSize=(40, 40), # Minimum face size increased
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+        
+        faces_profile = profile_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.2,
+            minNeighbors=6,
+            minSize=(40, 40),
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+        
+        # Combine all detected faces
+        all_faces = list(faces_frontal) + list(faces_profile)
+        
+        if len(all_faces) == 0:
+            print("✅ No faces detected - allowing image")
             return False
         
-        # Calculate total face area
-        total_face_area = sum(w * h for (x, y, w, h) in faces)
+        print(f"👤 Total faces found for personal photo check: {len(all_faces)}")
+        
+        # Validate detected faces for personal photos
+        valid_faces = []
+        for i, (x, y, w, h) in enumerate(all_faces):
+            # Skip very small detections
+            if w < 40 or h < 40:
+                continue
+                
+            face_region = img[y:y+h, x:x+w]
+            
+            # Check skin tone (personal photos usually show skin)
+            hsv_face = cv2.cvtColor(face_region, cv2.COLOR_BGR2HSV)
+            
+            # Skin tone ranges
+            lower_skin1 = np.array([0, 20, 70], dtype=np.uint8)
+            upper_skin1 = np.array([20, 255, 255], dtype=np.uint8)
+            lower_skin2 = np.array([0, 20, 70], dtype=np.uint8)
+            upper_skin2 = np.array([25, 255, 255], dtype=np.uint8)
+            
+            skin_mask1 = cv2.inRange(hsv_face, lower_skin1, upper_skin1)
+            skin_mask2 = cv2.inRange(hsv_face, lower_skin2, upper_skin2)
+            skin_mask = cv2.bitwise_or(skin_mask1, skin_mask2)
+            
+            skin_pixels = np.sum(skin_mask > 0)
+            total_pixels = w * h
+            skin_percentage = (skin_pixels / total_pixels) * 100
+            
+            # Check edge density (faces have features)
+            gray_face = cv2.cvtColor(face_region, cv2.COLOR_BGR2GRAY)
+            edges = cv2.Canny(gray_face, 100, 200)
+            edge_density = np.sum(edges > 0) / total_pixels * 100
+            
+            # Validate as personal photo face
+            if skin_percentage > 15 or edge_density > 10:
+                valid_faces.append((x, y, w, h))
+                print(f"  Valid face {i+1}: {w}x{h}, Skin: {skin_percentage:.1f}%, Edges: {edge_density:.1f}%")
+        
+        if len(valid_faces) == 0:
+            print("✅ No valid personal photo faces detected - allowing image")
+            return False
+        
+        # Calculate total valid face area for personal photos
+        total_face_area = sum(w * h for (x, y, w, h) in valid_faces)
         face_area_percentage = (total_face_area / (width * height)) * 100
         
-        print(f"📊 Face area: {face_area_percentage:.2f}%")
+        print(f"📊 Personal photo face area: {total_face_area}px ({face_area_percentage:.2f}% of image)")
         
-        # CRITICAL: Only reject if faces take up significant space
-        # IDs: faces are small (<4% of image)
-        # Personal photos: faces are large (>6% of image)
-        REJECT_THRESHOLD = 6.0  # Adjust this value as needed
+        # FINAL DECISION FOR PERSONAL PHOTOS:
+        # Personal photos: faces are large (>6% of image) → REJECT
+        # Casual photos with small faces: faces are small (<6%) → ALLOW
+        PERSONAL_PHOTO_THRESHOLD = 6.0
         
-        if face_area_percentage > REJECT_THRESHOLD:
-            print(f"❌ REJECT: Large faces ({face_area_percentage:.2f}%)")
+        if face_area_percentage > PERSONAL_PHOTO_THRESHOLD:
+            print(f"❌ REJECT: Large human faces detected ({face_area_percentage:.2f}%) - appears to be personal photo")
             return True
         else:
-            print(f"✅ ALLOW: Small faces ({face_area_percentage:.2f}%) - likely ID")
+            print(f"✅ ALLOW: Casual photo with small faces ({face_area_percentage:.2f}%)")
             return False
             
     except Exception as e:
-        print(f"❌ Error: {e}")
-        return False
+        print(f"❌ Error in face detection: {e}")
+        import traceback
+        traceback.print_exc()
+        return False  # Allow on error to not block legitimate uploads
 
 def validate_image_file(file):
     """Validate both uploaded files and captured images"""
@@ -222,7 +358,130 @@ def admin_dashboard():
     
     return render_template('admindashboard.html', active_page='admin_dashboard')
 
-# API route for admin statistics - FIXED
+@app.route('/api/admin/category-monthly')
+def admin_category_monthly():
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    
+    # Get period parameter
+    period = request.args.get('period', 'all_time')
+    
+    try:
+        # Build conditions list
+        conditions = [
+            "category IS NOT NULL",
+            "created_at IS NOT NULL"
+        ]
+        
+        if period == 'current_month':
+            conditions.append("MONTH(created_at) = MONTH(CURRENT_DATE())")
+            conditions.append("YEAR(created_at) = YEAR(CURRENT_DATE())")
+        elif period == 'last_month':
+            conditions.append("MONTH(created_at) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH)")
+            conditions.append("YEAR(created_at) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH)")
+        
+        # Build WHERE clause
+        where_clause = "WHERE " + " AND ".join(conditions)
+        
+        print(f"🔍 Period: {period}")
+        print(f"🔍 Conditions: {conditions}")
+        
+        # FIXED QUERY - Proper ordering by actual date, not formatted string
+        query = f"""
+            SELECT 
+                DATE_FORMAT(created_at, '%b %Y') as month_name,
+                category,
+                COUNT(*) as total_items
+            FROM items 
+            {where_clause}
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m'), category
+            ORDER BY DATE_FORMAT(created_at, '%Y-%m') ASC, category
+        """
+        
+        print(f"🔍 Query: {query}")
+        cursor.execute(query)
+        data = cursor.fetchall()
+        
+        # Debug: Print all data
+        print(f"📊 Raw data from query:")
+        for row in data:
+            print(f"  - {row['month_name']}: {row['category']} = {row['total_items']}")
+        
+        # FIXED MONTHS QUERY - Get all distinct months with proper ordering
+        month_conditions = conditions.copy()
+        if 'category IS NOT NULL' in month_conditions:
+            month_conditions.remove('category IS NOT NULL')
+        
+        month_where = "WHERE " + " AND ".join(month_conditions)
+        months_query = f"""
+            SELECT DISTINCT DATE_FORMAT(created_at, '%b %Y') as month_name
+            FROM items 
+            {month_where}
+            ORDER BY DATE_FORMAT(created_at, '%Y-%m') ASC
+        """
+        
+        cursor.execute(months_query)
+        months = [row['month_name'] for row in cursor.fetchall()]
+        
+        # Get categories
+        categories_query = f"""
+            SELECT DISTINCT category
+            FROM items 
+            {where_clause}
+            ORDER BY category
+        """
+        cursor.execute(categories_query)
+        categories = [row['category'] for row in cursor.fetchall()]
+        
+        # Additional debug query: Check items MATCHING THE CURRENT PERIOD
+        debug_query = f"""
+            SELECT 
+                id,
+                category,
+                created_at,
+                DATE_FORMAT(created_at, '%b %Y') as formatted_date,
+                DATE_FORMAT(created_at, '%Y-%m') as sort_date
+            FROM items 
+            {where_clause}
+            ORDER BY created_at
+        """
+        cursor.execute(debug_query)
+        all_items = cursor.fetchall()
+        
+        print(f"\n📋 ALL ITEMS IN DATABASE:")
+        for item in all_items:
+            print(f"  ID {item['id']}: {item['category']} - {item['created_at']} ({item['formatted_date']}) [Sort: {item['sort_date']}]")
+        
+        cursor.close()
+        
+        # Debug
+        print(f"\n📅 Months: {months}")
+        print(f"📋 Categories: {categories}")
+        print(f"📊 Data rows: {len(data)}")
+        print(f"📊 Total items in DB: {len(all_items)}")
+        
+        return jsonify({
+            'success': True,
+            'chart_data': {
+                'months': months,
+                'categories': categories,
+                'data': data
+            },
+            'period': period,
+            'debug': {
+                'total_items_in_db': len(all_items),
+                'items_in_chart': sum(d['total_items'] for d in data)
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in category-monthly: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # API route for admin statistics - FIXED
 @app.route('/api/admin/stats')
 def admin_stats():
@@ -289,7 +548,7 @@ def admin_stats():
     """)
     monthly_data = cursor.fetchall()
     
-    # Get recent activity for the dashboard - FIXED: using created_at instead of updated_at
+    # Get recent activity for the dashboard
     cursor.execute("""
         (
             SELECT 
@@ -325,7 +584,7 @@ def admin_stats():
             SELECT 
                 'item_resolved' as type,
                 CONCAT('Item resolved: ', title) as message,
-                created_at as timestamp  -- Using created_at since updated_at doesn't exist
+                created_at as timestamp
             FROM items 
             WHERE status IN ('claimed', 'returned')
             ORDER BY created_at DESC 
@@ -334,9 +593,18 @@ def admin_stats():
         ORDER BY timestamp DESC 
         LIMIT 10
     """)
-    recent_activity = cursor.fetchall()
+    recent_activity_raw = cursor.fetchall()
     
     cursor.close()
+    
+    # Convert datetime objects to ISO format strings for JSON serialization
+    recent_activity = []
+    for activity in recent_activity_raw:
+        recent_activity.append({
+            'type': activity['type'],
+            'message': activity['message'],
+            'timestamp': activity['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if activity['timestamp'] else None
+        })
     
     return jsonify({
         'success': True,
@@ -370,6 +638,8 @@ def admin_search_items():
                 u.first_name,
                 u.last_name,
                 u.email,
+                u.phone,
+                u.profile_picture,  # ✅ MAKE SURE THIS IS INCLUDED
                 img.file_path as image_path
             FROM items i
             LEFT JOIN users u ON i.user_id = u.id
@@ -504,8 +774,13 @@ def delete_admin_item(item_id):
     try:
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         
-        # Check if item exists
-        cursor.execute("SELECT id, title, user_id FROM items WHERE id = %s", (item_id,))
+        # Check if item exists and get user details
+        cursor.execute("""
+            SELECT i.id, i.title, i.user_id, i.type, 
+                   u.email, u.first_name, u.last_name, u.profile_picture 
+            FROM items i 
+            JOIN users u ON i.user_id = u.id 
+            WHERE i.id = %s""", (item_id,))
         item = cursor.fetchone()
         
         if not item:
@@ -526,19 +801,111 @@ def delete_admin_item(item_id):
         # Delete images from database
         cursor.execute("DELETE FROM images WHERE item_id = %s", (item_id,))
         
+        # Delete any matches involving this item
+        cursor.execute("DELETE FROM ai_matches WHERE lost_item_id = %s OR found_item_id = %s", (item_id, item_id))
+        
         # Delete the item
         cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
+        
+        # Send notification to the user
+        send_item_deleted_notification(
+            user_id=item['user_id'],
+            item_title=item['title'],
+            reason="data privacy and platform guidelines",
+            cursor=cursor,
+            mysql=mysql
+        )
+        
         mysql.connection.commit()
         cursor.close()
         
         return jsonify({
             'success': True, 
-            'message': f'Item "{item["title"]}" deleted successfully'
+            'message': f'Item "{item["title"]}" deleted successfully. User has been notified.',
+            'user_notified': True,
+            'user_name': f"{item['first_name']} {item['last_name']}",
+            'user_id': item['user_id']  # ✅ ADD THIS LINE
         })
         
     except Exception as e:
         print(f"Error deleting item: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+# Add this function near the top with other helper functions in app.py
+def send_item_deleted_notification(user_id, item_title, reason="data privacy", cursor=None, mysql=None):
+    """Send notification to user when their item is deleted"""
+    try:
+        message = f"Your item '{item_title}' has been deleted by admin due to {reason}."
+        notification_type = "item_deleted"
+        
+        if cursor is None:
+            cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Get user's email and name for email notification
+        cursor.execute("SELECT email, first_name FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        
+        if user:
+            # Insert notification in database
+            cursor.execute("""INSERT INTO notifications (user_id, type, message, sent_at, is_read) 
+                            VALUES (%s, %s, %s, NOW(), 0)""", 
+                          (user_id, notification_type, message))
+            
+            # Send email notification
+            try:
+                msg = Message(
+                    subject='Item Deleted - Reunited',
+                    recipients=[user['email']],
+                    html=f'''
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h1 style="color: #1E3A8A; margin-bottom: 10px;">🤝 Reunited</h1>
+                            <h2 style="color: #374151; font-weight: normal;">Item Deletion Notice</h2>
+                        </div>
+                        
+                        <div style="background: #f8f9fa; padding: 30px; border-radius: 10px;">
+                            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                                Hi {user['first_name']},
+                            </p>
+                            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                                Your item <strong>"{item_title}"</strong> has been deleted by the Reunited admin team.
+                            </p>
+                            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                                <strong>Reason:</strong> {reason}
+                            </p>
+                            
+                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                                <p style="color: #856404; margin: 0;">
+                                    <i class="fas fa-exclamation-circle" style="margin-right: 8px;"></i>
+                                    This action was taken to maintain data privacy and security on our platform.
+                                </p>
+                            </div>
+                            
+                            <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
+                                If you believe this was a mistake or have any questions, please contact our support team.
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                            <p style="font-size: 12px; color: #9ca3af;">
+                                © 2025 Reunited. Helping reconnect lost items with their owners.
+                            </p>
+                        </div>
+                    </div>
+                    '''
+                )
+                mail.send(msg)
+            except Exception as e:
+                print(f"Error sending email notification: {e}")
+                # Continue even if email fails
+            
+            return True
+        return False
+    except Exception as e:
+        print(f"Error sending deletion notification: {e}")
+        return False
 
 @app.route('/admin/matches')
 def admin_matches():
@@ -606,8 +973,8 @@ def api_admin_analytics():
         # Item Distribution
         cursor.execute("""
             SELECT 
-                SUM(CASE WHEN type = 'lost' THEN 1 ELSE 0 END) as lost_items,
-                SUM(CASE WHEN type = 'found' THEN 1 ELSE 0 END) as found_items,
+                SUM(CASE WHEN type = 'lost' AND status NOT IN ('claimed', 'returned') THEN 1 ELSE 0 END) as lost_items,
+                SUM(CASE WHEN type = 'found' AND status NOT IN ('claimed', 'returned') THEN 1 ELSE 0 END) as found_items,
                 SUM(CASE WHEN status IN ('claimed', 'returned') THEN 1 ELSE 0 END) as resolved_items
             FROM items
         """)
@@ -1962,21 +2329,36 @@ def lost():
                     os.makedirs(os.path.dirname(filepath), exist_ok=True)
                     os.rename(temp_filepath, filepath)  # Move from temp to final location
 
-                    # extract features
-                    features = extract_features(filepath)
+                    # Extract features
+                    try:
+                        features = extract_features(filepath)
+                        print(f"✅ Image features extracted successfully")
+                    except Exception as e:
+                        print(f"❌ Error extracting features: {e}")
+                        features = None
 
                     # insert into images table with features
-                    cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', (item_id, filepath, str(features.tolist())))
+                    cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', 
+                                  (item_id, filepath, str(features.tolist()) if features is not None else None))
                     mysql.connection.commit()
-
-      
+        
+        # ❌ REMOVED: Do NOT auto-match here for lost items
+        # Auto-matching will happen in payment-success route after payment
         
         flash('Lost item submitted successfully! Please complete payment to make it visible.', 'success')
         cursor.close()
         return redirect(url_for('posted'))
 
-    # GET → show items with reporter info (only paid items)
-    cursor.execute("""SELECT i.*, img.file_path AS image_path, u.first_name, u.last_name, u.profile_picture FROM items i LEFT JOIN images img ON i.id = img.item_id LEFT JOIN users u ON i.user_id = u.id WHERE i.type='lost' AND i.payment_status = 'paid' ORDER BY i.created_at DESC""")
+    # GET → show items with reporter info (only paid items that are NOT claimed)
+    cursor.execute("""SELECT i.*, img.file_path AS image_path, u.first_name, u.last_name, u.profile_picture 
+                     FROM items i 
+                     LEFT JOIN images img ON i.id = img.item_id 
+                     LEFT JOIN users u ON i.user_id = u.id 
+                     WHERE i.type='lost' 
+                     AND i.payment_status = 'paid' 
+                     AND i.status NOT IN ('claimed', 'Claimed', 'returned', 'Returned', 'resolved', 'Resolved')
+                     ORDER BY i.created_at DESC""")
+    
     lost_items = cursor.fetchall()
     
     # Get the item_id from URL parameter if present
@@ -2020,8 +2402,9 @@ def found():
             session['found_form_data'] = form_data
             return redirect(url_for('dashboard') + '#foundItemModal')
 
-        # insert item
-        cursor.execute('''INSERT INTO items (user_id, title, description, category, type, date_reported, location_reported, status) VALUES (%s, %s, %s, %s, 'found', %s, %s, %s)''', (session['user_id'], title, description, category, date_reported, location, "Unclaimed"))
+        # insert item with NULL reward (found items don't offer rewards)
+        cursor.execute('''INSERT INTO items (user_id, title, description, category, type, date_reported, location_reported, reward, status) VALUES (%s, %s, %s, %s, 'found', %s, %s, NULL, %s)''', 
+                      (session['user_id'], title, description, category, date_reported, location, "Unclaimed"))
 
         item_id = cursor.lastrowid
         mysql.connection.commit()
@@ -2101,7 +2484,8 @@ def found():
                     features = extract_features(filepath)
 
                     # insert into images table with features
-                    cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', (item_id, filepath, str(features.tolist())))
+                    cursor.execute('''INSERT INTO images (item_id, file_path, ai_features) VALUES (%s, %s, %s)''', 
+                                  (item_id, filepath, str(features.tolist())))
                     mysql.connection.commit()
 
         # prepare details for text matching
@@ -2120,8 +2504,15 @@ def found():
         cursor.close()
         return redirect(url_for('found'))
 
-    # GET → show items with reporter info
-    cursor.execute("""SELECT i.*, img.file_path AS image_path, u.first_name, u.last_name, u.profile_picture FROM items i LEFT JOIN images img ON i.id = img.item_id LEFT JOIN users u ON i.user_id = u.id WHERE i.type='found' ORDER BY i.created_at DESC""")
+    # GET → show items with reporter info (only unclaimed/not returned items)
+    cursor.execute("""SELECT i.*, img.file_path AS image_path, u.first_name, u.last_name, u.profile_picture 
+                     FROM items i 
+                     LEFT JOIN images img ON i.id = img.item_id 
+                     LEFT JOIN users u ON i.user_id = u.id 
+                     WHERE i.type='found' 
+                     AND i.status NOT IN ('returned', 'Returned', 'claimed', 'Claimed', 'resolved', 'Resolved')
+                     ORDER BY i.created_at DESC""")
+    
     found_items = cursor.fetchall()
     
     # Get the item_id from URL parameter if present
@@ -2261,14 +2652,14 @@ def update_item(item_id):
         
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         
-        # Verify ownership
+        # 1. Verify ownership AND get current item type
         cursor.execute("SELECT user_id, type FROM items WHERE id = %s", (item_id,))
         item = cursor.fetchone()
         
         if not item or item['user_id'] != session['user_id']:
             return jsonify({'success': False, 'errors': ['Not authorized']}), 403
         
-        # Update item with all fields
+        # 2. Update item
         cursor.execute("""UPDATE items SET 
             title = %s, description = %s, category = %s, 
             location_reported = %s, reward = %s 
@@ -2277,11 +2668,55 @@ def update_item(item_id):
              data.get('location_reported'), data.get('reward'), item_id))
         
         mysql.connection.commit()
+        
+        # 3. CHECK: Only trigger auto-match if item is ACTIVE (not claimed/returned)
+        cursor.execute("SELECT status FROM items WHERE id = %s", (item_id,))
+        current_status = cursor.fetchone()['status']
+        
+        active_statuses = ['Not Yet Found', 'Unclaimed', 'active', 'pending']
+        if current_status in active_statuses:
+            print(f"🔄 Item {item_id} was edited and is active - triggering re-matching...")
+            
+            # 4. Get updated details for matching
+            updated_details = {
+                "title": data.get('title'),
+                "description": data.get('description'),
+                "category": data.get('category'),
+                "location": data.get('location_reported')
+            }
+            
+            # 5. Get image features if exists
+            cursor.execute("SELECT ai_features FROM images WHERE item_id = %s", (item_id,))
+            image_data = cursor.fetchone()
+            
+            features = None
+            if image_data and image_data['ai_features']:
+                features = np.array(eval(image_data['ai_features']))
+            
+            # 6. Trigger auto-match with updated details
+            auto_match(
+                item_id, 
+                item['type'],  # 'lost' or 'found'
+                features, 
+                updated_details, 
+                cursor, 
+                mysql, 
+                mail
+            )
+            
+            print(f"✅ Re-matching completed for edited item {item_id}")
+        else:
+            print(f"⚠️ Item {item_id} is {current_status} - skipping re-matching")
+        
         cursor.close()
         
-        return jsonify({'success': True, 'message': 'Item updated successfully'}), 200
+        return jsonify({
+            'success': True, 
+            'message': 'Item updated successfully' + (' (and re-matched)' if current_status in active_statuses else '')
+        }), 200
         
     except Exception as e:
+        print(f"❌ Error updating item: {str(e)}")
         return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
 
 
@@ -2469,12 +2904,12 @@ def payment_success():
         # Update dashboard stats
         update_dashboard_stats(session['user_id'], cursor, mysql)
         
-        # ✅ NEW: Trigger auto-matching after successful payment
+        # ✅ Trigger auto-matching for ALL paid items (with or without images)
         print(f"🔄 Triggering auto-matching for paid item {item_id}")
         
-        # Get item features and details for matching
+        # Get item details for matching
         cursor.execute("""
-            SELECT i.*, img.ai_features, img.file_path 
+            SELECT i.*, img.ai_features 
             FROM items i 
             LEFT JOIN images img ON i.id = img.item_id 
             WHERE i.id = %s
@@ -2485,22 +2920,30 @@ def payment_success():
         if paid_item:
             print(f"📋 Paid item details: {paid_item['title']}, Category: {paid_item['category']}")
             
+            # Prepare item details for matching
+            details = {
+                "title": paid_item['title'],
+                "description": paid_item['description'],
+                "category": paid_item['category'],
+                "location": paid_item['location_reported']
+            }
+            
+            # Handle features (could be None if no image)
+            features = None
             if paid_item['ai_features']:
-                # Extract features and details for matching
-                features = np.array(eval(paid_item['ai_features']))
-                details = {
-                    "title": paid_item['title'],
-                    "description": paid_item['description'],
-                    "category": paid_item['category'],
-                    "location": paid_item['location_reported']
-                }
-                
-                print(f"🔍 Starting auto-match for: {details['title']}")
-                # Trigger auto-matching
-                auto_match(item_id, 'lost', features, details, cursor, mysql, mail)
-                print(f"✅ Auto-matching completed for item {item_id}")
+                try:
+                    features = np.array(eval(paid_item['ai_features']))
+                    print(f"🖼️ Item has image features")
+                except:
+                    features = None
+                    print(f"⚠️ Could not parse image features")
             else:
-                print(f"⚠️ No AI features found for item {item_id}")
+                print(f"📝 Item has NO image (text-only matching)")
+            
+            print(f"🔍 Starting auto-match for: {details['title']}")
+            # Trigger auto-matching (pass None for features if no image)
+            auto_match(item_id, 'lost', features, details, cursor, mysql, mail)
+            print(f"✅ Auto-matching completed for item {item_id}")
         else:
             print(f"❌ Could not retrieve paid item details for {item_id}")
         

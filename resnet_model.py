@@ -27,6 +27,8 @@ def extract_features(img_path):
 
 def cosine_similarity(a, b):
     """Cosine similarity between two vectors"""
+    if a is None or b is None:
+        return 0.0
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 # -----------------------------
@@ -90,15 +92,16 @@ def enhanced_text_similarity(details1, details2):
     return final_text_score
 
 # -----------------------------
-# Combined Auto Match (Image + Text) + Notifications + Email
+# Combined Auto Match with Dynamic Weights
 # -----------------------------
-def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mail, threshold=0.4):
+def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mail, threshold=None):
     """
     Compare new item against opposite type (lost vs found).
+    Uses dynamic weights based on whether items have images.
     """
     opposite_type = 'found' if type_ == 'lost' else 'lost'
 
-    # ✅ FIXED: Proper query for opposite items
+     # ✅ FIXED: Use LEFT JOIN to include items without images
     if opposite_type == 'lost':
         # When matching against lost items, only include paid lost items
         cursor.execute('''
@@ -107,7 +110,7 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                    CONCAT(u.first_name, ' ', u.last_name) AS fullname,
                    u.email, u.phone
             FROM items i
-            JOIN images img ON i.id = img.item_id
+            LEFT JOIN images img ON i.id = img.item_id  # <-- CHANGED TO LEFT JOIN
             JOIN users u ON i.user_id = u.id
             WHERE i.type = 'lost'
             AND i.status NOT IN ('claimed', 'returned', 'resolved', 'Claimed', 'Returned', 'Resolved')
@@ -121,7 +124,7 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                    CONCAT(u.first_name, ' ', u.last_name) AS fullname,
                    u.email, u.phone
             FROM items i
-            JOIN images img ON i.id = img.item_id
+            LEFT JOIN images img ON i.id = img.item_id  # <-- CHANGED TO LEFT JOIN
             JOIN users u ON i.user_id = u.id
             WHERE i.type = 'found'
             AND i.status NOT IN ('claimed', 'returned', 'resolved', 'Claimed', 'Returned', 'Resolved')
@@ -130,16 +133,44 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
     others = cursor.fetchall()
 
     print(f"🔍 Comparing new {type_} item {new_item_id} against {len(others)} active {opposite_type} items")
-
+    
+    # Determine if new item has image
+    new_item_has_image = new_features is not None
+    
+    # Set threshold based on whether new item has image
+    if threshold is None:
+        threshold = 0.4 if new_item_has_image else 0.5
+    
     for other in others:
         try:
-            # ---- Image similarity (60% weight) ----
+            # ---- Determine weights based on image availability ----
+            other_has_image = other['ai_features'] is not None
+            
+            # Case 1: Both items have images (70% image, 30% text)
+            if new_item_has_image and other_has_image:
+                image_weight = 0.7
+                text_weight = 0.3
+            # Case 2: New item has image but other doesn't (use default 60%/40%)
+            elif new_item_has_image and not other_has_image:
+                image_weight = 0.6
+                text_weight = 0.4
+            # Case 3: New item has NO image (100% text)
+            else:
+                image_weight = 0.0
+                text_weight = 1.0
+            
+            print(f"Weights for item {other['id']}: Image={image_weight}, Text={text_weight}")
+            
+            # ---- Image similarity ----
             image_score = 0.0
-            if other['ai_features']:
-                other_features = np.array(eval(other['ai_features']))
-                image_score = cosine_similarity(new_features, other_features)
-
-            # ---- Enhanced text similarity (40% weight) ----
+            if new_item_has_image and other_has_image:
+                try:
+                    other_features = np.array(eval(other['ai_features']))
+                    image_score = cosine_similarity(new_features, other_features)
+                except:
+                    image_score = 0.0
+            
+            # ---- Enhanced text similarity ----
             other_details = {
                 'title': other['title'],
                 'description': other['description'],
@@ -147,12 +178,12 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                 'location': other['location_reported']
             }
             text_score = enhanced_text_similarity(new_details, other_details)
-
-            # ---- Combined score ----
-            final_score = (0.6 * image_score) + (0.4 * text_score)
+            
+            # ---- Combined score with dynamic weights ----
+            final_score = (image_weight * image_score) + (text_weight * text_score)
 
             print(f"Comparing: {new_details['title']} (ID:{new_item_id}) vs {other['title']} (ID:{other['id']})")
-            print(f"  Image: {image_score:.2f}, Text: {text_score:.2f}, Final: {final_score:.2f}")
+            print(f"  Image: {image_score:.2f} (weight={image_weight:.1f}), Text: {text_score:.2f} (weight={text_weight:.1f}), Final: {final_score:.2f}, Threshold: {threshold}")
 
             if final_score >= threshold:
                 lost_id = new_item_id if type_ == 'lost' else other['id']
@@ -183,14 +214,14 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
 
                 # ---- Get both users ----
                 cursor.execute("""
-                    SELECT id, CONCAT(first_name, ' ', last_name) AS fullname, email, phone
-                    FROM users WHERE id = (SELECT user_id FROM items WHERE id = %s)
+                    SELECT id, CONCAT(first_name, ' ', u.last_name) AS fullname, u.email, u.phone
+                    FROM users u WHERE u.id = (SELECT user_id FROM items WHERE id = %s)
                 """, (lost_id,))
                 lost_user = cursor.fetchone()
 
                 cursor.execute("""
-                    SELECT id, CONCAT(first_name, ' ', last_name) AS fullname, email, phone
-                    FROM users WHERE id = (SELECT user_id FROM items WHERE id = %s)
+                    SELECT id, CONCAT(first_name, ' ', u.last_name) AS fullname, u.email, u.phone
+                    FROM users u WHERE u.id = (SELECT user_id FROM items WHERE id = %s)
                 """, (found_id,))
                 found_user = cursor.fetchone()
 

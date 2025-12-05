@@ -304,7 +304,7 @@ document.getElementById('profilePicture').addEventListener('change', function(e)
         const reader = new FileReader();
         reader.onload = function(e) {
             const preview = document.getElementById('profilePreview');
-            preview.innerHTML = `<img src="${e.target.result}" alt="Profile Preview" class="profile-preview-img">`;
+            preview.innerHTML = '<img src="' + e.target.result + '" alt="Profile Preview" class="profile-preview-img">';
             
             // Show remove button if it doesn't exist
             const removeBtn = document.getElementById('removeBtn');
@@ -320,54 +320,78 @@ document.getElementById('profilePicture').addEventListener('change', function(e)
                 // Add event listener to new remove button
                 newRemoveBtn.addEventListener('click', removeProfilePicture);
             }
+            
+            // Remove any "remove profile picture" flag since we're uploading a new one
+            const removeFlag = document.getElementById('removeProfileFlag');
+            if (removeFlag) {
+                removeFlag.remove();
+            }
+            
+            // Show notification
+            showNotification('New profile picture selected. Click "Save Changes" to update.', 'info');
         };
         reader.readAsDataURL(file);
     }
 });
 
-// Remove profile picture
+// Remove profile picture - LOCAL ONLY (doesn't save to server yet)
 function removeProfilePicture() {
     if (confirm('Are you sure you want to remove your profile picture?')) {
-        // If there's an uploaded file, just clear the preview and input
+        // Clear the file input
         const fileInput = document.getElementById('profilePicture');
-        if (fileInput.value) {
-            fileInput.value = '';
-            document.getElementById('profilePreview').innerHTML = 
-                '<div class="profile-preview-placeholder"><i class="bi bi-person-fill"></i></div>';
-            document.getElementById('removeBtn').remove();
-        } else {
-            // If it's an existing profile picture, make API call
-            fetch('/api/remove-profile-picture', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('profilePreview').innerHTML = 
-                        '<div class="profile-preview-placeholder"><i class="bi bi-person-fill"></i></div>';
-                    document.getElementById('removeBtn').remove();
-                    
-                    // Update sidebar avatar if it exists
-                    const sidebarAvatar = document.querySelector('.user-avatar');
-                    if (sidebarAvatar && sidebarAvatar.querySelector('img')) {
-                        const initials = '{{ session.first_name[0]|upper }}{{ session.last_name[0]|upper }}';
-                        sidebarAvatar.innerHTML = initials;
-                    }
-                    
-                    alert('Profile picture removed successfully');
-                } else {
-                    alert('Error removing profile picture: ' + (data.errors ? data.errors.join(', ') : 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error removing profile picture');
-            });
+        fileInput.value = '';
+        
+        // Set a hidden input to indicate removal
+        let hiddenInput = document.getElementById('removeProfileFlag');
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'remove_profile_picture';
+            hiddenInput.id = 'removeProfileFlag';
+            hiddenInput.value = 'true';
+            document.getElementById('profileForm').appendChild(hiddenInput);
         }
+        
+        // Update preview
+        const preview = document.getElementById('profilePreview');
+        if (preview.querySelector('img')) {
+            preview.innerHTML = '<div class="profile-preview-placeholder"><i class="bi bi-person-fill"></i></div>';
+        }
+        
+        // Hide remove button
+        const removeBtn = document.getElementById('removeBtn');
+        if (removeBtn) {
+            removeBtn.style.display = 'none';
+        }
+        
+        // Show notification
+        showNotification('Profile picture will be removed when you save changes.', 'info');
     }
+}
+
+// Show notification function
+function showNotification(message, type) {
+    // Remove any existing notifications
+    const existingNotification = document.querySelector('.temp-notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-' + (type === 'info' ? 'info' : 'danger') + ' temp-notification mt-3';
+    notification.innerHTML = '<div class="d-flex align-items-center"><i class="bi ' + (type === 'info' ? 'bi-info-circle' : 'bi-exclamation-triangle') + ' me-2"></i><span>' + message + '</span></div>';
+    
+    const formActions = document.querySelector('.profile-form-actions');
+    if (formActions) {
+        formActions.parentNode.insertBefore(notification, formActions);
+    }
+    
+    // Auto-remove after 5 seconds
+    setTimeout(function() {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
 }
 
 // Add event listener to existing remove button if it exists
@@ -378,13 +402,60 @@ if (existingRemoveBtn) {
 
 // Form submission
 document.getElementById('confirmSave').addEventListener('click', function() {
-    document.getElementById('profileForm').submit();
+    // Check if there are pending changes to profile picture
+    const fileInput = document.getElementById('profilePicture');
+    const removeFlag = document.getElementById('removeProfileFlag');
+    
+    // Check if user has an existing profile picture
+    const preview = document.getElementById('profilePreview');
+    const hasExistingPicture = preview && preview.querySelector('img') !== null;
+    
+    if ((fileInput.files.length > 0 || removeFlag) && hasExistingPicture) {
+        // Show confirmation message
+        const modalBody = document.querySelector('#confirmModal .modal-body');
+        const originalText = modalBody.innerHTML;
+        
+        let pictureMessage = '';
+        if (removeFlag) {
+            pictureMessage = 'Your profile picture will be removed.';
+        } else if (fileInput.files.length > 0) {
+            pictureMessage = 'Your profile picture will be updated.';
+        }
+        
+        modalBody.innerHTML = '<div><p>Are you sure you want to save these changes to your profile?</p><div class="alert alert-info mt-3 mb-0"><i class="bi bi-info-circle me-2"></i>' + pictureMessage + '</div></div>';
+        
+        // Get modal instance
+        const modalElement = document.getElementById('confirmModal');
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Restore original text when modal hides
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            modalBody.innerHTML = originalText;
+        }, { once: true });
+        
+        // When user confirms, submit the form
+        const confirmButton = document.querySelector('#confirmModal #confirmSave');
+        const originalHandler = confirmButton.onclick;
+        
+        confirmButton.onclick = function() {
+            document.getElementById('profileForm').submit();
+        };
+        
+        // Clean up
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            confirmButton.onclick = originalHandler;
+        }, { once: true });
+    } else {
+        // No profile picture changes, just submit
+        document.getElementById('profileForm').submit();
+    }
 });
 
 // Drag and drop functionality
 const uploadArea = document.querySelector('.profile-picture-preview');
 if (uploadArea) {
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(eventName) {
         uploadArea.addEventListener(eventName, preventDefaults, false);
     });
 
@@ -393,11 +464,11 @@ if (uploadArea) {
         e.stopPropagation();
     }
 
-    ['dragenter', 'dragover'].forEach(eventName => {
+    ['dragenter', 'dragover'].forEach(function(eventName) {
         uploadArea.addEventListener(eventName, highlight, false);
     });
 
-    ['dragleave', 'drop'].forEach(eventName => {
+    ['dragleave', 'drop'].forEach(function(eventName) {
         uploadArea.addEventListener(eventName, unhighlight, false);
     });
 

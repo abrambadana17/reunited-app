@@ -33,9 +33,7 @@ app.config['MYSQL_PASSWORD'] = os.getenv('MYSQLPASSWORD', '')
 app.config['MYSQL_DB'] = os.getenv('MYSQLDATABASE', 'reunited_db')
 app.config['MYSQL_PORT'] = int(os.getenv('MYSQLPORT', 3306))
 
-# Add SSL configuration for Railway MySQL
-app.config['MYSQL_SSL_MODE'] = 'REQUIRED'
-app.config['MYSQL_SSL_CA'] = None  # Railway handles SSL automatically
+
 
 # Email Sender (Gmail via App Password)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -3368,6 +3366,17 @@ def uploaded_item_file(filename):
 
 
 
+# In app.py, ensure these directories exist
 if __name__ == '__main__':
+    # Create directories if they don't exist
+    upload_dirs = [
+        'static/uploads/profile_pictures',
+        'static/uploads/items',
+        'static/uploads/temp'
+    ]
+    
+    for directory in upload_dirs:
+        os.makedirs(directory, exist_ok=True)
+    
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port)

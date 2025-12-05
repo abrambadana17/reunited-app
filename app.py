@@ -43,8 +43,7 @@ if DATABASE_URL and ('railway.app' in DATABASE_URL or 'rlwy.net' in DATABASE_URL
     app.config['MYSQL_PORT'] = parsed_url.port or 3306
     
     # Railway requires SSL for flask_mysqldb
-    app.config['MYSQL_SSL_MODE'] = 'REQUIRED'
-    app.config['MYSQL_SSL_CA'] = None
+    app.config['MYSQL_SSL'] = {'ssl': True}
     
     print(f"✅ Using Railway MySQL: {parsed_url.hostname}")
 else:
@@ -2333,24 +2332,36 @@ def notifications():
 
 @app.context_processor
 def inject_unread_notifications():
-    if 'user_id' in session:
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
-        result = cursor.fetchone()
-        cursor.close()
-        return dict(unread_count=result['cnt'])
+    """TEMPORARY SAFE VERSION: Always return 0 until database connection is fixed"""
+    try:
+        # Try to get connection
+        if 'user_id' in session:
+            cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+            cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
+            result = cursor.fetchone()
+            cursor.close()
+            return dict(unread_count=result['cnt'])
+    except Exception as e:
+        # If ANY error occurs, just return 0
+        print(f"⚠️ Database error in notifications (returning 0): {e}")
+    
+    # Always return 0 if anything fails
     return dict(unread_count=0)
 
 @app.route('/api/unread_count')
 def unread_count_api():
     if 'user_id' not in session:
         return {"count": 0}
-
-    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
-    result = cursor.fetchone()
-    cursor.close()
-    return {"count": result['cnt']}
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
+        result = cursor.fetchone()
+        cursor.close()
+        return {"count": result['cnt']}
+    except Exception as e:
+        print(f"⚠️ Database error in unread_count API (returning 0): {e}")
+        return {"count": 0}  # Return 0 instead of error
 
 @app.route('/notifications/read/<int:notif_id>')
 def mark_notification_read(notif_id):

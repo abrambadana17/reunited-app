@@ -26,12 +26,43 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', '071322')  # Use env var
 
-# MySQL Configuration (Railway + local fallback)
-app.config['MYSQL_HOST'] = os.getenv('MYSQLHOST', 'localhost')
-app.config['MYSQL_USER'] = os.getenv('MYSQLUSER', 'root')
-app.config['MYSQL_PASSWORD'] = os.getenv('MYSQLPASSWORD', '')
-app.config['MYSQL_DB'] = os.getenv('MYSQLDATABASE', 'reunited_db')
-app.config['MYSQL_PORT'] = int(os.getenv('MYSQLPORT', 3306))
+# Check if we're using Railway database URL
+# Check if we're using Railway database URL
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL and ('railway.app' in DATABASE_URL or 'rlwy.net' in DATABASE_URL):
+    # Parse Railway MySQL connection string
+    # Format: mysql://user:password@host:port/database
+    import urllib.parse
+    
+    parsed_url = urllib.parse.urlparse(DATABASE_URL)
+    
+    app.config['MYSQL_HOST'] = parsed_url.hostname
+    app.config['MYSQL_USER'] = parsed_url.username
+    app.config['MYSQL_PASSWORD'] = parsed_url.password
+    app.config['MYSQL_DB'] = parsed_url.path[1:]  # Remove leading '/'
+    app.config['MYSQL_PORT'] = parsed_url.port or 3306
+    
+    # Railway requires SSL for flask_mysqldb
+    app.config['MYSQL_SSL_MODE'] = 'REQUIRED'
+    app.config['MYSQL_SSL_CA'] = None
+    
+    print(f"✅ Using Railway MySQL: {parsed_url.hostname}")
+else:
+    # Local development fallback
+    app.config['MYSQL_HOST'] = os.getenv('MYSQLHOST', 'localhost')
+    app.config['MYSQL_USER'] = os.getenv('MYSQLUSER', 'root')
+    app.config['MYSQL_PASSWORD'] = os.getenv('MYSQLPASSWORD', '')
+    app.config['MYSQL_DB'] = os.getenv('MYSQLDATABASE', 'reunited_db')
+    app.config['MYSQL_PORT'] = int(os.getenv('MYSQLPORT', 3306))
+
+# Debug output
+print(f"🔧 Database Configuration:")
+print(f"   Host: {app.config['MYSQL_HOST']}")
+print(f"   User: {app.config['MYSQL_USER']}")
+print(f"   Database: {app.config['MYSQL_DB']}")
+print(f"   Port: {app.config['MYSQL_PORT']}")
+print(f"   DATABASE_URL: {'Set' if DATABASE_URL else 'Not set'}")
+
 
 
 

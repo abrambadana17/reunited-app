@@ -81,16 +81,133 @@
         </div>
       </div>
 
-      <!-- Recent Activity -->
+      <!-- Reports Section (Replaced Recent Activity) -->
       <div class="col-12 col-md-6">
         <div class="chart-card">
           <div class="chart-header">
             <h5 class="mb-0 fw-semibold">
-              <i class="fas fa-history me-2 text-warning"></i>Recent Activity
+              <i class="fas fa-file-alt me-2 text-warning"></i>Generate Reports
             </h5>
           </div>
-          <div class="activity-list" id="recentActivity">
-            <div class="text-center text-muted py-4">Loading activity...</div>
+          <div class="p-3">
+            <!-- Date Range Selector -->
+            <div class="mb-3">
+              <label class="form-label small text-muted mb-1">Date Range</label>
+              <div class="row g-2">
+                <div class="col-6">
+                  <input type="date" class="form-control form-control-sm" id="startDate" value="{{ default_start_date }}">
+                </div>
+                <div class="col-6">
+                  <input type="date" class="form-control form-control-sm" id="endDate" value="{{ default_end_date }}">
+                </div>
+              </div>
+            </div>
+
+            <!-- Report Type Selection -->
+            <div class="mb-3">
+              <label class="form-label small text-muted mb-1">Report Type</label>
+              <select class="form-select form-select-sm" id="reportType">
+                <option value="all">All Items (Lost & Found)</option>
+                <option value="lost">Lost Items Only</option>
+                <option value="found">Found Items Only</option>
+                <option value="resolved">Resolved Items Only</option>
+                <option value="users">User Activity</option>
+                <option value="revenue">Revenue Report</option>
+              </select>
+            </div>
+
+            <!-- Format Selection -->
+            <div class="mb-3">
+              <label class="form-label small text-muted mb-1">Export Format</label>
+              <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="exportFormat" id="formatTable" checked>
+                <label class="btn btn-outline-secondary btn-sm" for="formatTable">
+                  <i class="fas fa-table me-1"></i>Table
+                </label>
+                <input type="radio" class="btn-check" name="exportFormat" id="formatText">
+                <label class="btn btn-outline-secondary btn-sm" for="formatText">
+                  <i class="fas fa-file-text me-1"></i>Text
+                </label>
+                <input type="radio" class="btn-check" name="exportFormat" id="formatExcel">
+                <label class="btn btn-outline-secondary btn-sm" for="formatExcel">
+                  <i class="fas fa-file-excel me-1"></i>Excel
+                </label>
+                <input type="radio" class="btn-check" name="exportFormat" id="formatWord">
+                <label class="btn btn-outline-secondary btn-sm" for="formatWord">
+                  <i class="fas fa-file-word me-1"></i>Word
+                </label>
+              </div>
+            </div>
+
+            <!-- Generate Report Button -->
+            <button class="btn btn-primary w-100 mb-3" onclick="generateReport()">
+              <i class="fas fa-chart-bar me-2"></i>Generate Report
+            </button>
+
+            <!-- Quick Stats (Optional) -->
+            <div class="border-top pt-3 mt-3">
+              <div class="row text-center small">
+                <div class="col-6">
+                  <div class="text-muted mb-1">Selected Period</div>
+                  <div class="fw-semibold" id="selectedPeriod">-</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted mb-1">Items Count</div>
+                  <div class="fw-semibold" id="itemsCount">0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Results Section (Initially Hidden) -->
+    <div class="row mt-4" id="reportResults" style="display: none;">
+      <div class="col-12">
+        <div class="chart-card">
+          <div class="chart-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold">
+              <i class="fas fa-file-download me-2 text-success"></i>Report Results
+            </h5>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary me-2" onclick="printReport()">
+                <i class="fas fa-print me-1"></i>Print
+              </button>
+              <button class="btn btn-sm btn-success" onclick="downloadReport()">
+                <i class="fas fa-download me-1"></i>Download
+              </button>
+            </div>
+          </div>
+          <div class="p-3">
+            <!-- Report Summary -->
+            <div class="alert alert-info mb-3" id="reportSummary">
+              <!-- Summary will be populated by JavaScript -->
+            </div>
+
+            <!-- Table View -->
+            <div id="tableView" style="display: none;">
+              <div class="table-responsive">
+                <table class="table table-hover table-sm" id="reportTable">
+                  <thead id="reportTableHeader">
+                    <!-- Table headers will be populated by JavaScript -->
+                  </thead>
+                  <tbody id="reportTableBody">
+                    <!-- Table data will be populated by JavaScript -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Text View -->
+            <div id="textView" style="display: none;">
+              <div class="bg-light p-3 border rounded" id="reportTextContent">
+                <!-- Text content will be populated by JavaScript -->
+              </div>
+            </div>
+
+            <!-- Export Status -->
+            <div class="mt-3 text-center" id="exportStatus"></div>
           </div>
         </div>
       </div>
@@ -176,60 +293,30 @@
     min-width: 140px;
   }
 
-  .activity-list {
-    padding: 1rem;
-    max-height: 300px;
-    overflow-y: auto;
-  }
-
-  .activity-item {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem;
-    border-bottom: 1px solid #f0f0f0;
-    transition: background-color 0.2s ease;
-  }
-
-  .activity-item:hover {
-    background-color: #f8f9fa;
-    border-radius: 6px;
-  }
-
-  .activity-item:last-child {
-    border-bottom: none;
-  }
-
-  .activity-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-    flex-shrink: 0;
-  }
-
-  .activity-content {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .activity-text {
-    font-size: 0.875rem;
-    margin-bottom: 2px;
-    color: #374151;
-  }
-
-  .activity-time {
-    font-size: 0.75rem;
-    color: #6b7280;
-  }
-
   .loading-spinner {
     display: none;
     text-align: center;
     padding: 3rem;
+  }
+
+  /* Report specific styles */
+  .btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  #reportTable th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  #reportTextContent {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-height: 400px;
+    overflow-y: auto;
   }
 
   /* Responsive adjustments */
@@ -263,6 +350,11 @@
     .chart-controls .form-select {
       width: 100%;
     }
+
+    .btn-group .btn {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.8rem;
+    }
   }
 
   @media (max-width: 576px) {
@@ -277,12 +369,23 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script>
   let weeklyItemsChart = null;
   let itemDistributionChart = null;
   let successRateChart = null;
+  let currentReportData = null;
 
   document.addEventListener('DOMContentLoaded', function() {
+    // Set default dates (last 7 days)
+    const today = new Date();
+    const lastWeek = new Date();
+    lastWeek.setDate(today.getDate() - 7);
+    
+    document.getElementById('startDate').value = lastWeek.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    
     loadAnalytics();
   });
 
@@ -298,7 +401,6 @@
 
       if (data.success) {
         updateCharts(data.charts);
-        updateRecentActivity(data.recent_activity);
       } else {
         throw new Error(data.error || 'Failed to load analytics');
       }
@@ -309,6 +411,719 @@
       loadingSpinner.style.display = 'none';
     }
   }
+
+  async function generateReport() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const reportType = document.getElementById('reportType').value;
+    const format = document.querySelector('input[name="exportFormat"]:checked').id.replace('format', '').toLowerCase();
+
+    if (!startDate || !endDate) {
+      showErrorMessage('Please select both start and end dates');
+      return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      showErrorMessage('Start date cannot be after end date');
+      return;
+    }
+
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    loadingSpinner.style.display = 'block';
+
+    try {
+      const response = await fetch(`/api/admin/reports?start_date=${startDate}&end_date=${endDate}&type=${reportType}`);
+      const data = await response.json();
+
+      if (data.success) {
+        currentReportData = data;
+        displayReport(data, format);
+        updateQuickStats(data.summary);
+      } else {
+        throw new Error(data.error || 'Failed to generate report');
+      }
+    } catch (error) {
+      console.error('Error generating report:', error);
+      showErrorMessage('Error generating report: ' + error.message);
+    } finally {
+      loadingSpinner.style.display = 'none';
+    }
+  }
+
+  function displayReport(data, format) {
+  // Show report results section
+  document.getElementById('reportResults').style.display = 'block';
+  
+  // Update summary based on report type
+  const summary = document.getElementById('reportSummary');
+  let summaryHTML = '';
+  
+  if (data.summary.report_type === 'users') {
+    summaryHTML = `
+      <strong>User Activity Report Summary:</strong> 
+      ${data.summary.total_users || 0} users registered between 
+      ${new Date(data.summary.start_date).toLocaleDateString()} and 
+      ${new Date(data.summary.end_date).toLocaleDateString()}. 
+      They posted ${data.summary.total_items_by_users || 0} items in total.
+    `;
+  } else if (data.summary.report_type === 'revenue') {
+    summaryHTML = `
+      <strong>Revenue Report Summary:</strong> 
+      ${data.summary.total_items || 0} paid items between 
+      ${new Date(data.summary.start_date).toLocaleDateString()} and 
+      ${new Date(data.summary.end_date).toLocaleDateString()}. 
+      Total Revenue: ₱${data.summary.total_revenue || 0} from 
+      ${data.summary.unique_payers || 0} unique payers.
+    `;
+  } else {
+    summaryHTML = `
+      <strong>Report Summary:</strong> ${data.summary.total_items} items found between 
+      ${new Date(data.summary.start_date).toLocaleDateString()} and 
+      ${new Date(data.summary.end_date).toLocaleDateString()}. 
+      ${data.summary.lost_items} lost items, ${data.summary.found_items} found items, 
+      ${data.summary.resolved_items} resolved items. Revenue: ₱${data.summary.total_revenue || 0}.
+    `;
+  }
+  
+  summary.innerHTML = summaryHTML;
+
+  // Update selected period display
+  document.getElementById('selectedPeriod').textContent = 
+    `${new Date(data.summary.start_date).toLocaleDateString()} - ${new Date(data.summary.end_date).toLocaleDateString()}`;
+  
+  // Update items count based on report type
+  let itemsCount = data.summary.total_items;
+  if (data.summary.report_type === 'users') {
+    itemsCount = data.summary.total_users || 0;
+  }
+  document.getElementById('itemsCount').textContent = itemsCount;
+
+  // Show appropriate view based on format
+  if (format === 'text') {
+    showTextView(data);
+  } else {
+    showTableView(data, format);
+  }
+}
+
+  function showTextView(data) {
+  document.getElementById('tableView').style.display = 'none';
+  document.getElementById('textView').style.display = 'block';
+  
+  let textContent = `REUNITED ITEMS REPORT\n`;
+  textContent += `Generated: ${new Date().toLocaleString()}\n`;
+  textContent += `Period: ${new Date(data.summary.start_date).toLocaleDateString()} to ${new Date(data.summary.end_date).toLocaleDateString()}\n`;
+  textContent += `========================================\n\n`;
+
+  if (data.summary.report_type === 'users') {
+    textContent += `USER ACTIVITY REPORT\n`;
+    textContent += `Total Users: ${data.summary.total_users || 0}\n`;
+    textContent += `Total Items Posted: ${data.summary.total_items_by_users || 0}\n`;
+    textContent += `========================================\n\n`;
+
+    if (data.items && data.items.length > 0) {
+      data.items.forEach((user, index) => {
+        textContent += `${index + 1}. USER DETAILS:\n`;
+        textContent += `   Name: ${user.first_name} ${user.last_name}\n`;
+        textContent += `   Email: ${user.email}\n`;
+        textContent += `   Phone: ${user.phone || 'Not provided'}\n`;
+        textContent += `   Status: ${user.is_active !== false ? 'Active' : 'Inactive'}\n`;
+        textContent += `   Joined: ${new Date(user.created_at || user.user_created_at).toLocaleDateString()}\n`;
+        textContent += `   Total Items: ${user.total_items || 0}\n`;
+        textContent += `   - Lost Items: ${user.lost_items || 0}\n`;
+        textContent += `   - Found Items: ${user.found_items || 0}\n`;
+        textContent += `----------------------------------------\n\n`;
+      });
+    } else {
+      textContent += 'No users found in the selected period.\n';
+    }
+    
+  } else if (data.summary.report_type === 'revenue') {
+    textContent += `REVENUE REPORT\n`;
+    textContent += `Total Items: ${data.summary.total_items}\n`;
+    textContent += `Total Revenue: ₱${data.summary.total_revenue || 0}\n`;
+    textContent += `Unique Payers: ${data.summary.unique_payers || 0}\n`;
+    textContent += `========================================\n\n`;
+
+    if (data.items && data.items.length > 0) {
+      data.items.forEach((item, index) => {
+        textContent += `${index + 1}. PAYMENT DETAILS:\n`;
+        textContent += `   Item: ${item.title}\n`;
+        textContent += `   User: ${item.user_first_name} ${item.user_last_name}\n`;
+        textContent += `   Email: ${item.user_email}\n`;
+        textContent += `   Amount: ₱${item.amount || 20}\n`;
+        textContent += `   Payment Date: ${new Date(item.created_at).toLocaleDateString()}\n`;
+        textContent += `----------------------------------------\n\n`;
+      });
+    } else {
+      textContent += 'No payments found in the selected period.\n';
+    }
+    
+  } else {
+    textContent += `Total Items: ${data.summary.total_items}\n`;
+    textContent += `Lost Items: ${data.summary.lost_items}\n`;
+    textContent += `Found Items: ${data.summary.found_items}\n`;
+    textContent += `Resolved Items: ${data.summary.resolved_items}\n`;
+    textContent += `Revenue: ₱${data.summary.total_revenue || 0}\n`;
+    textContent += `========================================\n\n`;
+
+    if (data.items && data.items.length > 0) {
+      data.items.forEach((item, index) => {
+        textContent += `${index + 1}. ITEM DETAILS:\n`;
+        textContent += `   Title: ${item.title}\n`;
+        textContent += `   Type: ${item.type}\n`;
+        textContent += `   Category: ${item.category}\n`;
+        textContent += `   Status: ${item.status}\n`;
+        textContent += `   Date Reported: ${new Date(item.date_reported).toLocaleDateString()}\n`;
+        textContent += `   Location: ${item.location_reported}\n`;
+        if (item.reward) textContent += `   Reward: ₱${item.reward}\n`;
+        textContent += `   Payment Status: ${item.payment_status || 'N/A'}\n\n`;
+        
+        textContent += `   USER DETAILS:\n`;
+        textContent += `   Name: ${item.user_first_name} ${item.last_name}\n`;
+        textContent += `   Email: ${item.user_email}\n`;
+        textContent += `   Phone: ${item.user_phone || 'Not provided'}\n`;
+        textContent += `   User Since: ${new Date(item.user_created_at).toLocaleDateString()}\n`;
+        textContent += `----------------------------------------\n\n`;
+      });
+    } else {
+      textContent += 'No items found in the selected period.\n';
+    }
+  }
+
+  document.getElementById('reportTextContent').textContent = textContent;
+}
+  function showTableView(data, format) {
+  document.getElementById('textView').style.display = 'none';
+  document.getElementById('tableView').style.display = 'block';
+
+  const tableHeader = document.getElementById('reportTableHeader');
+  const tableBody = document.getElementById('reportTableBody');
+
+  // Clear previous content
+  tableHeader.innerHTML = '';
+  tableBody.innerHTML = '';
+
+  // Create headers based on report type
+  let headers = ['#', 'Item Title', 'Type', 'Category', 'Status', 'Date Reported', 'User Name'];
+  
+  if (data.summary.report_type === 'revenue') {
+    headers = ['#', 'Item Title', 'User Name', 'Payment Status', 'Amount', 'Payment Date'];
+  } else if (data.summary.report_type === 'users') {
+    headers = ['#', 'User Name', 'Email', 'Phone', 'Items Posted', 'Joined Date', 'Status'];
+  }
+
+  // Create header row
+  let headerRow = '<tr>';
+  headers.forEach(header => {
+    headerRow += `<th>${header}</th>`;
+  });
+  headerRow += '</tr>';
+  tableHeader.innerHTML = headerRow;
+
+  // Create data rows
+  if (data.items && data.items.length > 0) {
+    data.items.forEach((item, index) => {
+      let row = '<tr>';
+      
+      if (data.summary.report_type === 'revenue') {
+        row += `<td>${index + 1}</td>`;
+        row += `<td>${item.title || '-'}</td>`;
+        row += `<td>${item.user_first_name} ${item.user_last_name}</td>`;
+        row += `<td><span class="badge bg-success">${item.payment_status || 'N/A'}</span></td>`;
+        row += `<td>₱${item.amount || '20'}</td>`;
+        
+        // Use created_at as payment date (when item was posted/paid)
+        let paymentDate = 'N/A';
+        if (item.created_at) {
+          try {
+            const date = new Date(item.created_at);
+            if (!isNaN(date.getTime())) {
+              paymentDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+            }
+          } catch (e) {
+            paymentDate = item.created_at;
+          }
+        }
+        row += `<td>${paymentDate}</td>`;
+        
+      } else if (data.summary.report_type === 'users') {
+        // USER ACTIVITY REPORT - Different data structure
+        row += `<td>${index + 1}</td>`;
+        row += `<td>${item.first_name || ''} ${item.last_name || ''}</td>`;
+        row += `<td>${item.email || '-'}</td>`;
+        row += `<td>${item.phone || '-'}</td>`;
+        row += `<td>${item.total_items || 0}</td>`;
+        
+        // Format join date
+        let joinDate = 'N/A';
+        if (item.created_at) {
+          try {
+            const date = new Date(item.created_at);
+            if (!isNaN(date.getTime())) {
+              joinDate = date.toLocaleDateString();
+            }
+          } catch (e) {
+            joinDate = item.created_at;
+          }
+        } else if (item.user_created_at) {
+          try {
+            const date = new Date(item.user_created_at);
+            if (!isNaN(date.getTime())) {
+              joinDate = date.toLocaleDateString();
+            }
+          } catch (e) {
+            joinDate = item.user_created_at;
+          }
+        }
+        row += `<td>${joinDate}</td>`;
+        
+        // User status
+        const isActive = item.is_active !== false;
+        row += `<td><span class="badge ${isActive ? 'bg-success' : 'bg-secondary'}">${isActive ? 'Active' : 'Inactive'}</span></td>`;
+        
+      } else {
+        // REGULAR ITEMS REPORT
+        row += `<td>${index + 1}</td>`;
+        row += `<td>${item.title || '-'}</td>`;
+        row += `<td><span class="badge ${item.type === 'lost' ? 'bg-danger' : 'bg-success'}">${item.type}</span></td>`;
+        row += `<td>${item.category || '-'}</td>`;
+        row += `<td><span class="badge ${getStatusBadgeClass(item.status)}">${item.status || 'Active'}</span></td>`;
+        
+        // Format date reported
+        let reportDate = 'N/A';
+        if (item.date_reported) {
+          try {
+            const date = new Date(item.date_reported);
+            if (!isNaN(date.getTime())) {
+              reportDate = date.toLocaleDateString();
+            }
+          } catch (e) {
+            reportDate = item.date_reported;
+          }
+        }
+        row += `<td>${reportDate}</td>`;
+        
+        row += `<td>${item.user_first_name || ''} ${item.user_last_name || ''}</td>`;
+      }
+      
+      row += '</tr>';
+      tableBody.innerHTML += row;
+    });
+  } else {
+    tableBody.innerHTML = `<tr><td colspan="${headers.length}" class="text-center text-muted py-3">No data found for the selected criteria</td></tr>`;
+  }
+}
+
+  function getStatusBadgeClass(status) {
+    switch(status.toLowerCase()) {
+      case 'claimed':
+      case 'returned':
+      case 'resolved':
+        return 'bg-success';
+      case 'active':
+      case 'unclaimed':
+        return 'bg-primary';
+      case 'not yet found':
+        return 'bg-warning';
+      default:
+        return 'bg-secondary';
+    }
+  }
+
+  function updateQuickStats(summary) {
+    // This function updates the quick stats display
+    // Already handled in displayReport function
+  }
+
+  async function downloadReport() {
+    if (!currentReportData) {
+      showErrorMessage('No report data to download');
+      return;
+    }
+
+    const format = document.querySelector('input[name="exportFormat"]:checked').id.replace('format', '').toLowerCase();
+    
+    try {
+      const exportStatus = document.getElementById('exportStatus');
+      exportStatus.innerHTML = '<div class="spinner-border spinner-border-sm text-primary me-2"></div>Preparing download...';
+      exportStatus.className = 'mt-3 text-center text-primary';
+
+      if (format === 'excel') {
+        await downloadExcel();
+      } else if (format === 'word') {
+        await downloadWord();
+      } else if (format === 'text') {
+        await downloadText();
+      } else {
+        await downloadTable();
+      }
+
+      exportStatus.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>Download prepared successfully!';
+      exportStatus.className = 'mt-3 text-center text-success';
+      
+      setTimeout(() => {
+        exportStatus.innerHTML = '';
+      }, 3000);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      showErrorMessage('Error downloading report: ' + error.message);
+    }
+  }
+
+// Add this function before downloadExcel()
+function s2ab(s) {
+  const buf = new ArrayBuffer(s.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < s.length; i++) {
+    view[i] = s.charCodeAt(i) & 0xFF;
+  }
+  return buf;
+}
+
+  async function downloadExcel() {
+  // Create worksheet from table data
+  const table = document.getElementById('reportTable');
+  const ws = XLSX.utils.table_to_sheet(table);
+  
+  // Get column letters for date columns
+  const dateColumns = [];
+  const headers = [];
+  
+  // Get headers to identify date columns
+  table.querySelectorAll('th').forEach((th, index) => {
+    headers.push(th.textContent);
+    if (th.textContent.toLowerCase().includes('date') || 
+        th.textContent.toLowerCase().includes('created') ||
+        th.textContent.toLowerCase().includes('reported')) {
+      dateColumns.push(index);
+    }
+  });
+  
+  // Format date columns
+  const dateStyle = {
+    numFmt: 'yyyy-mm-dd hh:mm:ss'
+  };
+  
+  // Get the column letters (A, B, C, etc.)
+  dateColumns.forEach(colIndex => {
+    const colLetter = XLSX.utils.encode_col(colIndex);
+    
+    // Apply date format to the entire column
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let row = range.s.r + 1; row <= range.e.r; row++) {
+      const cellAddress = XLSX.utils.encode_cell({r: row, c: colIndex});
+      if (ws[cellAddress]) {
+        // Parse the date string
+        const dateStr = ws[cellAddress].v;
+        if (dateStr) {
+          try {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+              ws[cellAddress].v = date;
+              ws[cellAddress].t = 'd';
+              ws[cellAddress].z = 'yyyy-mm-dd hh:mm:ss';
+            }
+          } catch (e) {
+            console.log('Could not parse date:', dateStr);
+          }
+        }
+      }
+    }
+    
+    // Set column width for date columns
+    ws['!cols'] = ws['!cols'] || [];
+    ws['!cols'][colIndex] = { width: 20 };
+  });
+  
+  // Set column widths for other columns
+  if (!ws['!cols']) ws['!cols'] = [];
+  headers.forEach((header, index) => {
+    if (!dateColumns.includes(index)) {
+      const width = Math.min(Math.max(header.length * 1.2, 10), 30);
+      ws['!cols'][index] = { width: width };
+    }
+  });
+  
+  // Create workbook
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Report");
+  
+  // Generate Excel file
+  const wbout = XLSX.write(wb, { 
+    bookType: 'xlsx', 
+    type: 'binary',
+    cellStyles: true 
+  });
+  
+  // Convert to blob and download
+  const blob = new Blob([s2ab(wbout)], { 
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+  });
+  
+  const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+  saveAs(blob, filename);
+}
+
+  async function downloadWord() {
+    // Create HTML content for Word document
+    let htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+            xmlns:w="urn:schemas-microsoft-com:office:word" 
+            xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="UTF-8">
+        <title>Reunited Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; }
+          h1 { color: #1E3A8A; }
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; }
+        </style>
+      </head>
+      <body>
+        <h1>Reunited Items Report</h1>
+        <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+        <p><strong>Period:</strong> ${new Date(currentReportData.summary.start_date).toLocaleDateString()} to ${new Date(currentReportData.summary.end_date).toLocaleDateString()}</p>
+        <hr>
+        ${document.getElementById('tableView').innerHTML}
+      </body>
+      </html>
+    `;
+
+    // Create blob and download
+    const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+    const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.doc`;
+    saveAs(blob, filename);
+  }
+
+  async function downloadText() {
+    const textContent = document.getElementById('reportTextContent').textContent;
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.txt`;
+    saveAs(blob, filename);
+  }
+
+  async function downloadTable() {
+    // Download table as CSV
+    const table = document.getElementById('reportTable');
+    let csv = [];
+    
+    // Get headers
+    const headers = [];
+    table.querySelectorAll('th').forEach(th => {
+      headers.push(th.textContent);
+    });
+    csv.push(headers.join(','));
+    
+    // Get rows
+    table.querySelectorAll('tbody tr').forEach(row => {
+      const rowData = [];
+      row.querySelectorAll('td').forEach(td => {
+        // Remove badge HTML and get text only
+        let text = td.textContent.trim();
+        rowData.push(`"${text}"`);
+      });
+      csv.push(rowData.join(','));
+    });
+    
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.csv`;
+    saveAs(blob, filename);
+  }
+
+  function printReport() {
+  if (!currentReportData) {
+    showErrorMessage('No report to print');
+    return;
+  }
+
+  // Create a print-friendly window
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  
+  // Get the current view (table or text)
+  const isTableView = document.getElementById('tableView').style.display !== 'none';
+  const isTextView = document.getElementById('textView').style.display !== 'none';
+  
+  // Create print content
+  let printContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Reunited Report</title>
+      <style>
+        @media print {
+          @page { margin: 0.5in; }
+          body { font-family: Arial, sans-serif; font-size: 12pt; }
+        }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .print-header { 
+          text-align: center; 
+          margin-bottom: 30px; 
+          border-bottom: 2px solid #333; 
+          padding-bottom: 10px;
+        }
+        .print-header h1 { 
+          color: #1E3A8A; 
+          margin: 0; 
+          font-size: 24pt; 
+        }
+        .print-header h2 { 
+          color: #374151; 
+          margin: 5px 0 15px 0; 
+          font-size: 16pt;
+          font-weight: normal;
+        }
+        .print-summary {
+          background: #f8f9fa;
+          padding: 15px;
+          border-radius: 5px;
+          margin-bottom: 20px;
+          border-left: 4px solid #1E3A8A;
+        }
+        .print-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 20px;
+        }
+        .print-table th {
+          background-color: #f2f2f2;
+          border: 1px solid #ddd;
+          padding: 8px;
+          text-align: left;
+          font-weight: bold;
+        }
+        .print-table td {
+          border: 1px solid #ddd;
+          padding: 8px;
+        }
+        .print-table tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+        .print-text {
+          font-family: 'Courier New', monospace;
+          font-size: 11pt;
+          line-height: 1.5;
+          white-space: pre-wrap;
+        }
+        .print-footer {
+          margin-top: 40px;
+          padding-top: 10px;
+          border-top: 1px solid #ddd;
+          font-size: 10pt;
+          color: #666;
+          text-align: center;
+        }
+        .badge {
+          padding: 2px 6px;
+          border-radius: 3px;
+          font-size: 10pt;
+          font-weight: bold;
+        }
+        .badge-success { background-color: #28a745; color: white; }
+        .badge-danger { background-color: #dc3545; color: white; }
+        .badge-warning { background-color: #ffc107; color: #212529; }
+        .badge-primary { background-color: #007bff; color: white; }
+        .badge-secondary { background-color: #6c757d; color: white; }
+      </style>
+    </head>
+    <body>
+      <div class="print-header">
+        <h1>🤝 Reunited</h1>
+        <h2>${getReportTitle(currentReportData.summary.report_type)} Report</h2>
+        <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+        <p><strong>Period:</strong> ${new Date(currentReportData.summary.start_date).toLocaleDateString()} to ${new Date(currentReportData.summary.end_date).toLocaleDateString()}</p>
+      </div>
+      
+      <div class="print-summary">
+        <strong>Report Summary:</strong><br>
+        ${getReportSummary(currentReportData.summary)}
+      </div>
+  `;
+
+  // Add the report content (table or text)
+  if (isTableView) {
+    const table = document.getElementById('reportTable');
+    if (table) {
+      printContent += `
+        <div class="table-responsive">
+          ${table.outerHTML}
+        </div>
+      `;
+    }
+  } else if (isTextView) {
+    const textContent = document.getElementById('reportTextContent').textContent;
+    printContent += `
+      <div class="print-text">
+        ${textContent.replace(/\n/g, '<br>').replace(/  /g, '&nbsp;&nbsp;')}
+      </div>
+    `;
+  }
+
+  // Add footer
+  printContent += `
+      <div class="print-footer">
+        <p>© ${new Date().getFullYear()} Reunited. Helping reconnect lost items with their owners.</p>
+        <p>This report was generated from the Reunited Admin Dashboard.</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Write content to print window
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+  
+  // Trigger print after content loads
+  printWindow.onload = function() {
+    setTimeout(() => {
+      printWindow.print();
+      // Optionally close after printing
+      // printWindow.afterprint = function() { printWindow.close(); };
+    }, 500);
+  };
+}
+
+// Helper functions for print content
+function getReportTitle(reportType) {
+  const titles = {
+    'all': 'All Items',
+    'lost': 'Lost Items',
+    'found': 'Found Items',
+    'resolved': 'Resolved Items',
+    'users': 'User Activity',
+    'revenue': 'Revenue'
+  };
+  return titles[reportType] || 'Items';
+}
+
+function getReportSummary(summary) {
+  if (summary.report_type === 'users') {
+    return `
+      ${summary.total_users || 0} users registered<br>
+      ${summary.total_items_by_users || 0} total items posted<br>
+      Generated on ${new Date().toLocaleDateString()}
+    `;
+  } else if (summary.report_type === 'revenue') {
+    return `
+      ${summary.total_items || 0} paid items<br>
+      Total Revenue: ₱${summary.total_revenue || 0}<br>
+      ${summary.unique_payers || 0} paying users<br>
+      Generated on ${new Date().toLocaleDateString()}
+    `;
+  } else {
+    return `
+      ${summary.total_items} total items<br>
+      ${summary.lost_items} lost items<br>
+      ${summary.found_items} found items<br>
+      ${summary.resolved_items} resolved items<br>
+      Revenue: ₱${summary.total_revenue || 0}<br>
+      Generated on ${new Date().toLocaleDateString()}
+    `;
+  }
+}
 
   function updateCharts(charts) {
     // Destroy existing charts
@@ -463,53 +1278,6 @@
         }
       }
     });
-  }
-
-  function updateRecentActivity(activities) {
-    const activityContainer = document.getElementById('recentActivity');
-    
-    if (!activities || activities.length === 0) {
-      activityContainer.innerHTML = '<div class="text-center text-muted py-4">No recent activity</div>';
-      return;
-    }
-
-    activityContainer.innerHTML = activities.map(activity => {
-      const iconConfig = getActivityIcon(activity.type);
-      return `
-        <div class="activity-item">
-          <div class="activity-icon ${iconConfig.bg}">
-            <i class="${iconConfig.icon} ${iconConfig.color}"></i>
-          </div>
-          <div class="activity-content">
-            <div class="activity-text">${activity.message}</div>
-            <div class="activity-time">${formatTimeAgo(activity.timestamp)}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function getActivityIcon(type) {
-    const icons = {
-      'user_registered': { icon: 'fas fa-user-plus', bg: 'bg-primary bg-opacity-10', color: 'text-primary' },
-      'item_posted': { icon: 'fas fa-box', bg: 'bg-success bg-opacity-10', color: 'text-success' },
-      'match_created': { icon: 'fas fa-link', bg: 'bg-info bg-opacity-10', color: 'text-info' },
-      'item_resolved': { icon: 'fas fa-check-circle', bg: 'bg-warning bg-opacity-10', color: 'text-warning' },
-      'payment_received': { icon: 'fas fa-money-bill-wave', bg: 'bg-success bg-opacity-10', color: 'text-success' }
-    };
-    return icons[type] || { icon: 'fas fa-bell', bg: 'bg-secondary bg-opacity-10', color: 'text-secondary' };
-  }
-
-  function formatTimeAgo(timestamp) {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffInSeconds = Math.floor((now - time) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    return time.toLocaleDateString();
   }
 
   function showErrorMessage(message) {

@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask_mail import Mail  
 from resnet_model import extract_features, auto_match
+from datetime import datetime, timedelta  # Add timedelta here
 
 import MySQLdb.cursors
 import re
@@ -619,6 +620,246 @@ def admin_stats():
         'recent_activity': recent_activity,
         'period': period_int
     })
+
+
+# Add this route after your existing /api/admin/analytics route in app.py
+
+@app.route('/api/admin/reports')
+def admin_reports():
+    """Generate reports with date range filtering"""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Get query parameters
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        report_type = request.args.get('type', 'all')
+        
+        # Validate dates
+        if not start_date or not end_date:
+            return jsonify({'success': False, 'error': 'Start and end dates are required'}), 400
+        
+        try:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            # Add time to end date to include the entire day
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        
+        # Base query for items
+        if report_type == 'users':
+    # User activity report
+            users_query = """
+                SELECT 
+                    u.id,
+                    u.first_name,
+                    u.last_name,
+                    u.email,
+                    u.phone,
+                    u.created_at as user_created_at,
+                    u.profile_picture,
+                    u.is_active,
+                    COUNT(DISTINCT i.id) as total_items,
+                    SUM(CASE WHEN i.type = 'lost' AND i.payment_status = 'paid' THEN 1 ELSE 0 END) as paid_lost_items,
+                    SUM(CASE WHEN i.type = 'lost' AND (i.payment_status IS NULL OR i.payment_status != 'paid') THEN 1 ELSE 0 END) as unpaid_lost_items,
+                    SUM(CASE WHEN i.type = 'found' THEN 1 ELSE 0 END) as found_items
+                FROM users u
+                LEFT JOIN items i ON u.id = i.user_id AND i.created_at BETWEEN %s AND %s
+                WHERE u.created_at BETWEEN %s AND %s
+                AND u.email != 'admin@reunited.com'  # EXCLUDE ADMIN
+                GROUP BY u.id
+                ORDER BY u.created_at DESC
+            """
+            cursor.execute(users_query, (start_dt, end_dt, start_dt, end_dt))
+            items = cursor.fetchall()
+            
+            # Summary for users report
+            summary_query = """
+                SELECT 
+                    COUNT(DISTINCT u.id) as total_users,
+                    COUNT(DISTINCT i.id) as total_items,
+                    SUM(CASE WHEN i.type = 'lost' AND i.payment_status = 'paid' THEN 20 ELSE 0 END) as total_revenue
+                FROM users u
+                LEFT JOIN items i ON u.id = i.user_id AND i.created_at BETWEEN %s AND %s
+                WHERE u.created_at BETWEEN %s AND %s
+                AND u.email != 'admin@reunited.com'  # EXCLUDE ADMIN FROM COUNT TOO
+            """
+            cursor.execute(summary_query, (start_dt, end_dt, start_dt, end_dt))
+            summary = cursor.fetchone()
+            
+            # Summary for users report
+            summary_query = """
+                SELECT 
+                    COUNT(DISTINCT u.id) as total_users,
+                    COUNT(DISTINCT i.id) as total_items,
+                    SUM(CASE WHEN i.type = 'lost' AND i.payment_status = 'paid' THEN 20 ELSE 0 END) as total_revenue
+                FROM users u
+                LEFT JOIN items i ON u.id = i.user_id AND i.created_at BETWEEN %s AND %s
+                WHERE u.created_at BETWEEN %s AND %s
+            """
+            cursor.execute(summary_query, (start_dt, end_dt, start_dt, end_dt))
+            summary = cursor.fetchone()
+            
+        elif report_type == 'revenue':
+            # Revenue report (only paid lost items)
+            revenue_query = """
+                SELECT 
+                    i.id,
+                    i.title,
+                    i.description,
+                    i.category,
+                    i.type,
+                    i.date_reported,
+                    i.location_reported,
+                    i.status,
+                    i.payment_status,
+                    i.created_at,
+                    u.first_name as user_first_name,
+                    u.last_name as user_last_name,
+                    u.email as user_email,
+                    u.phone as user_phone,
+                    u.created_at as user_created_at,
+                    20 as amount
+                FROM items i
+                JOIN users u ON i.user_id = u.id
+                WHERE i.created_at BETWEEN %s AND %s
+                AND i.type = 'lost'
+                AND i.payment_status = 'paid'
+                ORDER BY i.created_at DESC
+            """
+            cursor.execute(revenue_query, (start_dt, end_dt))
+            items = cursor.fetchall()
+            
+            # Summary for revenue report
+            summary_query = """
+                SELECT 
+                    COUNT(*) as total_items,
+                    COUNT(*) * 20 as total_revenue,
+                    COUNT(DISTINCT user_id) as unique_payers
+                FROM items
+                WHERE created_at BETWEEN %s AND %s
+                AND type = 'lost'
+                AND payment_status = 'paid'
+            """
+            cursor.execute(summary_query, (start_dt, end_dt))
+            summary = cursor.fetchone()
+            
+            # Summary for revenue report
+            summary_query = """
+                SELECT 
+                    COUNT(*) as total_items,
+                    COUNT(*) * 20 as total_revenue,
+                    COUNT(DISTINCT user_id) as unique_payers
+                FROM items
+                WHERE created_at BETWEEN %s AND %s
+                AND type = 'lost'
+                AND payment_status = 'paid'
+            """
+            cursor.execute(summary_query, (start_dt, end_dt))
+            summary = cursor.fetchone()
+            
+        else:
+            # Items report (default)
+            base_query = """
+                SELECT 
+                    i.*,
+                    u.first_name as user_first_name,
+                    u.last_name as user_last_name,
+                    u.email as user_email,
+                    u.phone as user_phone,
+                    u.created_at as user_created_at,
+                    img.file_path as image_path
+                FROM items i
+                JOIN users u ON i.user_id = u.id
+                LEFT JOIN images img ON i.id = img.item_id
+                WHERE i.created_at BETWEEN %s AND %s
+            """
+            
+            params = [start_dt, end_dt]
+            
+            # Add type filter if specified
+            if report_type == 'lost':
+                base_query += " AND i.type = 'lost'"
+            elif report_type == 'found':
+                base_query += " AND i.type = 'found'"
+            elif report_type == 'resolved':
+                base_query += " AND i.status IN ('claimed', 'returned')"
+            
+            base_query += " ORDER BY i.created_at DESC"
+            
+            cursor.execute(base_query, params)
+            items = cursor.fetchall()
+            
+            # Summary for items report
+            summary_query = """
+                SELECT 
+                    COUNT(*) as total_items,
+                    SUM(CASE WHEN type = 'lost' THEN 1 ELSE 0 END) as lost_items,
+                    SUM(CASE WHEN type = 'found' THEN 1 ELSE 0 END) as found_items,
+                    SUM(CASE WHEN status IN ('claimed', 'returned') THEN 1 ELSE 0 END) as resolved_items,
+                    SUM(CASE WHEN payment_status = 'paid' AND type = 'lost' THEN 20 ELSE 0 END) as total_revenue
+                FROM items
+                WHERE created_at BETWEEN %s AND %s
+            """
+            cursor.execute(summary_query, (start_dt, end_dt))
+            summary = cursor.fetchone()
+        
+        cursor.close()
+        
+        # Format dates and clean data for JSON response
+        formatted_items = []
+        for item in items:
+            formatted_item = {}
+            for key, value in item.items():
+                if isinstance(value, datetime):
+                    # Format for Excel compatibility
+                    if key in ['created_at', 'date_reported', 'user_created_at', 'payment_date']:
+                        # ISO format is best for Excel
+                        formatted_item[key] = value.isoformat()
+                    else:
+                        formatted_item[key] = value.strftime('%Y-%m-%d')
+                elif key == 'image_path' and value:
+                    # Clean image path
+                    formatted_item[key] = value.replace("\\", "/")
+                    if formatted_item[key].startswith("static/"):
+                        formatted_item[key] = formatted_item[key][7:]
+                elif value is None:
+                    formatted_item[key] = ''
+                else:
+                    formatted_item[key] = value
+            formatted_items.append(formatted_item)
+        
+        # Format summary
+        formatted_summary = {
+            'start_date': start_date,
+            'end_date': end_date,
+            'report_type': report_type,
+            'total_items': summary.get('total_items', 0) or 0,
+            'lost_items': summary.get('lost_items', 0) or 0,
+            'found_items': summary.get('found_items', 0) or 0,
+            'resolved_items': summary.get('resolved_items', 0) or 0,
+            'total_revenue': summary.get('total_revenue', 0) or 0,
+            'total_users': summary.get('total_users', 0) or 0,
+            'unique_payers': summary.get('unique_payers', 0) or 0
+        }
+        
+        return jsonify({
+            'success': True,
+            'summary': formatted_summary,
+            'items': formatted_items
+        })
+        
+    except Exception as e:
+        print(f"Error in admin reports API: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    
 # API route for searching items - FIXED
 @app.route('/api/admin/search-items')
 def admin_search_items():
@@ -917,13 +1158,20 @@ def admin_matches():
 
 
 
-
 @app.route('/admin/analytics')
 def admin_analytics():
     if not session.get('is_admin'):
         flash('Access denied. Admin privileges required.', 'danger')
         return redirect(url_for('login_page'))
-    return render_template('adminanalytics.html', active_page='admin_analytics')  # ✅ Correct filename
+    
+    # Set default dates (last 7 days)
+    today = datetime.now()
+    last_week = today - timedelta(days=7)
+    
+    return render_template('adminanalytics.html', 
+                         active_page='admin_analytics',
+                         default_start_date=last_week.strftime('%Y-%m-%d'),
+                         default_end_date=today.strftime('%Y-%m-%d'))
 
 @app.route('/api/admin/analytics')
 def api_admin_analytics():

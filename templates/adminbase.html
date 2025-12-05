@@ -101,30 +101,27 @@
       <span class="brand-text">Reunited <br> <span class="admin-badge">ADMIN</span></span>
     </div>
 
-    <h6 class="text-secondary text-uppercase small section-header">Dashboard</h6>
-    <a href="{{ url_for('admin_dashboard') }}" class="{% if active_page == 'admin_dashboard' %}active{% endif %}">
-      <i class="bi bi-speedometer2"></i><span class="nav-text">Overview</span>
-    </a>
+    <h6 class="text-secondary text-uppercase small section-header">Monitoring</h6>
+<a href="{{ url_for('admin_dashboard') }}" class="{% if active_page == 'admin_dashboard' %}active{% endif %}">
+  <i class="bi bi-speedometer2"></i><span class="nav-text">Overview</span>
+</a>
+<a href="{{ url_for('admin_users') }}" class="{% if active_page == 'admin_users' %}active{% endif %}">
+  <i class="bi bi-people-fill"></i><span class="nav-text">Users</span>
+</a>
+<a href="{{ url_for('admin_matches') }}" class="{% if active_page == 'admin_matches' %}active{% endif %}">
+  <i class="bi bi-puzzle-fill"></i><span class="nav-text">Matches</span>
+</a>
+<a href="{{ url_for('admin_analytics') }}" class="{% if active_page == 'admin_analytics' %}active{% endif %}">
+  <i class="bi bi-graph-up"></i><span class="nav-text">Analytics & Report</span>
+</a>
 
-    <h6 class="text-secondary text-uppercase mt-4 small section-header">Statistics</h6>
-    <a href="{{ url_for('admin_users') }}" class="{% if active_page == 'admin_users' %}active{% endif %}">
-      <i class="bi bi-people-fill"></i><span class="nav-text">Users</span>
-    </a>
-    <a href="{{ url_for('admin_items') }}" class="{% if active_page == 'admin_items' %}active{% endif %}">
-      <i class="bi bi-box-seam"></i><span class="nav-text">Items</span>
-    </a>
-    <a href="{{ url_for('admin_matches') }}" class="{% if active_page == 'admin_matches' %}active{% endif %}">
-      <i class="bi bi-puzzle-fill"></i><span class="nav-text">Matches</span>
-    </a>
-    <a href="{{ url_for('admin_analytics') }}" class="{% if active_page == 'admin_analytics' %}active{% endif %}">
-      <i class="bi bi-graph-up"></i><span class="nav-text">Analytics</span>
-    </a>
-
-    <h6 class="text-secondary text-uppercase mt-4 small section-header">Management</h6>
-    <!-- Changed Reports to Feedbacks -->
-    <a href="{{ url_for('admin_feedbacks') }}" class="{% if active_page == 'admin_feedbacks' %}active{% endif %}">
-      <i class="bi bi-chat-left-text-fill"></i><span class="nav-text">Feedbacks</span>
-    </a>
+<h6 class="text-secondary text-uppercase mt-4 small section-header">Management</h6>
+<a href="{{ url_for('admin_items') }}" class="{% if active_page == 'admin_items' %}active{% endif %}">
+  <i class="bi bi-box-seam"></i><span class="nav-text">Items</span>
+</a>
+<a href="{{ url_for('admin_feedbacks') }}" class="{% if active_page == 'admin_feedbacks' %}active{% endif %}">
+  <i class="bi bi-chat-left-text-fill"></i><span class="nav-text">Feedbacks</span>
+</a>
 
     <h6 class="text-secondary text-uppercase mt-4 small section-header">Account</h6>
     <!-- Changed Settings to Logout -->

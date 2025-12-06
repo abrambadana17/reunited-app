@@ -24,46 +24,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', '071322')  # Use env var
+app.secret_key = '071322'  # Change this to a random secret key
 
-# Check if we're using Railway database URL
-# Check if we're using Railway database URL
-DATABASE_URL = os.getenv('DATABASE_URL')
-if DATABASE_URL and ('railway.app' in DATABASE_URL or 'rlwy.net' in DATABASE_URL):
-    # Parse Railway MySQL connection string
-    # Format: mysql://user:password@host:port/database
-    import urllib.parse
-    
-    parsed_url = urllib.parse.urlparse(DATABASE_URL)
-    
-    app.config['MYSQL_HOST'] = parsed_url.hostname
-    app.config['MYSQL_USER'] = parsed_url.username
-    app.config['MYSQL_PASSWORD'] = parsed_url.password
-    app.config['MYSQL_DB'] = parsed_url.path[1:]  # Remove leading '/'
-    app.config['MYSQL_PORT'] = parsed_url.port or 3306
-    
-    # Railway requires SSL for flask_mysqldb
-    app.config['MYSQL_SSL'] = {'ssl': True}
-    
-    print(f"✅ Using Railway MySQL: {parsed_url.hostname}")
-else:
-    # Local development fallback
-    app.config['MYSQL_HOST'] = os.getenv('MYSQLHOST', 'localhost')
-    app.config['MYSQL_USER'] = os.getenv('MYSQLUSER', 'root')
-    app.config['MYSQL_PASSWORD'] = os.getenv('MYSQLPASSWORD', '')
-    app.config['MYSQL_DB'] = os.getenv('MYSQLDATABASE', 'reunited_db')
-    app.config['MYSQL_PORT'] = int(os.getenv('MYSQLPORT', 3306))
-
-# Debug output
-print(f"🔧 Database Configuration:")
-print(f"   Host: {app.config['MYSQL_HOST']}")
-print(f"   User: {app.config['MYSQL_USER']}")
-print(f"   Database: {app.config['MYSQL_DB']}")
-print(f"   Port: {app.config['MYSQL_PORT']}")
-print(f"   DATABASE_URL: {'Set' if DATABASE_URL else 'Not set'}")
-
-
-
+# MySQL Configuration (Railway + local fallback)
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', 'localhost')
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '')
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'reunited_db')
+app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', 3306))
 
 # Email Sender (Gmail via App Password)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -942,9 +910,15 @@ def admin_search_items():
         # Fix image paths for display
         for item in items:
             if item['image_path']:
-                # Just normalize slashes
+                # Normalize path and extract just the filename
                 item['image_path'] = item['image_path'].replace("\\", "/")
-                # ✅ REMOVED ALL THE COMPLEX PATH MANIPULATION
+                # ✅ FIX: Use the correct path structure
+                if 'static/uploads/items/' in item['image_path']:
+                    item['image_path'] = item['image_path'].split('static/uploads/items/')[-1]
+                elif 'uploads/items/' in item['image_path']:
+                    item['image_path'] = item['image_path'].split('uploads/items/')[-1]
+                # Remove any leading slashes or directories
+                item['image_path'] = item['image_path'].split('/')[-1]
         
         return jsonify({
             'success': True,
@@ -1476,12 +1450,22 @@ def api_admin_matches():
             # Process lost item image path
             if match.get('lost_image_path'):
                 match['lost_image_path'] = match['lost_image_path'].replace("\\", "/")
-                # ✅ REMOVED ALL THE COMPLEX PATH MANIPULATION
+                if 'static/uploads/items/' in match['lost_image_path']:
+                    match['lost_image_path'] = match['lost_image_path'].split('static/uploads/items/')[-1]
+                elif 'uploads/items/' in match['lost_image_path']:
+                    match['lost_image_path'] = match['lost_image_path'].split('uploads/items/')[-1]
+                # Remove any leading slashes or directories
+                match['lost_image_path'] = match['lost_image_path'].split('/')[-1]
             
             # Process found item image path
             if match.get('found_image_path'):
                 match['found_image_path'] = match['found_image_path'].replace("\\", "/")
-                # ✅ REMOVED ALL THE COMPLEX PATH MANIPULATION
+                if 'static/uploads/items/' in match['found_image_path']:
+                    match['found_image_path'] = match['found_image_path'].split('static/uploads/items/')[-1]
+                elif 'uploads/items/' in match['found_image_path']:
+                    match['found_image_path'] = match['found_image_path'].split('uploads/items/')[-1]
+                # Remove any leading slashes or directories
+                match['found_image_path'] = match['found_image_path'].split('/')[-1]
         
         return jsonify({
             'success': True,
@@ -1639,7 +1623,8 @@ def dashboard():
     for item in recent_items:
         if item['image_path']:
             item['image_path'] = item['image_path'].replace("\\", "/")
-            
+            if item['image_path'].startswith("static/"):
+                item['image_path'] = item['image_path'][7:]
         
         # Ensure all required fields have values
         item['description'] = item['description'] or 'No description provided'
@@ -2332,36 +2317,24 @@ def notifications():
 
 @app.context_processor
 def inject_unread_notifications():
-    """TEMPORARY SAFE VERSION: Always return 0 until database connection is fixed"""
-    try:
-        # Try to get connection
-        if 'user_id' in session:
-            cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-            cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
-            result = cursor.fetchone()
-            cursor.close()
-            return dict(unread_count=result['cnt'])
-    except Exception as e:
-        # If ANY error occurs, just return 0
-        print(f"⚠️ Database error in notifications (returning 0): {e}")
-    
-    # Always return 0 if anything fails
+    if 'user_id' in session:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
+        result = cursor.fetchone()
+        cursor.close()
+        return dict(unread_count=result['cnt'])
     return dict(unread_count=0)
 
 @app.route('/api/unread_count')
 def unread_count_api():
     if 'user_id' not in session:
         return {"count": 0}
-    
-    try:
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
-        result = cursor.fetchone()
-        cursor.close()
-        return {"count": result['cnt']}
-    except Exception as e:
-        print(f"⚠️ Database error in unread_count API (returning 0): {e}")
-        return {"count": 0}  # Return 0 instead of error
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = %s AND is_read = 0", (session['user_id'],))
+    result = cursor.fetchone()
+    cursor.close()
+    return {"count": result['cnt']}
 
 @app.route('/notifications/read/<int:notif_id>')
 def mark_notification_read(notif_id):
@@ -2386,9 +2359,6 @@ def profile():
         email = request.form.get('email', '').strip().lower()
         phone = request.form.get('phone', '').strip()
         password = request.form.get('password', '')
-        
-        # Check if user wants to remove profile picture
-        remove_profile_picture = request.form.get('remove_profile_picture') == 'true'
 
         first_name, last_name = "", ""
         if " " in full_name:
@@ -2397,18 +2367,10 @@ def profile():
             first_name = full_name
             last_name = ""
 
-        # Handle profile picture
+        # Handle profile picture upload
         profile_picture_filename = session.get('profile_picture')
         
-        if remove_profile_picture:
-            # User wants to remove existing picture
-            if profile_picture_filename:
-                old_path = os.path.join(app.config['UPLOAD_FOLDER'], profile_picture_filename)
-                if os.path.exists(old_path):
-                    os.remove(old_path)
-                profile_picture_filename = None
-                flash('Profile picture removed!', 'success')
-        elif 'profile_picture' in request.files:
+        if 'profile_picture' in request.files:
             file = request.files['profile_picture']
             if file and file.filename != '' and allowed_file(file.filename):
                 # Delete old profile picture if it exists
@@ -2425,16 +2387,13 @@ def profile():
                 # Save and resize image
                 file.save(file_path)
                 resize_image(file_path)
-                flash('Profile picture updated!', 'success')
 
         # Update SQL
         if password:
             hashed_password = generate_password_hash(password)
-            cursor.execute('''UPDATE users SET first_name=%s, last_name=%s, email=%s, phone=%s, password=%s, profile_picture=%s WHERE id=%s''', 
-                         (first_name, last_name, email, phone, hashed_password, profile_picture_filename, session['user_id']))
+            cursor.execute('''UPDATE users SET first_name=%s, last_name=%s, email=%s, phone=%s, password=%s, profile_picture=%s WHERE id=%s''', (first_name, last_name, email, phone, hashed_password, profile_picture_filename, session['user_id']))
         else:
-            cursor.execute('''UPDATE users SET first_name=%s, last_name=%s, email=%s, phone=%s, profile_picture=%s WHERE id=%s''', 
-                         (first_name, last_name, email, phone, profile_picture_filename, session['user_id']))
+            cursor.execute('''UPDATE users SET first_name=%s, last_name=%s, email=%s, phone=%s, profile_picture=%s WHERE id=%s''', (first_name, last_name, email, phone, profile_picture_filename, session['user_id']))
 
         mysql.connection.commit()
 
@@ -2447,9 +2406,8 @@ def profile():
         session['profile_picture'] = profile_picture_filename
 
         flash('Profile updated successfully!', 'success')
-        return redirect(url_for('profile'))
 
-    # GET request - refresh user data from DB
+    # Refresh user data from DB (in case session missed something)
     cursor.execute('SELECT * FROM users WHERE id=%s', (session['user_id'],))
     user = cursor.fetchone()
     cursor.close()
@@ -2460,6 +2418,36 @@ def profile():
 
     return render_template('profile.html', active_page='profile')
 
+@app.route('/api/remove-profile-picture', methods=['POST'])
+def remove_profile_picture():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'errors': ['Not authenticated']}), 401
+    
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Get current profile picture
+        cursor.execute('SELECT profile_picture FROM users WHERE id=%s', (session['user_id'],))
+        user = cursor.fetchone()
+        
+        if user and user['profile_picture']:
+            # Delete file from filesystem
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], user['profile_picture'])
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            
+            # Update database
+            cursor.execute('UPDATE users SET profile_picture=NULL WHERE id=%s', (session['user_id'],))
+            mysql.connection.commit()
+            
+            # Update session
+            session['profile_picture'] = None
+        
+        cursor.close()
+        return jsonify({'success': True, 'message': 'Profile picture removed successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
 
 @app.route('/api/user', methods=['GET'])
 def get_user():
@@ -2628,7 +2616,8 @@ def lost():
     for item in lost_items:
         if item['image_path']:
             item['image_path'] = item['image_path'].replace("\\", "/")
-            # ✅ REMOVED THE LINE
+            if item['image_path'].startswith("static/"):
+                item['image_path'] = item['image_path'][7:]
     
     cursor.close()
     return render_template('lost.html', items=lost_items, active_page='lost', show_item_id=show_item_id)
@@ -2781,7 +2770,8 @@ def found():
     for item in found_items:
         if item['image_path']:
             item['image_path'] = item['image_path'].replace("\\", "/")
-            # ✅ REMOVED THE LINE
+            if item['image_path'].startswith("static/"):
+                item['image_path'] = item['image_path'][7:]
     
     cursor.close()
     return render_template('found.html', items=found_items, active_page='found', show_item_id=show_item_id)
@@ -2811,7 +2801,8 @@ def posted():
     for item in posted_items:
         if item['image_path']:
             item['image_path'] = item['image_path'].replace("\\", "/")
-            # ✅ REMOVED THE LINE
+            if item['image_path'].startswith("static/"):
+                item['image_path'] = item['image_path'][7:]
     
     cursor.close()
     
@@ -3305,12 +3296,13 @@ def match():
     # Normalize image paths for Flask
     for m in matches:
         if m['lost_image']:
-            m['lost_image'] = m['lost_image'].replace("\\", "/")
-            # ✅ REMOVED THE LINE
-        
+            m['lost_image'] = m['lost_image'].replace("\\", "/")  # Windows → web
+            if m['lost_image'].startswith("static/"):
+                m['lost_image'] = m['lost_image'][7:]  # remove "static/"
         if m['found_image']:
             m['found_image'] = m['found_image'].replace("\\", "/")
-            # ✅ REMOVED THE LINE
+            if m['found_image'].startswith("static/"):
+                m['found_image'] = m['found_image'][7:]
 
     return render_template("match.html", matches=matches, active_page="match")
 
@@ -3406,19 +3398,5 @@ def uploaded_file(filename):
 def uploaded_item_file(filename):
     return send_from_directory('static/uploads/items', filename)
 
-
-
-# In app.py, ensure these directories exist
 if __name__ == '__main__':
-    # Create directories if they don't exist
-    upload_dirs = [
-        'static/uploads/profile_pictures',
-        'static/uploads/items',
-        'static/uploads/temp'
-    ]
-    
-    for directory in upload_dirs:
-        os.makedirs(directory, exist_ok=True)
-    
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=5000)

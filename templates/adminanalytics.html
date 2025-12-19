@@ -9,15 +9,15 @@
 <div class="row">
   <div class="col-12">
     <!-- Charts Section -->
-    <div class="row g-4">
+    <div class="row g-2 g-md-4">
       <!-- Weekly Items Chart -->
-      <div class="col-12 col-lg-8">
+      <div class="col-12 col-lg-8 mb-3 mb-lg-0">
         <div class="chart-card">
-          <div class="chart-header">
-            <h5 class="mb-0 fw-semibold">
+          <div class="chart-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+            <h5 class="mb-2 mb-md-0 fw-semibold">
               <i class="fas fa-chart-line me-2 text-primary"></i>Weekly Items Posted
             </h5>
-            <div class="chart-controls">
+            <div class="chart-controls w-100 w-md-auto">
               <select class="form-select form-select-sm" id="chartPeriod" onchange="loadAnalytics()">
                 <option value="4">Last 4 Weeks</option>
                 <option value="8">Last 8 Weeks</option>
@@ -32,8 +32,8 @@
       </div>
 
       <!-- Item Distribution -->
-      <div class="col-12 col-lg-4">
-        <div class="chart-card">
+      <div class="col-12 col-lg-4 mb-3 mb-lg-0">
+        <div class="chart-card h-100">
           <div class="chart-header">
             <h5 class="mb-0 fw-semibold">
               <i class="fas fa-chart-pie me-2 text-success"></i>Item Distribution
@@ -43,7 +43,7 @@
             <canvas id="itemDistributionChart"></canvas>
           </div>
           <div class="chart-footer p-3 border-top bg-light">
-            <div class="row text-center small">
+            <div class="row text-center small g-2">
               <div class="col-4">
                 <div class="text-danger">
                   <i class="fas fa-circle me-1"></i>
@@ -68,8 +68,8 @@
       </div>
 
       <!-- Match Success Rate -->
-      <div class="col-12 col-md-6">
-        <div class="chart-card">
+      <div class="col-12 col-md-6 mb-3 mb-md-0">
+        <div class="chart-card h-100">
           <div class="chart-header">
             <h5 class="mb-0 fw-semibold">
               <i class="fas fa-percentage me-2 text-info"></i>Match Success Rate
@@ -81,9 +81,9 @@
         </div>
       </div>
 
-      <!-- Reports Section (Replaced Recent Activity) -->
+      <!-- Reports Section -->
       <div class="col-12 col-md-6">
-        <div class="chart-card">
+        <div class="chart-card h-100">
           <div class="chart-header">
             <h5 class="mb-0 fw-semibold">
               <i class="fas fa-file-alt me-2 text-warning"></i>Generate Reports
@@ -94,10 +94,10 @@
             <div class="mb-3">
               <label class="form-label small text-muted mb-1">Date Range</label>
               <div class="row g-2">
-                <div class="col-6">
+                <div class="col-12 col-sm-6">
                   <input type="date" class="form-control form-control-sm" id="startDate" value="{{ default_start_date }}">
                 </div>
-                <div class="col-6">
+                <div class="col-12 col-sm-6">
                   <input type="date" class="form-control form-control-sm" id="endDate" value="{{ default_end_date }}">
                 </div>
               </div>
@@ -119,21 +119,21 @@
             <!-- Format Selection -->
             <div class="mb-3">
               <label class="form-label small text-muted mb-1">Export Format</label>
-              <div class="btn-group w-100" role="group">
+              <div class="btn-group w-100 flex-wrap" role="group">
                 <input type="radio" class="btn-check" name="exportFormat" id="formatTable" checked>
-                <label class="btn btn-outline-secondary btn-sm" for="formatTable">
+                <label class="btn btn-outline-secondary btn-sm flex-fill mb-1" for="formatTable">
                   <i class="fas fa-table me-1"></i>Table
                 </label>
                 <input type="radio" class="btn-check" name="exportFormat" id="formatText">
-                <label class="btn btn-outline-secondary btn-sm" for="formatText">
+                <label class="btn btn-outline-secondary btn-sm flex-fill mb-1" for="formatText">
                   <i class="fas fa-file-text me-1"></i>Text
                 </label>
                 <input type="radio" class="btn-check" name="exportFormat" id="formatExcel">
-                <label class="btn btn-outline-secondary btn-sm" for="formatExcel">
+                <label class="btn btn-outline-secondary btn-sm flex-fill mb-1" for="formatExcel">
                   <i class="fas fa-file-excel me-1"></i>Excel
                 </label>
                 <input type="radio" class="btn-check" name="exportFormat" id="formatWord">
-                <label class="btn btn-outline-secondary btn-sm" for="formatWord">
+                <label class="btn btn-outline-secondary btn-sm flex-fill mb-1" for="formatWord">
                   <i class="fas fa-file-word me-1"></i>Word
                 </label>
               </div>
@@ -144,12 +144,12 @@
               <i class="fas fa-chart-bar me-2"></i>Generate Report
             </button>
 
-            <!-- Quick Stats (Optional) -->
+            <!-- Quick Stats -->
             <div class="border-top pt-3 mt-3">
-              <div class="row text-center small">
+              <div class="row text-center small g-2">
                 <div class="col-6">
                   <div class="text-muted mb-1">Selected Period</div>
-                  <div class="fw-semibold" id="selectedPeriod">-</div>
+                  <div class="fw-semibold text-truncate" id="selectedPeriod">-</div>
                 </div>
                 <div class="col-6">
                   <div class="text-muted mb-1">Items Count</div>
@@ -162,16 +162,16 @@
       </div>
     </div>
 
-    <!-- Report Results Section (Initially Hidden) -->
-    <div class="row mt-4" id="reportResults" style="display: none;">
+    <!-- Report Results Section -->
+    <div class="row mt-3 mt-md-4" id="reportResults" style="display: none;">
       <div class="col-12">
         <div class="chart-card">
-          <div class="chart-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold">
+          <div class="chart-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+            <h5 class="mb-2 mb-md-0 fw-semibold">
               <i class="fas fa-file-download me-2 text-success"></i>Report Results
             </h5>
-            <div>
-              <button class="btn btn-sm btn-outline-secondary me-2" onclick="printReport()">
+            <div class="d-flex gap-2 mt-2 mt-md-0">
+              <button class="btn btn-sm btn-outline-secondary" onclick="printReport()">
                 <i class="fas fa-print me-1"></i>Print
               </button>
               <button class="btn btn-sm btn-success" onclick="downloadReport()">
@@ -181,14 +181,14 @@
           </div>
           <div class="p-3">
             <!-- Report Summary -->
-            <div class="alert alert-info mb-3" id="reportSummary">
+            <div class="alert alert-info mb-3 small" id="reportSummary">
               <!-- Summary will be populated by JavaScript -->
             </div>
 
             <!-- Table View -->
             <div id="tableView" style="display: none;">
-              <div class="table-responsive">
-                <table class="table table-hover table-sm" id="reportTable">
+              <div class="table-responsive-xxl">
+                <table class="table table-hover table-sm mb-0" id="reportTable">
                   <thead id="reportTableHeader">
                     <!-- Table headers will be populated by JavaScript -->
                   </thead>
@@ -201,13 +201,13 @@
 
             <!-- Text View -->
             <div id="textView" style="display: none;">
-              <div class="bg-light p-3 border rounded" id="reportTextContent">
+              <div class="bg-light p-3 border rounded" id="reportTextContent" style="max-height: 400px; overflow-y: auto;">
                 <!-- Text content will be populated by JavaScript -->
               </div>
             </div>
 
             <!-- Export Status -->
-            <div class="mt-3 text-center" id="exportStatus"></div>
+            <div class="mt-3 text-center small" id="exportStatus"></div>
           </div>
         </div>
       </div>
@@ -224,146 +224,389 @@
 </div>
 
 <style>
+  :root {
+    --color-primary: #1E3A8A;
+    --color-primary-hover: #1e40af;
+    --color-accent: #3B82F6;
+    --color-success: #10B981;
+    --color-danger: #EF4444;
+    --color-warning: #facc15;
+    --color-info: #1E3A8A;
+    --color-white: #ffffff;
+    --color-bg-light: #F8F9FA;
+    --color-gray-50: #f9fafb;
+    --color-gray-100: #f3f4f6;
+    --color-gray-200: #e5e7eb;
+    --color-gray-300: #d1d5db;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #6b7280;
+    --color-gray-700: #374151;
+    --color-gray-800: #1f2937;
+    --color-gray-900: #111827;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --border-light: 1px solid var(--color-gray-200);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
   .stats-card {
     background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e9ecef;
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+    border: var(--border-light);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+  }
+
+  @media (min-width: 768px) {
+    .stats-card {
+      padding: 1.5rem;
+    }
   }
 
   .stats-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-md);
   }
 
   .stats-icon {
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     margin-bottom: 1rem;
   }
 
+  @media (min-width: 768px) {
+    .stats-icon {
+      width: 60px;
+      height: 60px;
+      font-size: 1.5rem;
+    }
+  }
+
   .stats-number {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
   }
 
+  @media (min-width: 768px) {
+    .stats-number {
+      font-size: 2rem;
+    }
+  }
+
   .chart-card {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e9ecef;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: var(--border-light);
     height: 100%;
     display: flex;
     flex-direction: column;
   }
 
   .chart-header {
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-    padding: 1.25rem 1.5rem;
+    background: var(--color-bg-light);
+    border-bottom: var(--border-light);
+    padding: 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
 
+  @media (min-width: 768px) {
+    .chart-header {
+      padding: 1.25rem 1.5rem;
+    }
+  }
+
   .chart-container {
     flex: 1;
-    padding: 1.5rem;
-    min-height: 300px;
+    padding: 1rem;
+    min-height: 250px;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+  }
+
+  @media (min-width: 768px) {
+    .chart-container {
+      padding: 1.5rem;
+      min-height: 300px;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .chart-container {
+      min-height: 200px;
+    }
   }
 
   .chart-footer {
-    background: #f8f9fa;
-    border-top: 1px solid #e9ecef;
+    background: var(--color-bg-light);
+    border-top: var(--border-light);
+    padding: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .chart-footer {
+      padding: 1rem;
+    }
   }
 
   .chart-controls .form-select {
-    width: auto;
-    min-width: 140px;
+    width: 100%;
+    min-width: auto;
+  }
+
+  @media (min-width: 576px) {
+    .chart-controls .form-select {
+      width: auto;
+      min-width: 140px;
+    }
   }
 
   .loading-spinner {
     display: none;
     text-align: center;
-    padding: 3rem;
+    padding: 2rem 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .loading-spinner {
+      padding: 3rem;
+    }
   }
 
   /* Report specific styles */
   .btn-group .btn {
     padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+  }
+
+  @media (min-width: 576px) {
+    .btn-group .btn {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.875rem;
+    }
+  }
+
+  #reportTable {
+    font-size: 0.8125rem;
+    min-width: 600px;
+  }
+
+  @media (min-width: 768px) {
+    #reportTable {
+      font-size: 0.875rem;
+    }
   }
 
   #reportTable th {
-    background-color: #f8f9fa;
+    background-color: var(--color-bg-light);
     font-weight: 600;
     white-space: nowrap;
+    padding: 0.5rem;
+  }
+
+  @media (min-width: 768px) {
+    #reportTable th {
+      padding: 0.75rem;
+    }
+  }
+
+  #reportTable td {
+    padding: 0.5rem;
+    vertical-align: middle;
+  }
+
+  @media (min-width: 768px) {
+    #reportTable td {
+      padding: 0.75rem;
+    }
   }
 
   #reportTextContent {
     font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    max-height: 400px;
-    overflow-y: auto;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+
+  @media (min-width: 768px) {
+    #reportTextContent {
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
   }
 
   /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .stats-card {
-      padding: 1rem;
-    }
-
-    .stats-number {
-      font-size: 1.5rem;
-    }
-
-    .stats-icon {
-      width: 50px;
-      height: 50px;
-      font-size: 1.25rem;
-    }
-
+  @media (max-width: 767.98px) {
     .chart-header {
-      padding: 1rem;
       flex-direction: column;
-      gap: 0.5rem;
       align-items: flex-start;
+      gap: 0.5rem;
     }
 
-    .chart-container {
-      padding: 1rem;
-      min-height: 250px;
-    }
-
-    .chart-controls .form-select {
+    .chart-controls {
       width: 100%;
     }
 
+    .btn-group {
+      flex-wrap: wrap;
+    }
+
     .btn-group .btn {
-      padding: 0.2rem 0.4rem;
-      font-size: 0.8rem;
+      flex: 1 0 auto;
+      min-width: 60px;
+      margin-bottom: 0.25rem;
+      font-size: 0.7rem;
+    }
+
+    .form-select-sm {
+      font-size: 0.75rem;
+    }
+
+    .chart-card .p-3 {
+      padding: 1rem !important;
+    }
+
+    /* Horizontal scroll indicator for tables */
+    .table-responsive-xxl {
+      position: relative;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .table-responsive-xxl::after {
+      content: '↔ Scroll horizontally';
+      position: absolute;
+      top: -25px;
+      right: 0;
+      font-size: 0.75rem;
+      color: var(--color-gray-500);
+      background: var(--color-white);
+      padding: 2px 8px;
+      border-radius: 12px;
+      border: 1px solid var(--color-gray-200);
     }
   }
 
-  @media (max-width: 576px) {
-    .stats-card {
-      margin-bottom: 1rem;
+  @media (max-width: 575.98px) {
+    .chart-container {
+      min-height: 180px;
     }
 
-    .chart-container {
-      min-height: 200px;
+    .btn-group .btn {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.3rem;
+    }
+
+    .form-control-sm {
+      font-size: 0.75rem;
+    }
+
+    #reportTextContent {
+      font-size: 0.7rem;
+    }
+  }
+
+  /* Spinner adjustments */
+  .spinner-border {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  @media (max-width: 767.98px) {
+    .spinner-border {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+  }
+
+  /* Badge styles */
+  .badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.375rem 0.75rem;
+    }
+  }
+
+  /* Typography adjustments */
+  h5 {
+    font-size: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    h5 {
+      font-size: 1.1rem;
+    }
+  }
+
+  .small {
+    font-size: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .small {
+      font-size: 0.875rem;
+    }
+  }
+
+  /* Gap adjustments */
+  .row.g-2 {
+    --bs-gutter-x: 0.5rem;
+    --bs-gutter-y: 0.5rem;
+  }
+
+  .row.g-4 {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .row.g-4 {
+      --bs-gutter-x: 1.5rem;
+      --bs-gutter-y: 1.5rem;
+    }
+  }
+
+  /* Touch-friendly improvements */
+  @media (max-width: 767.98px) {
+    select, button, input {
+      min-height: 36px;
+    }
+
+    .form-select {
+      background-size: 10px 10px;
+      background-position: right 0.5rem center;
+    }
+  }
+
+  /* Alert responsiveness */
+  .alert {
+    font-size: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .alert {
+      font-size: 0.875rem;
+      padding: 1rem;
     }
   }
 </style>
@@ -450,272 +693,311 @@
     }
   }
 
-  function displayReport(data, format) {
-  // Show report results section
-  document.getElementById('reportResults').style.display = 'block';
-  
-  // Update summary based on report type
-  const summary = document.getElementById('reportSummary');
-  let summaryHTML = '';
-  
-  if (data.summary.report_type === 'users') {
-    summaryHTML = `
-      <strong>User Activity Report Summary:</strong> 
-      ${data.summary.total_users || 0} users registered between 
-      ${new Date(data.summary.start_date).toLocaleDateString()} and 
-      ${new Date(data.summary.end_date).toLocaleDateString()}. 
-      They posted ${data.summary.total_items_by_users || 0} items in total.
-    `;
-  } else if (data.summary.report_type === 'revenue') {
-    summaryHTML = `
-      <strong>Revenue Report Summary:</strong> 
-      ${data.summary.total_items || 0} paid items between 
-      ${new Date(data.summary.start_date).toLocaleDateString()} and 
-      ${new Date(data.summary.end_date).toLocaleDateString()}. 
-      Total Revenue: ₱${data.summary.total_revenue || 0} from 
-      ${data.summary.unique_payers || 0} unique payers.
-    `;
-  } else {
-    summaryHTML = `
-      <strong>Report Summary:</strong> ${data.summary.total_items} items found between 
-      ${new Date(data.summary.start_date).toLocaleDateString()} and 
-      ${new Date(data.summary.end_date).toLocaleDateString()}. 
-      ${data.summary.lost_items} lost items, ${data.summary.found_items} found items, 
-      ${data.summary.resolved_items} resolved items. Revenue: ₱${data.summary.total_revenue || 0}.
-    `;
-  }
-  
-  summary.innerHTML = summaryHTML;
+function displayReport(data, format) {
+    // Show report results section
+    document.getElementById('reportResults').style.display = 'block';
+    
+    // Scroll to report results on mobile
+    if (window.innerWidth < 768) {
+        document.getElementById('reportResults').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Update summary based on report type
+    const summary = document.getElementById('reportSummary');
+    let summaryHTML = '';
+    
+    if (data.summary.report_type === 'users') {
+        summaryHTML = `
+            <strong>User Activity Report Summary:</strong> 
+            ${data.summary.total_users || 0} users registered between 
+            ${new Date(data.summary.start_date).toLocaleDateString()} and 
+            ${new Date(data.summary.end_date).toLocaleDateString()}. 
+            They posted ${data.summary.total_items_by_users || 0} items in total.
+        `;
+    } else if (data.summary.report_type === 'revenue') {
+        summaryHTML = `
+            <strong>Revenue Report Summary:</strong> 
+            ${data.summary.total_items || 0} paid items between 
+            ${new Date(data.summary.start_date).toLocaleDateString()} and 
+            ${new Date(data.summary.end_date).toLocaleDateString()}. 
+            Total Revenue: ₱${data.summary.total_revenue || 0} from 
+            ${data.summary.unique_payers || 0} unique payers.
+        `;
+    } else if (data.summary.report_type === 'lost') {
+        summaryHTML = `
+            <strong>Lost Items Report Summary:</strong> 
+            ${data.summary.lost_items || data.summary.total_items || 0} lost items found between 
+            ${new Date(data.summary.start_date).toLocaleDateString()} and 
+            ${new Date(data.summary.end_date).toLocaleDateString()}. 
+            Revenue from lost items: ₱${data.summary.total_revenue || 0}.
+        `;
+    } else if (data.summary.report_type === 'found') {
+        summaryHTML = `
+            <strong>Found Items Report Summary:</strong> 
+            ${data.summary.found_items || data.summary.total_items || 0} found items between 
+            ${new Date(data.summary.start_date).toLocaleDateString()} and 
+            ${new Date(data.summary.end_date).toLocaleDateString()}. 
+            Revenue from found items: ₱${data.summary.total_revenue || 0}.
+        `;
+    } else if (data.summary.report_type === 'resolved') {
+        summaryHTML = `
+            <strong>Resolved Items Report Summary:</strong> 
+            ${data.summary.resolved_items || data.summary.total_items || 0} resolved items between 
+            ${new Date(data.summary.start_date).toLocaleDateString()} and 
+            ${new Date(data.summary.end_date).toLocaleDateString()}. 
+            Revenue from resolved items: ₱${data.summary.total_revenue || 0}.
+        `;
+    } else {
+        summaryHTML = `
+            <strong>All Items Report Summary:</strong> ${data.summary.total_items} items found between 
+            ${new Date(data.summary.start_date).toLocaleDateString()} and 
+            ${new Date(data.summary.end_date).toLocaleDateString()}. 
+            ${data.summary.lost_items} lost items, ${data.summary.found_items} found items, 
+            ${data.summary.resolved_items} resolved items. Revenue: ₱${data.summary.total_revenue || 0}.
+        `;
+    }
+    
+    summary.innerHTML = summaryHTML;
 
-  // Update selected period display
-  document.getElementById('selectedPeriod').textContent = 
-    `${new Date(data.summary.start_date).toLocaleDateString()} - ${new Date(data.summary.end_date).toLocaleDateString()}`;
-  
-  // Update items count based on report type
-  let itemsCount = data.summary.total_items;
-  if (data.summary.report_type === 'users') {
-    itemsCount = data.summary.total_users || 0;
-  }
-  document.getElementById('itemsCount').textContent = itemsCount;
+    // Update selected period display
+    document.getElementById('selectedPeriod').textContent = 
+        `${new Date(data.summary.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(data.summary.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    
+    // Update items count based on report type
+    let itemsCount = data.summary.total_items;
+    
+    if (data.summary.report_type === 'users') {
+        itemsCount = data.summary.total_users || 0;
+    } else if (data.summary.report_type === 'lost') {
+        itemsCount = data.summary.lost_items || data.summary.total_items || 0;
+    } else if (data.summary.report_type === 'found') {
+        itemsCount = data.summary.found_items || data.summary.total_items || 0;
+    } else if (data.summary.report_type === 'resolved') {
+        itemsCount = data.summary.resolved_items || data.summary.total_items || 0;
+    }
+    
+    document.getElementById('itemsCount').textContent = itemsCount;
 
-  // Show appropriate view based on format
-  if (format === 'text') {
-    showTextView(data);
-  } else {
-    showTableView(data, format);
-  }
+    // Show appropriate view based on format
+    if (format === 'text') {
+        showTextView(data);
+    } else {
+        showTableView(data, format);
+    }
 }
 
   function showTextView(data) {
-  document.getElementById('tableView').style.display = 'none';
-  document.getElementById('textView').style.display = 'block';
-  
-  let textContent = `REUNITED ITEMS REPORT\n`;
-  textContent += `Generated: ${new Date().toLocaleString()}\n`;
-  textContent += `Period: ${new Date(data.summary.start_date).toLocaleDateString()} to ${new Date(data.summary.end_date).toLocaleDateString()}\n`;
-  textContent += `========================================\n\n`;
-
-  if (data.summary.report_type === 'users') {
-    textContent += `USER ACTIVITY REPORT\n`;
-    textContent += `Total Users: ${data.summary.total_users || 0}\n`;
-    textContent += `Total Items Posted: ${data.summary.total_items_by_users || 0}\n`;
-    textContent += `========================================\n\n`;
-
-    if (data.items && data.items.length > 0) {
-      data.items.forEach((user, index) => {
-        textContent += `${index + 1}. USER DETAILS:\n`;
-        textContent += `   Name: ${user.first_name} ${user.last_name}\n`;
-        textContent += `   Email: ${user.email}\n`;
-        textContent += `   Phone: ${user.phone || 'Not provided'}\n`;
-        textContent += `   Status: ${user.is_active !== false ? 'Active' : 'Inactive'}\n`;
-        textContent += `   Joined: ${new Date(user.created_at || user.user_created_at).toLocaleDateString()}\n`;
-        textContent += `   Total Items: ${user.total_items || 0}\n`;
-        textContent += `   - Lost Items: ${user.lost_items || 0}\n`;
-        textContent += `   - Found Items: ${user.found_items || 0}\n`;
-        textContent += `----------------------------------------\n\n`;
-      });
-    } else {
-      textContent += 'No users found in the selected period.\n';
-    }
+    document.getElementById('tableView').style.display = 'none';
+    document.getElementById('textView').style.display = 'block';
     
-  } else if (data.summary.report_type === 'revenue') {
-    textContent += `REVENUE REPORT\n`;
-    textContent += `Total Items: ${data.summary.total_items}\n`;
-    textContent += `Total Revenue: ₱${data.summary.total_revenue || 0}\n`;
-    textContent += `Unique Payers: ${data.summary.unique_payers || 0}\n`;
-    textContent += `========================================\n\n`;
+    let textContent = 'REUNITED ITEMS REPORT\n';
+    textContent += `Generated: ${new Date().toLocaleString()}\n`;
+    textContent += `Period: ${new Date(data.summary.start_date).toLocaleDateString()} to ${new Date(data.summary.end_date).toLocaleDateString()}\n`;
+    textContent += '========================================\n\n';
 
-    if (data.items && data.items.length > 0) {
-      data.items.forEach((item, index) => {
-        textContent += `${index + 1}. PAYMENT DETAILS:\n`;
-        textContent += `   Item: ${item.title}\n`;
-        textContent += `   User: ${item.user_first_name} ${item.user_last_name}\n`;
-        textContent += `   Email: ${item.user_email}\n`;
-        textContent += `   Amount: ₱${item.amount || 20}\n`;
-        textContent += `   Payment Date: ${new Date(item.created_at).toLocaleDateString()}\n`;
-        textContent += `----------------------------------------\n\n`;
-      });
-    } else {
-      textContent += 'No payments found in the selected period.\n';
-    }
-    
-  } else {
-    textContent += `Total Items: ${data.summary.total_items}\n`;
-    textContent += `Lost Items: ${data.summary.lost_items}\n`;
-    textContent += `Found Items: ${data.summary.found_items}\n`;
-    textContent += `Resolved Items: ${data.summary.resolved_items}\n`;
-    textContent += `Revenue: ₱${data.summary.total_revenue || 0}\n`;
-    textContent += `========================================\n\n`;
+    if (data.summary.report_type === 'users') {
+      textContent += 'USER ACTIVITY REPORT\n';
+      textContent += `Total Users: ${data.summary.total_users || 0}\n`;
+      textContent += `Total Items Posted: ${data.summary.total_items_by_users || 0}\n`;
+      textContent += '========================================\n\n';
 
-    if (data.items && data.items.length > 0) {
-      data.items.forEach((item, index) => {
-        textContent += `${index + 1}. ITEM DETAILS:\n`;
-        textContent += `   Title: ${item.title}\n`;
-        textContent += `   Type: ${item.type}\n`;
-        textContent += `   Category: ${item.category}\n`;
-        textContent += `   Status: ${item.status}\n`;
-        textContent += `   Date Reported: ${new Date(item.date_reported).toLocaleDateString()}\n`;
-        textContent += `   Location: ${item.location_reported}\n`;
-        if (item.reward) textContent += `   Reward: ₱${item.reward}\n`;
-        textContent += `   Payment Status: ${item.payment_status || 'N/A'}\n\n`;
-        
-        textContent += `   USER DETAILS:\n`;
-        textContent += `   Name: ${item.user_first_name} ${item.last_name}\n`;
-        textContent += `   Email: ${item.user_email}\n`;
-        textContent += `   Phone: ${item.user_phone || 'Not provided'}\n`;
-        textContent += `   User Since: ${new Date(item.user_created_at).toLocaleDateString()}\n`;
-        textContent += `----------------------------------------\n\n`;
-      });
-    } else {
-      textContent += 'No items found in the selected period.\n';
-    }
-  }
-
-  document.getElementById('reportTextContent').textContent = textContent;
-}
-  function showTableView(data, format) {
-  document.getElementById('textView').style.display = 'none';
-  document.getElementById('tableView').style.display = 'block';
-
-  const tableHeader = document.getElementById('reportTableHeader');
-  const tableBody = document.getElementById('reportTableBody');
-
-  // Clear previous content
-  tableHeader.innerHTML = '';
-  tableBody.innerHTML = '';
-
-  // Create headers based on report type
-  let headers = ['#', 'Item Title', 'Type', 'Category', 'Status', 'Date Reported', 'User Name'];
-  
-  if (data.summary.report_type === 'revenue') {
-    headers = ['#', 'Item Title', 'User Name', 'Payment Status', 'Amount', 'Payment Date'];
-  } else if (data.summary.report_type === 'users') {
-    headers = ['#', 'User Name', 'Email', 'Phone', 'Items Posted', 'Joined Date', 'Status'];
-  }
-
-  // Create header row
-  let headerRow = '<tr>';
-  headers.forEach(header => {
-    headerRow += `<th>${header}</th>`;
-  });
-  headerRow += '</tr>';
-  tableHeader.innerHTML = headerRow;
-
-  // Create data rows
-  if (data.items && data.items.length > 0) {
-    data.items.forEach((item, index) => {
-      let row = '<tr>';
-      
-      if (data.summary.report_type === 'revenue') {
-        row += `<td>${index + 1}</td>`;
-        row += `<td>${item.title || '-'}</td>`;
-        row += `<td>${item.user_first_name} ${item.user_last_name}</td>`;
-        row += `<td><span class="badge bg-success">${item.payment_status || 'N/A'}</span></td>`;
-        row += `<td>₱${item.amount || '20'}</td>`;
-        
-        // Use created_at as payment date (when item was posted/paid)
-        let paymentDate = 'N/A';
-        if (item.created_at) {
-          try {
-            const date = new Date(item.created_at);
-            if (!isNaN(date.getTime())) {
-              paymentDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-            }
-          } catch (e) {
-            paymentDate = item.created_at;
-          }
-        }
-        row += `<td>${paymentDate}</td>`;
-        
-      } else if (data.summary.report_type === 'users') {
-        // USER ACTIVITY REPORT - Different data structure
-        row += `<td>${index + 1}</td>`;
-        row += `<td>${item.first_name || ''} ${item.last_name || ''}</td>`;
-        row += `<td>${item.email || '-'}</td>`;
-        row += `<td>${item.phone || '-'}</td>`;
-        row += `<td>${item.total_items || 0}</td>`;
-        
-        // Format join date
-        let joinDate = 'N/A';
-        if (item.created_at) {
-          try {
-            const date = new Date(item.created_at);
-            if (!isNaN(date.getTime())) {
-              joinDate = date.toLocaleDateString();
-            }
-          } catch (e) {
-            joinDate = item.created_at;
-          }
-        } else if (item.user_created_at) {
-          try {
-            const date = new Date(item.user_created_at);
-            if (!isNaN(date.getTime())) {
-              joinDate = date.toLocaleDateString();
-            }
-          } catch (e) {
-            joinDate = item.user_created_at;
-          }
-        }
-        row += `<td>${joinDate}</td>`;
-        
-        // User status
-        const isActive = item.is_active !== false;
-        row += `<td><span class="badge ${isActive ? 'bg-success' : 'bg-secondary'}">${isActive ? 'Active' : 'Inactive'}</span></td>`;
-        
+      if (data.items && data.items.length > 0) {
+        data.items.forEach((user, index) => {
+          textContent += `${index + 1}. USER DETAILS:\n`;
+          textContent += `   Name: ${user.first_name} ${user.last_name}\n`;
+          textContent += `   Email: ${user.email}\n`;
+          textContent += `   Phone: ${user.phone || 'Not provided'}\n`;
+          textContent += `   Status: ${user.is_active !== false ? 'Active' : 'Inactive'}\n`;
+          textContent += `   Joined: ${new Date(user.created_at || user.user_created_at).toLocaleDateString()}\n`;
+          textContent += `   Total Items: ${user.total_items || 0}\n`;
+          textContent += `   - Lost Items: ${user.lost_items || 0}\n`;
+          textContent += `   - Found Items: ${user.found_items || 0}\n`;
+          textContent += '----------------------------------------\n\n';
+        });
       } else {
-        // REGULAR ITEMS REPORT
-        row += `<td>${index + 1}</td>`;
-        row += `<td>${item.title || '-'}</td>`;
-        row += `<td><span class="badge ${item.type === 'lost' ? 'bg-danger' : 'bg-success'}">${item.type}</span></td>`;
-        row += `<td>${item.category || '-'}</td>`;
-        row += `<td><span class="badge ${getStatusBadgeClass(item.status)}">${item.status || 'Active'}</span></td>`;
-        
-        // Format date reported
-        let reportDate = 'N/A';
-        if (item.date_reported) {
-          try {
-            const date = new Date(item.date_reported);
-            if (!isNaN(date.getTime())) {
-              reportDate = date.toLocaleDateString();
-            }
-          } catch (e) {
-            reportDate = item.date_reported;
-          }
-        }
-        row += `<td>${reportDate}</td>`;
-        
-        row += `<td>${item.user_first_name || ''} ${item.user_last_name || ''}</td>`;
+        textContent += 'No users found in the selected period.\n';
       }
       
-      row += '</tr>';
-      tableBody.innerHTML += row;
-    });
-  } else {
-    tableBody.innerHTML = `<tr><td colspan="${headers.length}" class="text-center text-muted py-3">No data found for the selected criteria</td></tr>`;
+    } else if (data.summary.report_type === 'revenue') {
+      textContent += 'REVENUE REPORT\n';
+      textContent += `Total Items: ${data.summary.total_items}\n`;
+      textContent += `Total Revenue: ₱${data.summary.total_revenue || 0}\n`;
+      textContent += `Unique Payers: ${data.summary.unique_payers || 0}\n`;
+      textContent += '========================================\n\n';
+
+      if (data.items && data.items.length > 0) {
+        data.items.forEach((item, index) => {
+          textContent += `${index + 1}. PAYMENT DETAILS:\n`;
+          textContent += `   Item: ${item.title}\n`;
+          textContent += `   User: ${item.user_first_name} ${item.user_last_name}\n`;
+          textContent += `   Email: ${item.user_email}\n`;
+          textContent += `   Amount: ₱${item.amount || 20}\n`;
+          textContent += `   Payment Date: ${new Date(item.created_at).toLocaleDateString()}\n`;
+          textContent += '----------------------------------------\n\n';
+        });
+      } else {
+        textContent += 'No payments found in the selected period.\n';
+      }
+      
+    } else {
+      textContent += `Total Items: ${data.summary.total_items}\n`;
+      textContent += `Lost Items: ${data.summary.lost_items}\n`;
+      textContent += `Found Items: ${data.summary.found_items}\n`;
+      textContent += `Resolved Items: ${data.summary.resolved_items}\n`;
+      textContent += `Revenue: ₱${data.summary.total_revenue || 0}\n`;
+      textContent += '========================================\n\n';
+
+      if (data.items && data.items.length > 0) {
+        data.items.forEach((item, index) => {
+          textContent += `${index + 1}. ITEM DETAILS:\n`;
+          textContent += `   Title: ${item.title}\n`;
+          textContent += `   Type: ${item.type}\n`;
+          textContent += `   Category: ${item.category}\n`;
+          textContent += `   Status: ${item.status}\n`;
+          textContent += `   Date Reported: ${new Date(item.date_reported).toLocaleDateString()}\n`;
+          textContent += `   Location: ${item.location_reported}\n`;
+          if (item.reward) textContent += `   Reward: ₱${item.reward}\n`;
+          textContent += `   Payment Status: ${item.payment_status || 'N/A'}\n\n`;
+          
+          textContent += '   USER DETAILS:\n';
+          textContent += `   Name: ${item.user_first_name} ${item.last_name}\n`;
+          textContent += `   Email: ${item.user_email}\n`;
+          textContent += `   Phone: ${item.user_phone || 'Not provided'}\n`;
+          textContent += `   User Since: ${new Date(item.user_created_at).toLocaleDateString()}\n`;
+          textContent += '----------------------------------------\n\n';
+        });
+      } else {
+        textContent += 'No items found in the selected period.\n';
+      }
+    }
+
+    document.getElementById('reportTextContent').textContent = textContent;
   }
-}
+
+  function showTableView(data, format) {
+    document.getElementById('textView').style.display = 'none';
+    document.getElementById('tableView').style.display = 'block';
+
+    const tableHeader = document.getElementById('reportTableHeader');
+    const tableBody = document.getElementById('reportTableBody');
+
+    // Clear previous content
+    tableHeader.innerHTML = '';
+    tableBody.innerHTML = '';
+
+    // Create headers based on report type
+    let headers = ['#', 'Item Title', 'Type', 'Category', 'Status', 'Date Reported', 'User Name'];
+    
+    if (data.summary.report_type === 'revenue') {
+      headers = ['#', 'Item Title', 'User Name', 'Payment Status', 'Amount', 'Payment Date'];
+    } else if (data.summary.report_type === 'users') {
+      headers = ['#', 'User Name', 'Email', 'Phone', 'Items Posted', 'Joined Date', 'Status'];
+    }
+
+    // Create header row
+    let headerRow = '<tr>';
+    headers.forEach(header => {
+      headerRow += `<th>${header}</th>`;
+    });
+    headerRow += '</tr>';
+    tableHeader.innerHTML = headerRow;
+
+    // Create data rows
+    if (data.items && data.items.length > 0) {
+      data.items.forEach((item, index) => {
+        let row = '<tr>';
+        
+        if (data.summary.report_type === 'revenue') {
+          row += `<td>${index + 1}</td>`;
+          row += `<td>${item.title || '-'}</td>`;
+          row += `<td>${item.user_first_name} ${item.user_last_name}</td>`;
+          row += `<td><span class="badge bg-success">${item.payment_status || 'N/A'}</span></td>`;
+          row += `<td>₱${item.amount || '20'}</td>`;
+          
+          // Use created_at as payment date
+          let paymentDate = 'N/A';
+          if (item.created_at) {
+            try {
+              const date = new Date(item.created_at);
+              if (!isNaN(date.getTime())) {
+                paymentDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+              }
+            } catch (e) {
+              paymentDate = item.created_at;
+            }
+          }
+          row += `<td>${paymentDate}</td>`;
+          
+        } else if (data.summary.report_type === 'users') {
+          // USER ACTIVITY REPORT
+          row += `<td>${index + 1}</td>`;
+          row += `<td>${item.first_name || ''} ${item.last_name || ''}</td>`;
+          row += `<td>${item.email || '-'}</td>`;
+          row += `<td>${item.phone || '-'}</td>`;
+          row += `<td>${item.total_items || 0}</td>`;
+          
+          // Format join date
+          let joinDate = 'N/A';
+          if (item.created_at) {
+            try {
+              const date = new Date(item.created_at);
+              if (!isNaN(date.getTime())) {
+                joinDate = date.toLocaleDateString();
+              }
+            } catch (e) {
+              joinDate = item.created_at;
+            }
+          } else if (item.user_created_at) {
+            try {
+              const date = new Date(item.user_created_at);
+              if (!isNaN(date.getTime())) {
+                joinDate = date.toLocaleDateString();
+              }
+            } catch (e) {
+              joinDate = item.user_created_at;
+            }
+          }
+          row += `<td>${joinDate}</td>`;
+          
+          // User status
+          const isActive = item.is_active !== false;
+          row += `<td><span class="badge ${isActive ? 'bg-success' : 'bg-secondary'}">${isActive ? 'Active' : 'Inactive'}</span></td>`;
+          
+        } else {
+          // REGULAR ITEMS REPORT
+          row += `<td>${index + 1}</td>`;
+          row += `<td>${item.title || '-'}</td>`;
+          row += `<td><span class="badge ${item.type === 'lost' ? 'bg-danger' : 'bg-success'}">${item.type}</span></td>`;
+          row += `<td>${item.category || '-'}</td>`;
+          row += `<td><span class="badge ${getStatusBadgeClass(item.status)}">${item.status || 'Active'}</span></td>`;
+          
+          // Format date reported
+          let reportDate = 'N/A';
+          if (item.date_reported) {
+            try {
+              const date = new Date(item.date_reported);
+              if (!isNaN(date.getTime())) {
+                reportDate = date.toLocaleDateString();
+              }
+            } catch (e) {
+              reportDate = item.date_reported;
+            }
+          }
+          row += `<td>${reportDate}</td>`;
+          
+          row += `<td>${item.user_first_name || ''} ${item.user_last_name || ''}</td>`;
+        }
+        
+        row += '</tr>';
+        tableBody.innerHTML += row;
+      });
+    } else {
+      tableBody.innerHTML = `<tr><td colspan="${headers.length}" class="text-center text-muted py-3">No data found for the selected criteria</td></tr>`;
+    }
+  }
 
   function getStatusBadgeClass(status) {
+    if (!status) return 'bg-secondary';
     switch(status.toLowerCase()) {
       case 'claimed':
       case 'returned':
@@ -732,7 +1014,6 @@
   }
 
   function updateQuickStats(summary) {
-    // This function updates the quick stats display
     // Already handled in displayReport function
   }
 
@@ -771,359 +1052,506 @@
     }
   }
 
-// Add this function before downloadExcel()
-function s2ab(s) {
-  const buf = new ArrayBuffer(s.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < s.length; i++) {
-    view[i] = s.charCodeAt(i) & 0xFF;
+  function s2ab(s) {
+    const buf = new ArrayBuffer(s.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < s.length; i++) {
+      view[i] = s.charCodeAt(i) & 0xFF;
+    }
+    return buf;
   }
-  return buf;
-}
 
-  async function downloadExcel() {
-  // Create worksheet from table data
-  const table = document.getElementById('reportTable');
-  const ws = XLSX.utils.table_to_sheet(table);
-  
-  // Get column letters for date columns
-  const dateColumns = [];
-  const headers = [];
-  
-  // Get headers to identify date columns
-  table.querySelectorAll('th').forEach((th, index) => {
-    headers.push(th.textContent);
-    if (th.textContent.toLowerCase().includes('date') || 
-        th.textContent.toLowerCase().includes('created') ||
-        th.textContent.toLowerCase().includes('reported')) {
-      dateColumns.push(index);
+ async function downloadExcel() {
+    if (!currentReportData) {
+        showErrorMessage('No report data to download');
+        return;
     }
-  });
-  
-  // Format date columns
-  const dateStyle = {
-    numFmt: 'yyyy-mm-dd hh:mm:ss'
-  };
-  
-  // Get the column letters (A, B, C, etc.)
-  dateColumns.forEach(colIndex => {
-    const colLetter = XLSX.utils.encode_col(colIndex);
+
+    // Get the current view (table or text)
+    const isTableView = document.getElementById('tableView').style.display !== 'none';
     
-    // Apply date format to the entire column
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let row = range.s.r + 1; row <= range.e.r; row++) {
-      const cellAddress = XLSX.utils.encode_cell({r: row, c: colIndex});
-      if (ws[cellAddress]) {
-        // Parse the date string
-        const dateStr = ws[cellAddress].v;
-        if (dateStr) {
-          try {
-            const date = new Date(dateStr);
-            if (!isNaN(date.getTime())) {
-              ws[cellAddress].v = date;
-              ws[cellAddress].t = 'd';
-              ws[cellAddress].z = 'yyyy-mm-dd hh:mm:ss';
-            }
-          } catch (e) {
-            console.log('Could not parse date:', dateStr);
-          }
+    // Create header rows
+    const titleRow = [["🤝 Reunited Analytics Report"]];
+    const generatedRow = [[`Generated: ${new Date().toLocaleString()}`]];
+    const periodRow = [[`Period: ${new Date(currentReportData.summary.start_date).toLocaleDateString()} to ${new Date(currentReportData.summary.end_date).toLocaleDateString()}`]];
+    const reportTypeRow = [[`Report Type: ${getReportTitle(currentReportData.summary.report_type)}`]];
+    const emptyRow = [[""]];
+    
+    // Get report data
+    let allData = [...titleRow, ...generatedRow, ...periodRow, ...reportTypeRow, ...emptyRow];
+    
+    // Add summary
+    const summaryText = getReportSummary(currentReportData.summary);
+    const summaryLines = summaryText.split('<br>');
+    summaryLines.forEach(line => {
+        allData.push([line]);
+    });
+    allData.push(emptyRow[0]);
+    
+    if (isTableView) {
+        // Get table data
+        const table = document.getElementById('reportTable');
+        const headers = [];
+        const data = [];
+        
+        // Get headers
+        table.querySelectorAll('th').forEach(th => {
+            headers.push(th.textContent.trim());
+        });
+        
+        // Get data
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const rowData = [];
+            row.querySelectorAll('td').forEach(td => {
+                rowData.push(td.textContent.trim());
+            });
+            data.push(rowData);
+        });
+        
+        // Add headers and data
+        allData.push(headers);
+        allData.push(...data);
+    } else {
+        // Get text content
+        const textContent = document.getElementById('reportTextContent').textContent;
+        const textLines = textContent.split('\n');
+        textLines.forEach(line => {
+            allData.push([line]);
+        });
+    }
+    
+    // Add footer
+    allData.push(emptyRow[0]);
+    allData.push(["Report generated by Reunited Admin Dashboard"]);
+    allData.push([`© ${new Date().getFullYear()} Reunited`]);
+    
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Apply styling to title
+    ws['A1'].s = {
+        font: { bold: true, size: 16, color: { rgb: "1E3A8A" } },
+        alignment: { horizontal: "center" }
+    };
+    
+    // Apply styling to metadata rows
+    ['A2', 'A3', 'A4'].forEach(cell => {
+        if (ws[cell]) {
+            ws[cell].s = {
+                font: { size: 11, color: { rgb: "666666" } },
+                alignment: { horizontal: "center" }
+            };
         }
-      }
-    }
+    });
     
-    // Set column width for date columns
-    ws['!cols'] = ws['!cols'] || [];
-    ws['!cols'][colIndex] = { width: 20 };
-  });
-  
-  // Set column widths for other columns
-  if (!ws['!cols']) ws['!cols'] = [];
-  headers.forEach((header, index) => {
-    if (!dateColumns.includes(index)) {
-      const width = Math.min(Math.max(header.length * 1.2, 10), 30);
-      ws['!cols'][index] = { width: width };
-    }
-  });
-  
-  // Create workbook
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Report");
-  
-  // Generate Excel file
-  const wbout = XLSX.write(wb, { 
-    bookType: 'xlsx', 
-    type: 'binary',
-    cellStyles: true 
-  });
-  
-  // Convert to blob and download
-  const blob = new Blob([s2ab(wbout)], { 
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
-  });
-  
-  const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.xlsx`;
-  saveAs(blob, filename);
+    // Set column widths
+    const maxCols = allData.reduce((max, row) => Math.max(max, row.length), 0);
+    ws['!cols'] = Array(maxCols).fill().map(() => ({ wch: 20 }));
+    
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    
+    // Generate Excel file
+    const wbout = XLSX.write(wb, { 
+        bookType: 'xlsx', 
+        type: 'binary'
+    });
+    
+    // Convert to blob and download
+    const blob = new Blob([s2ab(wbout)], { 
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+    });
+    
+    const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+    saveAs(blob, filename);
 }
 
-  async function downloadWord() {
-    // Create HTML content for Word document
-    let htmlContent = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" 
-            xmlns:w="urn:schemas-microsoft-com:office:word" 
-            xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="UTF-8">
-        <title>Reunited Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; }
-          h1 { color: #1E3A8A; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-        </style>
-      </head>
-      <body>
-        <h1>Reunited Items Report</h1>
-        <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-        <p><strong>Period:</strong> ${new Date(currentReportData.summary.start_date).toLocaleDateString()} to ${new Date(currentReportData.summary.end_date).toLocaleDateString()}</p>
-        <hr>
-        ${document.getElementById('tableView').innerHTML}
-      </body>
-      </html>
-    `;
+async function downloadWord() {
+    if (!currentReportData) {
+        showErrorMessage('No report data to download');
+        return;
+    }
 
-    // Create blob and download
-    const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+    // Use the EXACT SAME printReport() function to generate content
+    const printContent = getPrintContent();
+    
+    // Create blob and download as Word document
+    const blob = new Blob(['\ufeff', printContent], { 
+        type: 'application/msword' 
+    });
+    
     const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.doc`;
     saveAs(blob, filename);
-  }
+}
 
-  async function downloadText() {
-    const textContent = document.getElementById('reportTextContent').textContent;
+async function downloadText() {
+    if (!currentReportData) {
+        showErrorMessage('No report data to download');
+        return;
+    }
+
+    // Get the current view
+    const isTableView = document.getElementById('tableView').style.display !== 'none';
+    
+    let textContent = '';
+    
+    if (isTableView) {
+        // Create text version that matches print format
+        textContent = '🤝 Reunited Analytics Report\n';
+        textContent += '='.repeat(50) + '\n';
+        textContent += `Generated: ${new Date().toLocaleString()}\n`;
+        textContent += `Period: ${new Date(currentReportData.summary.start_date).toLocaleDateString()} to ${new Date(currentReportData.summary.end_date).toLocaleDateString()}\n`;
+        textContent += `Report Type: ${getReportTitle(currentReportData.summary.report_type)}\n`;
+        textContent += '='.repeat(50) + '\n\n';
+        
+        // Add summary
+        textContent += 'REPORT SUMMARY:\n';
+        textContent += getReportSummary(currentReportData.summary).replace(/<br>/g, '\n') + '\n\n';
+        
+        // Add table
+        const table = document.getElementById('reportTable');
+        const headers = [];
+        
+        // Get headers
+        table.querySelectorAll('th').forEach(th => {
+            headers.push(th.textContent.trim());
+        });
+        
+        // Create header line
+        textContent += headers.join(' | ') + '\n';
+        textContent += '-'.repeat(headers.join(' | ').length) + '\n';
+        
+        // Get data
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const rowData = [];
+            row.querySelectorAll('td').forEach(td => {
+                rowData.push(td.textContent.trim());
+            });
+            textContent += rowData.join(' | ') + '\n';
+        });
+        
+        textContent += '\n' + '='.repeat(50) + '\n';
+        textContent += 'Report generated by Reunited Admin Dashboard\n';
+        textContent += `© ${new Date().getFullYear()} Reunited\n`;
+        textContent += '='.repeat(50) + '\n';
+    } else {
+        // Use the existing text view content
+        textContent = document.getElementById('reportTextContent').textContent;
+    }
+    
     const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
     const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.txt`;
     saveAs(blob, filename);
-  }
+}
 
-  async function downloadTable() {
-    // Download table as CSV
-    const table = document.getElementById('reportTable');
+async function downloadTable() {
+    if (!currentReportData) {
+        showErrorMessage('No report data to download');
+        return;
+    }
+
+    // Get the current view
+    const isTableView = document.getElementById('tableView').style.display !== 'none';
+    
     let csv = [];
     
-    // Get headers
-    const headers = [];
-    table.querySelectorAll('th').forEach(th => {
-      headers.push(th.textContent);
-    });
-    csv.push(headers.join(','));
-    
-    // Get rows
-    table.querySelectorAll('tbody tr').forEach(row => {
-      const rowData = [];
-      row.querySelectorAll('td').forEach(td => {
-        // Remove badge HTML and get text only
-        let text = td.textContent.trim();
-        rowData.push(`"${text}"`);
-      });
-      csv.push(rowData.join(','));
-    });
+    if (isTableView) {
+        // Add header information
+        csv.push('"🤝 Reunited Analytics Report"');
+        csv.push(`"Generated: ${new Date().toLocaleString()}"`);
+        csv.push(`"Period: ${new Date(currentReportData.summary.start_date).toLocaleDateString()} to ${new Date(currentReportData.summary.end_date).toLocaleDateString()}"`);
+        csv.push(`"Report Type: ${getReportTitle(currentReportData.summary.report_type)}"`);
+        csv.push('""'); // Empty line
+        
+        // Add summary
+        const summaryText = getReportSummary(currentReportData.summary).replace(/<br>/g, '\n');
+        const summaryLines = summaryText.split('\n');
+        summaryLines.forEach(line => {
+            if (line.trim()) csv.push(`"${line}"`);
+        });
+        
+        csv.push('""'); // Empty line
+        
+        // Get table data
+        const table = document.getElementById('reportTable');
+        const headers = [];
+        
+        // Get headers
+        table.querySelectorAll('th').forEach(th => {
+            headers.push(th.textContent.trim());
+        });
+        csv.push(headers.map(h => `"${h}"`).join(','));
+        
+        // Get rows
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const rowData = [];
+            row.querySelectorAll('td').forEach(td => {
+                rowData.push(`"${td.textContent.trim()}"`);
+            });
+            csv.push(rowData.join(','));
+        });
+        
+        csv.push('""'); // Empty line
+        csv.push('"Report generated by Reunited Admin Dashboard"');
+        csv.push(`"© ${new Date().getFullYear()} Reunited"`);
+    } else {
+        // For text view, create CSV from text content
+        const textContent = document.getElementById('reportTextContent').textContent;
+        const lines = textContent.split('\n');
+        lines.forEach(line => {
+            csv.push(`"${line}"`);
+        });
+    }
     
     const csvContent = csv.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
     const filename = `reunited_report_${new Date().toISOString().split('T')[0]}.csv`;
     saveAs(blob, filename);
-  }
+}
 
-  function printReport() {
-  if (!currentReportData) {
-    showErrorMessage('No report to print');
-    return;
-  }
+function printReport() {
+    if (!currentReportData) {
+        showErrorMessage('No report to print');
+        return;
+    }
 
-  // Create a print-friendly window
-  const printWindow = window.open('', '_blank', 'width=800,height=600');
-  
-  // Get the current view (table or text)
-  const isTableView = document.getElementById('tableView').style.display !== 'none';
-  const isTextView = document.getElementById('textView').style.display !== 'none';
-  
-  // Create print content
-  let printContent = `
+    const printContent = getPrintContent();
+    
+    // Create print window
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Trigger print after content loads
+    printWindow.onload = function() {
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.onafterprint = function() {
+                printWindow.close();
+            };
+        }, 500);
+    };
+}
+
+// NEW HELPER FUNCTION: Get consistent print content for all formats
+function getPrintContent() {
+    // Get the current view (table or text)
+    const isTableView = document.getElementById('tableView').style.display !== 'none';
+    
+    // Create complete print document with all formatting
+    let printContent = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Reunited Report</title>
-      <style>
-        @media print {
-          @page { margin: 0.5in; }
-          body { font-family: Arial, sans-serif; font-size: 12pt; }
-        }
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .print-header { 
-          text-align: center; 
-          margin-bottom: 30px; 
-          border-bottom: 2px solid #333; 
-          padding-bottom: 10px;
-        }
-        .print-header h1 { 
-          color: #1E3A8A; 
-          margin: 0; 
-          font-size: 24pt; 
-        }
-        .print-header h2 { 
-          color: #374151; 
-          margin: 5px 0 15px 0; 
-          font-size: 16pt;
-          font-weight: normal;
-        }
-        .print-summary {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 5px;
-          margin-bottom: 20px;
-          border-left: 4px solid #1E3A8A;
-        }
-        .print-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        .print-table th {
-          background-color: #f2f2f2;
-          border: 1px solid #ddd;
-          padding: 8px;
-          text-align: left;
-          font-weight: bold;
-        }
-        .print-table td {
-          border: 1px solid #ddd;
-          padding: 8px;
-        }
-        .print-table tr:nth-child(even) {
-          background-color: #f9f9f9;
-        }
-        .print-text {
-          font-family: 'Courier New', monospace;
-          font-size: 11pt;
-          line-height: 1.5;
-          white-space: pre-wrap;
-        }
-        .print-footer {
-          margin-top: 40px;
-          padding-top: 10px;
-          border-top: 1px solid #ddd;
-          font-size: 10pt;
-          color: #666;
-          text-align: center;
-        }
-        .badge {
-          padding: 2px 6px;
-          border-radius: 3px;
-          font-size: 10pt;
-          font-weight: bold;
-        }
-        .badge-success { background-color: #28a745; color: white; }
-        .badge-danger { background-color: #dc3545; color: white; }
-        .badge-warning { background-color: #ffc107; color: #212529; }
-        .badge-primary { background-color: #007bff; color: white; }
-        .badge-secondary { background-color: #6c757d; color: white; }
-      </style>
+        <title>Reunited Report</title>
+        <meta charset="UTF-8">
+        <style>
+            @media print {
+                @page {
+                    margin: 0.5in;
+                    @top-center {
+                        content: "🤝 Reunited Analytics Report";
+                        font-size: 12pt;
+                        color: #1E3A8A;
+                    }
+                    @bottom-right {
+                        content: "Page " counter(page) " of " counter(pages);
+                        font-size: 10pt;
+                        color: #666;
+                    }
+                }
+                
+                body {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+            }
+            
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0.5in;
+                color: #333;
+                line-height: 1.6;
+                background: white;
+            }
+            
+            .print-header {
+                text-align: center;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 3px solid #1E3A8A;
+                page-break-after: avoid;
+            }
+            
+            .logo {
+                font-size: 28px;
+                font-weight: bold;
+                color: #1E3A8A;
+                margin-bottom: 10px;
+            }
+            
+            .report-title {
+                font-size: 20px;
+                color: #374151;
+                margin: 10px 0;
+            }
+            
+            .report-meta {
+                color: #666;
+                font-size: 14px;
+                margin: 5px 0;
+            }
+            
+            .summary {
+                background: #f8f9fa !important;
+                padding: 15px;
+                border-left: 4px solid #1E3A8A;
+                margin: 20px 0;
+                border-radius: 4px;
+                page-break-inside: avoid;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .summary strong {
+                color: #1E3A8A;
+            }
+            
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                font-size: 11px;
+                page-break-inside: avoid;
+            }
+            
+            th {
+                background-color: #1E3A8A !important;
+                color: white !important;
+                font-weight: bold;
+                padding: 10px;
+                border: 1px solid #ddd;
+                text-align: left;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            td {
+                padding: 8px;
+                border: 1px solid #ddd;
+            }
+            
+            tr:nth-child(even) {
+                background-color: #f9f9f9 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .badge {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: bold;
+                color: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .badge-success { background-color: #28a745 !important; }
+            .badge-danger { background-color: #dc3545 !important; }
+            .badge-warning { background-color: #ffc107 !important; color: #212529 !important; }
+            .badge-primary { background-color: #007bff !important; }
+            .badge-secondary { background-color: #6c757d !important; }
+            
+            .text-view {
+                font-family: 'Courier New', monospace;
+                font-size: 11px;
+                line-height: 1.4;
+                white-space: pre-wrap;
+                background: #f8f9fa !important;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                page-break-inside: avoid;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .print-footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                color: #666;
+                font-size: 10px;
+                text-align: center;
+                page-break-before: avoid;
+            }
+            
+            @media print {
+                .no-print {
+                    display: none !important;
+                }
+            }
+        </style>
     </head>
     <body>
-      <div class="print-header">
-        <h1>🤝 Reunited</h1>
-        <h2>${getReportTitle(currentReportData.summary.report_type)} Report</h2>
-        <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-        <p><strong>Period:</strong> ${new Date(currentReportData.summary.start_date).toLocaleDateString()} to ${new Date(currentReportData.summary.end_date).toLocaleDateString()}</p>
-      </div>
-      
-      <div class="print-summary">
-        <strong>Report Summary:</strong><br>
-        ${getReportSummary(currentReportData.summary)}
-      </div>
-  `;
-
-  // Add the report content (table or text)
-  if (isTableView) {
-    const table = document.getElementById('reportTable');
-    if (table) {
-      printContent += `
-        <div class="table-responsive">
-          ${table.outerHTML}
+        <div class="print-header">
+            <div class="logo">🤝 Reunited</div>
+            <div class="report-title">${getReportTitle(currentReportData.summary.report_type)} Report</div>
+            <div class="report-meta">Generated: ${new Date().toLocaleString()}</div>
+            <div class="report-meta">Period: ${new Date(currentReportData.summary.start_date).toLocaleDateString()} to ${new Date(currentReportData.summary.end_date).toLocaleDateString()}</div>
         </div>
-      `;
+        
+        <div class="summary">
+            <strong>Report Summary:</strong><br>
+            ${getReportSummary(currentReportData.summary)}
+        </div>
+    `;
+    
+    // Add the actual report content
+    if (isTableView) {
+        const table = document.getElementById('reportTable');
+        printContent += table.outerHTML;
+    } else {
+        const textContent = document.getElementById('reportTextContent').textContent;
+        printContent += `<div class="text-view">${textContent}</div>`;
     }
-  } else if (isTextView) {
-    const textContent = document.getElementById('reportTextContent').textContent;
+    
+    // Add footer
     printContent += `
-      <div class="print-text">
-        ${textContent.replace(/\n/g, '<br>').replace(/  /g, '&nbsp;&nbsp;')}
-      </div>
-    `;
-  }
-
-  // Add footer
-  printContent += `
-      <div class="print-footer">
-        <p>© ${new Date().getFullYear()} Reunited. Helping reconnect lost items with their owners.</p>
-        <p>This report was generated from the Reunited Admin Dashboard.</p>
-      </div>
+        <div class="print-footer">
+            <p>© ${new Date().getFullYear()} Reunited. Helping reconnect lost items with their owners.</p>
+            <p>This report was generated from the Reunited Admin Dashboard.</p>
+        </div>
     </body>
-    </html>
-  `;
-
-  // Write content to print window
-  printWindow.document.write(printContent);
-  printWindow.document.close();
-  
-  // Trigger print after content loads
-  printWindow.onload = function() {
-    setTimeout(() => {
-      printWindow.print();
-      // Optionally close after printing
-      // printWindow.afterprint = function() { printWindow.close(); };
-    }, 500);
-  };
+    </html>`;
+    
+    return printContent;
 }
 
-// Helper functions for print content
-function getReportTitle(reportType) {
-  const titles = {
-    'all': 'All Items',
-    'lost': 'Lost Items',
-    'found': 'Found Items',
-    'resolved': 'Resolved Items',
-    'users': 'User Activity',
-    'revenue': 'Revenue'
-  };
-  return titles[reportType] || 'Items';
-}
-
-function getReportSummary(summary) {
-  if (summary.report_type === 'users') {
-    return `
-      ${summary.total_users || 0} users registered<br>
-      ${summary.total_items_by_users || 0} total items posted<br>
-      Generated on ${new Date().toLocaleDateString()}
-    `;
-  } else if (summary.report_type === 'revenue') {
-    return `
-      ${summary.total_items || 0} paid items<br>
-      Total Revenue: ₱${summary.total_revenue || 0}<br>
-      ${summary.unique_payers || 0} paying users<br>
-      Generated on ${new Date().toLocaleDateString()}
-    `;
-  } else {
-    return `
-      ${summary.total_items} total items<br>
-      ${summary.lost_items} lost items<br>
-      ${summary.found_items} found items<br>
-      ${summary.resolved_items} resolved items<br>
-      Revenue: ₱${summary.total_revenue || 0}<br>
-      Generated on ${new Date().toLocaleDateString()}
-    `;
+  // Helper functions for print content
+  function getReportTitle(reportType) {
+    const titles = {
+      'all': 'All Items',
+      'lost': 'Lost Items',
+      'found': 'Found Items',
+      'resolved': 'Resolved Items',
+      'users': 'User Activity',
+      'revenue': 'Revenue'
+    };
+    return titles[reportType] || 'Items';
   }
-}
+
+  function getReportSummary(summary) {
+    if (summary.report_type === 'users') {
+      return `${summary.total_users || 0} users registered<br>${summary.total_items_by_users || 0} total items posted<br>Generated on ${new Date().toLocaleDateString()}`;
+    } else if (summary.report_type === 'revenue') {
+      return `${summary.total_items || 0} paid items<br>Total Revenue: ₱${summary.total_revenue || 0}<br>${summary.unique_payers || 0} paying users<br>Generated on ${new Date().toLocaleDateString()}`;
+    } else {
+      return `${summary.total_items} total items<br>${summary.lost_items} lost items<br>${summary.found_items} found items<br>${summary.resolved_items} resolved items<br>Revenue: ₱${summary.total_revenue || 0}<br>Generated on ${new Date().toLocaleDateString()}`;
+    }
+  }
 
   function updateCharts(charts) {
     // Destroy existing charts
@@ -1133,26 +1561,52 @@ function getReportSummary(summary) {
 
     // Weekly Items Chart
     const weeklyCtx = document.getElementById('weeklyItemsChart').getContext('2d');
+    
+    // Prepare data
+    const labels = charts.weekly_items?.labels || charts.monthly_items?.labels || ['No Data'];
+    const lostData = charts.weekly_items?.lost || charts.monthly_items?.lost || [0];
+    const foundData = charts.weekly_items?.found || charts.monthly_items?.found || [0];
+    
+    // Calculate maximum for y-axis
+    const maxDataValue = Math.max(...lostData, ...foundData);
+    const yAxisMax = maxDataValue === 0 ? 5 : Math.ceil(maxDataValue * 1.1); // Add 10% padding
+    
+    // Check screen width for responsive adjustments
+    const isMobile = window.innerWidth < 768;
+    const isSmallMobile = window.innerWidth < 576;
+    
     weeklyItemsChart = new Chart(weeklyCtx, {
       type: 'line',
       data: {
-        labels: charts.weekly_items?.labels || charts.monthly_items?.labels || ['No Data'],
+        labels: labels,
         datasets: [
           {
             label: 'Lost Items',
-            data: charts.weekly_items?.lost || charts.monthly_items?.lost || [0],
+            data: lostData,
             borderColor: '#dc3545',
             backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            borderWidth: isSmallMobile ? 1.5 : 2,
             tension: 0.4,
-            fill: true
+            fill: true,
+            pointBackgroundColor: '#dc3545',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: isSmallMobile ? 1 : 1.5,
+            pointRadius: isSmallMobile ? 3 : (isMobile ? 4 : 5),
+            pointHoverRadius: isSmallMobile ? 4 : (isMobile ? 5 : 6)
           },
           {
             label: 'Found Items',
-            data: charts.weekly_items?.found || charts.monthly_items?.found || [0],
+            data: foundData,
             borderColor: '#28a745',
             backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            borderWidth: isSmallMobile ? 1.5 : 2,
             tension: 0.4,
-            fill: true
+            fill: true,
+            pointBackgroundColor: '#28a745',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: isSmallMobile ? 1 : 1.5,
+            pointRadius: isSmallMobile ? 3 : (isMobile ? 4 : 5),
+            pointHoverRadius: isSmallMobile ? 4 : (isMobile ? 5 : 6)
           }
         ]
       },
@@ -1161,19 +1615,71 @@ function getReportSummary(summary) {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            position: 'top',
+            position: isSmallMobile ? 'bottom' : 'top',
+            labels: {
+              boxWidth: isSmallMobile ? 8 : 12,
+              padding: isSmallMobile ? 10 : 15,
+              font: {
+                size: isSmallMobile ? 10 : (isMobile ? 11 : 12)
+              }
+            }
           },
           tooltip: {
             mode: 'index',
-            intersect: false
+            intersect: false,
+            titleFont: {
+              size: isSmallMobile ? 10 : 12
+            },
+            bodyFont: {
+              size: isSmallMobile ? 10 : 12
+            },
+            padding: isSmallMobile ? 8 : 10
           }
         },
         scales: {
           y: {
             beginAtZero: true,
+            max: yAxisMax,
             ticks: {
-              stepSize: 1
+              stepSize: maxDataValue <= 5 ? 1 : Math.ceil(maxDataValue / 5),
+              font: {
+                size: isSmallMobile ? 9 : (isMobile ? 10 : 11)
+              },
+              padding: isSmallMobile ? 5 : 8
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            },
+            title: {
+              display: true,
+              text: 'Number of Items',
+              font: {
+                size: isSmallMobile ? 10 : (isMobile ? 11 : 12),
+                weight: 'normal'
+              }
             }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              font: {
+                size: isSmallMobile ? 9 : (isMobile ? 10 : 11)
+              },
+              maxRotation: isSmallMobile ? 45 : 0,
+              autoSkip: true,
+              maxTicksLimit: isSmallMobile ? 5 : (isMobile ? 8 : 12)
+            }
+          }
+        },
+        // Adjust layout for mobile
+        layout: {
+          padding: {
+            left: isSmallMobile ? 5 : 10,
+            right: isSmallMobile ? 5 : 10,
+            top: isSmallMobile ? 10 : 15,
+            bottom: isSmallMobile ? 10 : 15
           }
         }
       }
@@ -1207,7 +1713,7 @@ function getReportSummary(summary) {
             '#28a745',
             '#007bff'
           ],
-          borderWidth: 2,
+          borderWidth: isSmallMobile ? 1 : 2,
           borderColor: '#ffffff'
         }]
       },
@@ -1216,7 +1722,15 @@ function getReportSummary(summary) {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: false
+            display: isSmallMobile ? false : true,
+            position: isMobile ? 'bottom' : 'right',
+            labels: {
+              boxWidth: isSmallMobile ? 8 : 12,
+              padding: isSmallMobile ? 8 : 15,
+              font: {
+                size: isSmallMobile ? 9 : (isMobile ? 10 : 11)
+              }
+            }
           },
           tooltip: {
             callbacks: {
@@ -1227,9 +1741,21 @@ function getReportSummary(summary) {
                 const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
                 return `${label}: ${value} (${percentage}%)`;
               }
+            },
+            titleFont: {
+              size: isSmallMobile ? 10 : 12
+            },
+            bodyFont: {
+              size: isSmallMobile ? 10 : 12
             }
           }
-        }
+        },
+        // Add animation for better mobile performance
+        animation: {
+          duration: isMobile ? 500 : 1000,
+          easing: 'easeOutQuart'
+        },
+        cutout: isSmallMobile ? '50%' : '60%'
       }
     });
 
@@ -1247,7 +1773,7 @@ function getReportSummary(summary) {
             charts.success_rate >= 40 ? '#ffc107' : '#dc3545'
           ],
           borderWidth: 0,
-          borderRadius: 8
+          borderRadius: isSmallMobile ? 4 : 8
         }]
       },
       options: {
@@ -1262,6 +1788,12 @@ function getReportSummary(summary) {
               label: function(context) {
                 return `Success Rate: ${context.raw}%`;
               }
+            },
+            titleFont: {
+              size: isSmallMobile ? 10 : 12
+            },
+            bodyFont: {
+              size: isSmallMobile ? 10 : 12
             }
           }
         },
@@ -1272,22 +1804,53 @@ function getReportSummary(summary) {
             ticks: {
               callback: function(value) {
                 return value + '%';
+              },
+              font: {
+                size: isSmallMobile ? 9 : (isMobile ? 10 : 11)
+              },
+              stepSize: 20
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              font: {
+                size: isSmallMobile ? 9 : (isMobile ? 10 : 11)
               }
             }
           }
-        }
+        },
+        // Adjust bar width for mobile
+        barPercentage: isSmallMobile ? 0.3 : (isMobile ? 0.4 : 0.5),
+        categoryPercentage: isSmallMobile ? 0.3 : (isMobile ? 0.4 : 0.5)
+      }
+    });
+    
+    // Add resize listener for better mobile responsiveness
+    window.addEventListener('resize', function() {
+      if (weeklyItemsChart) {
+        weeklyItemsChart.resize();
+      }
+      if (itemDistributionChart) {
+        itemDistributionChart.resize();
+      }
+      if (successRateChart) {
+        successRateChart.resize();
       }
     });
   }
 
   function showErrorMessage(message) {
     const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3';
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-2 m-md-3';
     alertDiv.style.zIndex = '9999';
-    alertDiv.innerHTML = `
-      <i class="fas fa-exclamation-circle me-2"></i>${message}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
+    alertDiv.style.maxWidth = window.innerWidth < 768 ? 'calc(100% - 1rem)' : '400px';
+    alertDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + message + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
     document.body.appendChild(alertDiv);
     
     setTimeout(() => {

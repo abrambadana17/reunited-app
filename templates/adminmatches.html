@@ -9,15 +9,15 @@
 <div class="row">
   <div class="col-12">
     <!-- Search Section -->
-    <div class="search-section mb-4">
+    <div class="search-section mb-3 mb-md-4">
       <div class="row g-2 align-items-end">
         <div class="col-12 col-md-4 mb-2">
           <label class="form-label small fw-semibold text-muted mb-1">Search Matches</label>
-          <input type="text" class="form-control" id="searchMatches" placeholder="Search by item titles or users..." oninput="debounceSearch()">
+          <input type="text" class="form-control form-control-sm" id="searchMatches" placeholder="Search by item titles or users..." oninput="debounceSearch()">
         </div>
         <div class="col-6 col-md-3 mb-2">
           <label class="form-label small fw-semibold text-muted mb-1">Match Status</label>
-          <select class="form-select" id="matchStatusFilter" onchange="debounceSearch()">
+          <select class="form-select form-select-sm" id="matchStatusFilter" onchange="debounceSearch()">
             <option value="">All Status</option>
             <option value="pending">Pending</option>
             <option value="resolved">Resolved</option>
@@ -26,7 +26,7 @@
         </div>
         <div class="col-6 col-md-3 mb-2">
           <label class="form-label small fw-semibold text-muted mb-1">Confidence</label>
-          <select class="form-select" id="confidenceFilter" onchange="debounceSearch()">
+          <select class="form-select form-select-sm" id="confidenceFilter" onchange="debounceSearch()">
             <option value="">All Levels</option>
             <option value="high">High (≥ 0.8)</option>
             <option value="medium">Medium (0.4-0.8)</option>
@@ -35,9 +35,10 @@
         </div>
         <div class="col-12 col-md-2 mb-2">
           <label class="form-label small fw-semibold text-muted mb-1 d-md-block d-none">&nbsp;</label>
-          <button class="btn btn-outline-admin w-100" onclick="clearSearch()">
+          <button class="btn btn-sm btn-outline-admin w-100" onclick="clearSearch()">
             <i class="fas fa-times me-1"></i>
             <span class="d-none d-sm-inline">Clear</span>
+            <span class="d-sm-none">Reset</span>
           </button>
         </div>
       </div>
@@ -45,19 +46,19 @@
 
     <!-- Matches Table Container -->
     <div class="admin-table-container">
-      <div class="admin-table-header p-3 border-bottom d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-semibold text-gray-700">
+      <div class="admin-table-header px-2 px-md-3 py-2 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold text-gray-700">
           <i class="fas fa-link me-2 text-primary"></i>
           <span class="d-none d-sm-inline">AI Matches</span>
           <span class="d-sm-none">Matches</span>
-        </h5>
-        <span class="text-muted small fw-semibold" id="matchesCount">Loading matches...</span>
+        </h6>
+        <span class="text-muted small fw-semibold" id="matchesCount">Loading...</span>
       </div>
       
       <!-- Scrollable Table Area -->
       <div class="table-container">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0">
+        <div class="table-responsive-xxl">
+          <table class="table table-hover mb-0" id="matchesTable">
             <thead class="table-header">
               <tr>
                 <th class="match-id-col">Match ID</th>
@@ -95,69 +96,133 @@
 </div>
 
 <style>
+  :root {
+    --color-primary: #1E3A8A;
+    --color-primary-hover: #1e40af;
+    --color-accent: #3B82F6;
+    --color-success: #10B981;
+    --color-danger: #EF4444;
+    --color-warning: #facc15;
+    --color-info: #1E3A8A;
+    --color-white: #ffffff;
+    --color-bg-light: #F8F9FA;
+    --color-gray-50: #f9fafb;
+    --color-gray-100: #f3f4f6;
+    --color-gray-200: #e5e7eb;
+    --color-gray-300: #d1d5db;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #6b7280;
+    --color-gray-700: #374151;
+    --color-gray-800: #1f2937;
+    --color-gray-900: #111827;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --border-light: 1px solid var(--color-gray-200);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
   .search-section {
     background: var(--color-white);
     border-radius: var(--radius-lg);
-    padding: 1.5rem;
+    padding: 1rem;
     box-shadow: var(--shadow-sm);
     border: var(--border-light);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .search-section {
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
   }
 
   .loading-spinner {
     display: none;
     text-align: center;
-    padding: 3rem;
+    padding: 2rem 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .loading-spinner {
+      padding: 3rem;
+    }
   }
 
   .item-image {
-    width: 45px;
-    height: 45px;
+    width: 40px;
+    height: 40px;
     object-fit: cover;
-    border-radius: 8px;
-    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    border: 2px solid var(--color-gray-200);
     flex-shrink: 0;
   }
 
   .item-image-placeholder {
-    width: 45px;
-    height: 45px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 8px;
-    border: 2px solid #e9ecef;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-gray-100) 100%);
+    border-radius: 6px;
+    border: 2px solid var(--color-gray-200);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: #6c757d;
+    color: var(--color-gray-500);
+  }
+
+  @media (min-width: 768px) {
+    .item-image,
+    .item-image-placeholder {
+      width: 45px;
+      height: 45px;
+      border-radius: 8px;
+    }
   }
 
   .lost-item-image {
-    border-color: #dc3545;
+    border-color: var(--color-danger);
   }
 
   .found-item-image {
-    border-color: #28a745;
+    border-color: var(--color-success);
   }
 
   /* Table Container Styles */
   .admin-table-container {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e9ecef;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: var(--border-light);
     overflow: hidden;
-    height: 70vh;
+    height: 55vh;
     display: flex;
     flex-direction: column;
     position: relative;
   }
 
+  @media (min-width: 768px) {
+    .admin-table-container {
+      height: 65vh;
+      border-radius: 12px;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--color-gray-200);
+    }
+  }
+
   .admin-table-header {
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef !important;
+    background: var(--color-bg-light);
+    border-bottom: 1px solid var(--color-gray-200) !important;
     flex-shrink: 0;
-    padding: 1rem !important;
+    padding: 0.75rem !important;
+  }
+
+  @media (min-width: 768px) {
+    .admin-table-header {
+      padding: 1rem !important;
+    }
   }
 
   .table-container {
@@ -168,63 +233,107 @@
   }
 
   /* Horizontal scrolling container */
-  .table-responsive {
+  .table-responsive-xxl {
     flex: 1;
     overflow-x: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    position: relative;
   }
 
   .table {
     margin: 0;
     width: 100%;
-    min-width: 800px;
+    min-width: 700px;
+  }
+
+  @media (min-width: 768px) {
+    .table {
+      min-width: 800px;
+    }
+  }
+
+  @media (min-width: 992px) {
+    .table {
+      min-width: 900px;
+    }
   }
 
   .table-header {
     position: sticky;
     top: 0;
-    background: white;
+    background: var(--color-white);
     z-index: 10;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
   }
 
   .table thead th {
-    background: #f8f9fa;
-    border-bottom: 2px solid #e9ecef;
+    background: var(--color-bg-light);
+    border-bottom: 2px solid var(--color-gray-200);
     font-weight: 600;
-    color: #6c757d;
-    padding: 12px 16px;
+    color: var(--color-gray-600);
+    padding: 0.5rem 0.75rem;
     white-space: nowrap;
     position: sticky;
     top: 0;
     z-index: 11;
+    font-size: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .table thead th {
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+    }
   }
 
   .table tbody td {
-    padding: 12px 16px;
+    padding: 0.5rem 0.75rem;
     vertical-align: middle;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--color-gray-100);
     white-space: nowrap;
+    font-size: 0.8125rem;
+  }
+
+  @media (min-width: 768px) {
+    .table tbody td {
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+    }
   }
 
   .table tbody tr:hover {
-    background-color: #f8f9fa;
+    background-color: var(--color-gray-50);
   }
 
   /* Fixed column widths for horizontal scrolling */
-  .match-id-col { width: 100px; min-width: 100px; }
-  .lost-item-col { width: 280px; min-width: 280px; }
-  .found-item-col { width: 280px; min-width: 280px; }
-  .confidence-col { width: 120px; min-width: 120px; }
-  .status-col { width: 120px; min-width: 120px; }
-  .date-col { width: 120px; min-width: 120px; }
+  .match-id-col { width: 80px; min-width: 80px; }
+  .lost-item-col { width: 230px; min-width: 230px; }
+  .found-item-col { width: 230px; min-width: 230px; }
+  .confidence-col { width: 100px; min-width: 100px; }
+  .status-col { width: 100px; min-width: 100px; }
+  .date-col { width: 100px; min-width: 100px; }
+
+  @media (min-width: 768px) {
+    .match-id-col { width: 100px; min-width: 100px; }
+    .lost-item-col { width: 280px; min-width: 280px; }
+    .found-item-col { width: 280px; min-width: 280px; }
+    .confidence-col { width: 120px; min-width: 120px; }
+    .status-col { width: 120px; min-width: 120px; }
+    .date-col { width: 120px; min-width: 120px; }
+  }
 
   /* Item display styles */
   .item-display {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
+  }
+
+  @media (min-width: 768px) {
+    .item-display {
+      gap: 12px;
+    }
   }
 
   .item-info {
@@ -234,14 +343,21 @@
 
   .item-title {
     font-weight: 600;
-    color: #2d3748;
+    color: var(--color-gray-800);
     margin-bottom: 2px;
     line-height: 1.3;
+    font-size: 0.8125rem;
+  }
+
+  @media (min-width: 768px) {
+    .item-title {
+      font-size: 0.875rem;
+    }
   }
 
   .item-user {
-    font-size: 0.8rem;
-    color: #6c757d;
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
     line-height: 1.2;
   }
 
@@ -249,77 +365,54 @@
   .mobile-scroll-hint {
     display: none;
     text-align: center;
-    padding: 8px 12px;
-    background: #f8f9fa;
-    border-top: 1px solid #e9ecef;
-    font-size: 0.75rem;
-    color: #6c757d;
+    padding: 6px 8px;
+    background: var(--color-bg-light);
+    border-top: 1px solid var(--color-gray-200);
+    font-size: 0.7rem;
+    color: var(--color-gray-500);
   }
 
-  /* Mobile-specific styles */
-  @media (max-width: 768px) {
+  @media (max-width: 767.98px) {
     .admin-table-container {
-      height: 60vh;
-      margin: 0 -10px;
+      height: 50vh;
       border-radius: 0;
       border-left: none;
       border-right: none;
-    }
-
-    .admin-table-header {
-      padding: 0.75rem !important;
-    }
-
-    .table {
-      min-width: 750px;
-    }
-
-    .table thead th {
-      font-size: 0.75rem;
-      padding: 10px 12px;
-    }
-
-    .table tbody td {
-      padding: 10px 12px;
-      font-size: 0.8rem;
-    }
-
-    .item-image,
-    .item-image-placeholder {
-      width: 40px;
-      height: 40px;
+      margin: 0 -0.75rem;
+      box-shadow: none;
     }
 
     .mobile-scroll-hint {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-section {
+      border-radius: var(--radius-md);
+      padding: 0.75rem;
+    }
+
+    .search-section .form-control-sm,
+    .search-section .form-select-sm {
+      font-size: 0.8125rem;
+    }
+
+    .search-section .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
     }
 
     /* Adjust column widths for mobile */
-    .match-id-col { width: 90px; min-width: 90px; }
-    .lost-item-col { width: 250px; min-width: 250px; }
-    .found-item-col { width: 250px; min-width: 250px; }
-    .confidence-col { width: 110px; min-width: 110px; }
-    .status-col { width: 110px; min-width: 110px; }
-    .date-col { width: 110px; min-width: 110px; }
-  }
+    .match-id-col { width: 70px; min-width: 70px; }
+    .lost-item-col { width: 200px; min-width: 200px; }
+    .found-item-col { width: 200px; min-width: 200px; }
+    .confidence-col { width: 90px; min-width: 90px; }
+    .status-col { width: 90px; min-width: 90px; }
+    .date-col { width: 90px; min-width: 90px; }
 
-  @media (max-width: 576px) {
-    .admin-table-container {
-      height: 55vh;
-    }
-
-    .table {
-      min-width: 700px;
-    }
-
-    .table thead th {
-      font-size: 0.7rem;
-      padding: 8px 10px;
-    }
-
-    .table tbody td {
-      padding: 8px 10px;
-      font-size: 0.75rem;
+    .item-display {
+      gap: 6px;
     }
 
     .item-image,
@@ -328,22 +421,131 @@
       height: 35px;
     }
 
-    .item-display {
-      gap: 8px;
-    }
-
     .badge {
       font-size: 0.65rem;
-      padding: 4px 6px;
+      padding: 0.2rem 0.4rem;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .admin-table-container {
+      height: 45vh;
+    }
+
+    .table {
+      min-width: 650px;
+    }
+
+    .table thead th {
+      font-size: 0.7rem;
+      padding: 0.5rem 0.5rem;
+    }
+
+    .table tbody td {
+      padding: 0.5rem 0.5rem;
+      font-size: 0.75rem;
+    }
+
+    .item-image,
+    .item-image-placeholder {
+      width: 30px;
+      height: 30px;
+    }
+
+    .item-display {
+      gap: 5px;
+    }
+
+    .item-title {
+      font-size: 0.75rem;
+    }
+
+    .item-user {
+      font-size: 0.7rem;
     }
 
     /* Compact column widths for small phones */
-    .match-id-col { width: 80px; min-width: 80px; }
-    .lost-item-col { width: 230px; min-width: 230px; }
-    .found-item-col { width: 230px; min-width: 230px; }
-    .confidence-col { width: 100px; min-width: 100px; }
-    .status-col { width: 100px; min-width: 100px; }
-    .date-col { width: 100px; min-width: 100px; }
+    .match-id-col { width: 60px; min-width: 60px; }
+    .lost-item-col { width: 180px; min-width: 180px; }
+    .found-item-col { width: 180px; min-width: 180px; }
+    .confidence-col { width: 80px; min-width: 80px; }
+    .status-col { width: 80px; min-width: 80px; }
+    .date-col { width: 80px; min-width: 80px; }
+  }
+
+  @media (min-width: 768px) and (max-height: 700px) {
+    .admin-table-container {
+      height: 60vh;
+    }
+  }
+
+  @media (min-width: 992px) and (max-height: 800px) {
+    .admin-table-container {
+      height: 70vh;
+    }
+  }
+
+  /* Badge styles */
+  .badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  @media (min-width: 768px) {
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.375rem 0.75rem;
+    }
+  }
+
+  /* Form controls mobile optimization */
+  @media (max-width: 767.98px) {
+    .search-section .form-control,
+    .search-section .form-select {
+      min-height: 36px;
+    }
+
+    .form-select {
+      background-position: right 0.5rem center;
+      background-size: 10px 10px;
+    }
+
+    .btn-outline-admin {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  /* Spinner adjustments */
+  .spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .spinner-border {
+      width: 2rem;
+      height: 2rem;
+    }
+  }
+
+  /* Touch-friendly improvements */
+  .table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .table tbody tr:active {
+    background-color: var(--color-gray-100);
+  }
+
+  /* Ensure proper text truncation */
+  .text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>
 
@@ -356,6 +558,15 @@
     // Adjust table height on resize
     window.addEventListener('resize', adjustTableHeight);
     adjustTableHeight();
+    
+    // Add click handler for table rows (optional - for future expansion)
+    document.getElementById('matchesTableBody').addEventListener('click', function(e) {
+      const row = e.target.closest('tr');
+      if (row && row.dataset.matchId) {
+        // You can add functionality to view match details here
+        // viewMatchDetails(row.dataset.matchId);
+      }
+    });
   });
 
   function adjustTableHeight() {
@@ -363,9 +574,14 @@
     const viewportHeight = window.innerHeight;
     
     if (viewportHeight < 600) {
-      tableContainer.style.height = (viewportHeight - 200) + 'px';
+      // For very small screens
+      tableContainer.style.height = Math.max(300, viewportHeight - 200) + 'px';
+    } else if (viewportHeight < 768) {
+      // For mobile devices
+      tableContainer.style.height = (viewportHeight - 180) + 'px';
     } else {
-      tableContainer.style.height = '70vh';
+      // For tablets and desktop
+      tableContainer.style.height = '65vh';
     }
   }
 
@@ -391,7 +607,7 @@
 
       if (data.success) {
         displayMatches(data.matches);
-        matchesCount.textContent = `Showing ${data.matches.length} matches`;
+        matchesCount.textContent = `Showing ${data.matches.length} match${data.matches.length !== 1 ? 'es' : ''}`;
       } else {
         throw new Error(data.error || 'Failed to load matches');
       }
@@ -418,9 +634,9 @@
       const foundImageFilename = processImagePath(match.found_image_path);
       
       return `
-        <tr>
+        <tr data-match-id="${match.id}">
           <td class="match-id-col">
-            <strong class="text-gray-800">#${match.id}</strong>
+            <strong class="text-gray-800 small">#${match.id}</strong>
           </td>
           <td class="lost-item-col">
             <div class="item-display">
@@ -493,7 +709,12 @@
   function formatDate(dateString) {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString();
+      // Format differently for mobile vs desktop
+      if (window.innerWidth < 768) {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } else {
+        return date.toLocaleDateString();
+      }
     } catch (e) {
       return 'Unknown';
     }

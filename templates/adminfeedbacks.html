@@ -52,7 +52,7 @@
       
       <!-- Scrollable Table Area -->
       <div class="table-container">
-        <div class="table-responsive">
+        <div class="table-responsive-xxl">
           <table class="table table-hover mb-0">
             <thead class="table-header">
               <tr>
@@ -218,8 +218,8 @@
     flex-direction: column;
   }
 
-  /* Horizontal scrolling container */
-  .table-responsive {
+  /* Horizontal scrolling container - FIXED */
+  .table-responsive-xxl {
     flex: 1;
     overflow-x: auto;
     overflow-y: auto;
@@ -468,7 +468,7 @@
       if (data.success) {
         displayFeedbacks(data.feedbacks);
         updateFeedbackStats(data.feedbacks);
-        feedbacksCount.textContent = `Showing ${data.feedbacks.length} feedbacks`;
+        feedbacksCount.textContent = `Showing ${data.feedbacks.length} feedback${data.feedbacks.length !== 1 ? 's' : ''}`;
       } else {
         throw new Error(data.error || 'Failed to load feedbacks');
       }
@@ -489,69 +489,79 @@
       return;
     }
 
-    tableBody.innerHTML = feedbacks.map(feedback => `
-      <tr>
-        <td class="user-col">
-          <div class="d-flex align-items-center">
-            ${feedback.profile_picture ? `
-              <img src="/uploads/profile_pictures/${feedback.profile_picture}" 
-                  alt="${feedback.first_name || 'Unknown'} ${feedback.last_name || ''}" 
-                  class="rounded-circle me-2" 
-                  style="width: 40px; height: 40px; object-fit: cover;">
-            ` : `
-              <div class="user-initials me-2">
-                ${(feedback.first_name?.[0] || 'U') + (feedback.last_name?.[0] || '')}
+    tableBody.innerHTML = feedbacks.map(feedback => {
+      // Escape special characters for JavaScript
+      const escapedMessage = (feedback.message || 'No message provided')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n');
+      
+      const escapedFirstName = (feedback.first_name || 'Unknown').replace(/'/g, "\\'");
+      const escapedLastName = (feedback.last_name || '').replace(/'/g, "\\'");
+      const escapedEmail = (feedback.email || '').replace(/'/g, "\\'");
+      
+      return `
+        <tr>
+          <td class="user-col">
+            <div class="d-flex align-items-center">
+              ${feedback.profile_picture ? `
+                <img src="/uploads/profile_pictures/${feedback.profile_picture}" 
+                    alt="${escapedFirstName} ${escapedLastName}" 
+                    class="rounded-circle me-2" 
+                    style="width: 40px; height: 40px; object-fit: cover;">
+              ` : `
+                <div class="user-initials me-2">
+                  ${(feedback.first_name?.[0] || 'U') + (feedback.last_name?.[0] || '')}
+                </div>
+              `}
+              <div class="min-w-0">
+                <strong class="text-gray-800 d-block text-truncate">${escapedFirstName} ${escapedLastName}</strong>
+                <small class="text-muted d-block text-truncate">${escapedEmail || 'No email'}</small>
               </div>
-            `}
-            <div class="min-w-0">
-              <strong class="text-gray-800 d-block text-truncate">${feedback.first_name || 'Unknown'} ${feedback.last_name || ''}</strong>
-              <small class="text-muted d-block text-truncate">${feedback.email || 'No email'}</small>
             </div>
-          </div>
-        </td>
-        <td class="rating-col">
-          ${feedback.rating ? `
-            <div class="text-warning">
-              <div>${'★'.repeat(feedback.rating)}${'☆'.repeat(5 - feedback.rating)}</div>
-              <small class="text-muted">${feedback.rating}/5</small>
+          </td>
+          <td class="rating-col">
+            ${feedback.rating ? `
+              <div class="text-warning">
+                <div>${'★'.repeat(feedback.rating)}${'☆'.repeat(5 - feedback.rating)}</div>
+                <small class="text-muted">${feedback.rating}/5</small>
+              </div>
+            ` : '<span class="text-muted">No rating</span>'}
+          </td>
+          <td class="message-col">
+            <div class="feedback-message" 
+              onclick="viewFeedback(${feedback.id}, '${escapedFirstName}', '${escapedLastName}', '${escapedEmail}', ${feedback.rating || 0}, '${escapedMessage}', ${feedback.is_public}, '${feedback.created_at}', '${feedback.profile_picture || ''}')">
+              <p class="mb-0 small">${feedback.message || 'No message provided'}</p>
             </div>
-          ` : '<span class="text-muted">No rating</span>'}
-        </td>
-        <td class="message-col">
-          <div class="feedback-message" 
-            onclick="viewFeedback(${feedback.id}, '${feedback.first_name || 'Unknown'}', '${feedback.last_name || ''}', '${feedback.email || ''}', ${feedback.rating || 0}, '${(feedback.message || 'No message provided').replace(/'/g, "\\'")}', ${feedback.is_public}, '${feedback.created_at}', '${feedback.profile_picture || ''}')">
-            <p class="mb-0 small">${feedback.message || 'No message provided'}</p>
-          </div>
-        </td>
-        <td class="visibility-col">
-          <span class="badge ${feedback.is_public ? 'bg-success' : 'bg-secondary'}">
-            ${feedback.is_public ? 'Public' : 'Private'}
-          </span>
-        </td>
-        <td class="date-col">
-          <small class="text-muted">${feedback.created_at ? formatDate(feedback.created_at) : 'Unknown'}</small>
-        </td>
-        <td class="actions-col table-actions">
-         <td class="actions-col table-actions">
-          <button class="btn btn-admin btn-sm me-1" 
-            onclick="viewFeedback(${feedback.id}, '${feedback.first_name || 'Unknown'}', '${feedback.last_name || ''}', '${feedback.email || ''}', ${feedback.rating || 0}, '${(feedback.message || 'No message provided').replace(/'/g, "\\'")}', ${feedback.is_public}, '${feedback.created_at}', '${feedback.profile_picture || ''}')" 
-            title="View Feedback">
-            <i class="fas fa-eye"></i>
-          </button>
-          <button class="btn btn-warning btn-sm me-1" 
-            onclick="toggleVisibility(${feedback.id}, ${feedback.is_public})" 
-            title="Toggle Visibility">
-            <i class="fas fa-eye${feedback.is_public ? '-slash' : ''}"></i>
-          </button>
-          <button class="btn btn-danger btn-sm" 
-            onclick="deleteFeedback(${feedback.id}, '${feedback.first_name || 'Unknown'} ${feedback.last_name || ''}')" 
-            title="Delete Feedback">
-            <i class="fas fa-trash"></i>
-          </button>
-</td>
-        </td>
-      </tr>
-    `).join('');
+          </td>
+          <td class="visibility-col">
+            <span class="badge ${feedback.is_public ? 'bg-success' : 'bg-secondary'}">
+              ${feedback.is_public ? 'Public' : 'Private'}
+            </span>
+          </td>
+          <td class="date-col">
+            <small class="text-muted">${feedback.created_at ? formatDate(feedback.created_at) : 'Unknown'}</small>
+          </td>
+          <td class="actions-col table-actions">
+            <button class="btn btn-admin btn-sm me-1" 
+              onclick="viewFeedback(${feedback.id}, '${escapedFirstName}', '${escapedLastName}', '${escapedEmail}', ${feedback.rating || 0}, '${escapedMessage}', ${feedback.is_public}, '${feedback.created_at}', '${feedback.profile_picture || ''}')" 
+              title="View Feedback">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-warning btn-sm me-1" 
+              onclick="toggleVisibility(${feedback.id}, ${feedback.is_public})" 
+              title="Toggle Visibility">
+              <i class="fas fa-eye${feedback.is_public ? '-slash' : ''}"></i>
+            </button>
+            <button class="btn btn-danger btn-sm" 
+              onclick="deleteFeedback(${feedback.id}, '${escapedFirstName} ${escapedLastName}')" 
+              title="Delete Feedback">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
   }
 
   function formatDate(dateString) {
@@ -574,7 +584,7 @@
     document.getElementById('publicFeedbacks').textContent = publicFeedbacks;
   }
 
- function viewFeedback(feedbackId, firstName, lastName, email, rating, message, isPublic, createdDate, profilePicture) {
+  function viewFeedback(feedbackId, firstName, lastName, email, rating, message, isPublic, createdDate, profilePicture) {
     // Update modal content
     const fullName = `${firstName} ${lastName}`;
     const initials = `${firstName?.[0] || 'U'}${lastName?.[0] || ''}`;
@@ -585,16 +595,16 @@
     avatarContainer.innerHTML = '';
     
     if (profilePicture && profilePicture.trim() !== '') {
-        avatarContainer.innerHTML = `
-            <img src="/uploads/profile_pictures/${profilePicture}" 
-                 alt="${fullName}" 
-                 class="rounded-circle" 
-                 style="width: 45px; height: 45px; object-fit: cover;">
-        `;
+      avatarContainer.innerHTML = `
+        <img src="/uploads/profile_pictures/${profilePicture}" 
+            alt="${fullName}" 
+            class="rounded-circle" 
+            style="width: 45px; height: 45px; object-fit: cover;">
+      `;
     } else {
-        avatarContainer.innerHTML = `
-            <div class="user-initials">${initials}</div>
-        `;
+      avatarContainer.innerHTML = `
+        <div class="user-initials">${initials}</div>
+      `;
     }
     
     // Update other fields
@@ -609,11 +619,11 @@
     const ratingText = document.getElementById('feedbackRatingText');
     
     if (rating > 0) {
-        starsContainer.innerHTML = '★'.repeat(rating) + '☆'.repeat(5 - rating);
-        ratingText.textContent = `${rating}/5 stars`;
+      starsContainer.innerHTML = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+      ratingText.textContent = `${rating}/5 stars`;
     } else {
-        starsContainer.innerHTML = '';
-        ratingText.textContent = 'No rating provided';
+      starsContainer.innerHTML = '';
+      ratingText.textContent = 'No rating provided';
     }
     
     // Update visibility
@@ -624,7 +634,7 @@
     // Show the modal
     const viewModal = new bootstrap.Modal(document.getElementById('viewFeedbackModal'));
     viewModal.show();
-}
+  }
 
   async function toggleVisibility(feedbackId, currentVisibility) {
     const newVisibility = !currentVisibility;

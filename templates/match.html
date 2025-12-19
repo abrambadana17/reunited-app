@@ -3,114 +3,229 @@
 
 {% block content %}
 <div class="container-fluid">
+  <!-- Header with Stats -->
   <div class="dashboard-header mb-4">
     <h1 class="fw-bold mb-2">Match Items</h1>
     <p class="mb-0 opacity-75">Here are items matched with yours.</p>
+    
+    <!-- Stats Row -->
+    <div class="row mt-4">
+      <div class="col-md-3 col-sm-6 mb-3">
+        <div class="stat-card">
+          <div class="stat-number">{{ stats.total }}</div>
+          <div class="stat-label">Total Matches</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6 mb-3">
+        <div class="stat-card" style="background: #e3f2fd; border-left: 4px solid #2196F3;">
+          <div class="stat-number text-primary">{{ stats.pending }}</div>
+          <div class="stat-label">Pending</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6 mb-3">
+        <div class="stat-card" style="background: #e8f5e9; border-left: 4px solid #4CAF50;">
+          <div class="stat-number text-success">{{ stats.resolved }}</div>
+          <div class="stat-label">Resolved</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6 mb-3">
+        <div class="stat-card" style="background: #ffebee; border-left: 4px solid #f44336;">
+          <div class="stat-number text-danger">{{ stats.rejected }}</div>
+          <div class="stat-label">Expired</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Buttons -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all">All Matches</button>
+        <button class="filter-btn" data-filter="pending">Pending</button>
+        <button class="filter-btn" data-filter="resolved">Resolved</button>
+        <button class="filter-btn" data-filter="rejected">Expired</button>
+      </div>
+    </div>
   </div>
 
   <!-- Match Items Grid -->
   <div class="row g-4" id="matchesGrid">
     {% for match in matches %}
     <div class="col-12 col-sm-6 col-lg-4 match-card" 
+         data-status="{{ match.status }}"
+         data-match-id="{{ match.id }}"
          style="cursor: pointer;"
          data-bs-toggle="modal" 
          data-bs-target="#matchDetailModal"
          data-lost-title="{{ match.lost_title }}"
          data-lost-description="{{ match.lost_description }}"
          data-lost-category="{{ match.lost_category }}"
-         data-lost-date="{{ match.lost_date_reported.strftime('%B %d, %Y at %I:%M %p') if match.lost_date_reported else 'N/A' }}"
-         data-lost-image="{{ url_for('uploaded_item_file', filename=match.lost_image.split('/')[-1]) if match.lost_image else url_for('static', filename='images/placeholder.png') }}"
+         data-lost-date="{{ match.lost_date_formatted }}"
+         data-lost-item-status="{{ match.lost_item_status }}"
+         data-lost-user-id="{{ match.lost_user_id }}"
+         data-lost-image="{% if match.lost_image %}{{ url_for('static', filename=match.lost_image) }}{% else %}{{ url_for('static', filename='images/placeholder.png') }}{% endif %}"
          data-lost-reporter="{{ match.lost_first_name }} {{ match.lost_last_name }}"
-         data-lost-profile="{{ url_for('uploaded_file', filename=match.lost_profile) if match.lost_profile else '' }}"
+         data-lost-profile="{% if match.lost_profile %}{{ url_for('uploaded_file', filename=match.lost_profile) }}{% else %}{% endif %}"
          data-lost-initials="{{ match.lost_first_name[0]|upper }}{{ match.lost_last_name[0]|upper }}"
          data-found-title="{{ match.found_title }}"
          data-found-description="{{ match.found_description }}"
          data-found-category="{{ match.found_category }}"
-         data-found-date="{{ match.found_date_reported.strftime('%B %d, %Y at %I:%M %p') if match.found_date_reported else 'N/A' }}"
-         data-found-image="{{ url_for('uploaded_item_file', filename=match.found_image.split('/')[-1]) if match.found_image else url_for('static', filename='images/placeholder.png') }}"
+         data-found-date="{{ match.found_date_formatted }}"
+         data-found-item-status="{{ match.found_item_status }}"
+         data-found-user-id="{{ match.found_user_id }}"
+         data-found-image="{% if match.found_image %}{{ url_for('static', filename=match.found_image) }}{% else %}{{ url_for('static', filename='images/placeholder.png') }}{% endif %}"
          data-found-reporter="{{ match.found_first_name }} {{ match.found_last_name }}"
-         data-found-profile="{{ url_for('uploaded_file', filename=match.found_profile) if match.found_profile else '' }}"
+         data-found-profile="{% if match.found_profile %}{{ url_for('uploaded_file', filename=match.found_profile) }}{% else %}{% endif %}"
          data-found-initials="{{ match.found_first_name[0]|upper }}{{ match.found_last_name[0]|upper }}"
          data-match-score="{{ match.match_score }}"
-         data-match-date="{{ match.match_at.strftime('%B %d, %Y at %I:%M %p') if match.match_at else 'N/A' }}"
+         data-match-date="{{ match.match_date_formatted }}"
+         data-match-date-short="{{ match.match_date_short }}"
          data-match-status="{{ match.status }}">
       
-      <div class="card shadow-sm h-100 match-card-inner {% if match.status == 'resolved' %}resolved-match{% endif %}" style="min-height: 400px; position: relative;">
+      <div class="card shadow-sm h-100 match-card-inner 
+          {% if match.status == 'resolved' %}resolved-match
+          {% elif match.status == 'rejected' %}rejected-match
+          {% endif %}" 
+          style="min-height: 400px; position: relative;">
         
-        <!-- RESOLVED BADGE - Top Right Corner -->
+        <!-- Status Badge - Top Right Corner -->
         {% if match.status == 'resolved' %}
-        <div class="resolved-badge">
+        <div class="status-badge resolved">
           <i class="fas fa-check-circle me-1"></i>Resolved
+        </div>
+        {% elif match.status == 'rejected' %}
+        <div class="status-badge rejected">
+          <i class="fas fa-clock me-1"></i>Expired
+        </div>
+        {% else %}
+        <div class="status-badge pending">
+          <i class="fas fa-clock me-1"></i>Pending
         </div>
         {% endif %}
         
         <!-- Images side by side -->
         <div class="d-flex position-relative" style="height:200px; overflow:hidden;">
-          <!-- RESOLVED OVERLAY for images -->
+          <!-- Status Overlay for images -->
           {% if match.status == 'resolved' %}
-          <div class="resolved-overlay"></div>
+          <div class="status-overlay resolved"></div>
+          {% elif match.status == 'rejected' %}
+          <div class="status-overlay rejected"></div>
           {% endif %}
           
-          <img src="{{ url_for('uploaded_item_file', filename=match.lost_image.split('/')[-1]) if match.lost_image else url_for('static', filename='images/placeholder.png') }}" 
-               class="w-50 border-end object-fit-cover" alt="Lost Item Image">
-          <img src="{{ url_for('uploaded_item_file', filename=match.found_image.split('/')[-1]) if match.found_image else url_for('static', filename='images/placeholder.png') }}" 
-               class="w-50 object-fit-cover" alt="Found Item Image">
+          <!-- Lost Item Image -->
+          <div class="w-50 border-end position-relative">
+            <img src="{% if match.lost_image %}{{ url_for('static', filename=match.lost_image) }}{% else %}{{ url_for('static', filename='images/placeholder.png') }}{% endif %}" 
+                 class="w-100 h-100 object-fit-cover" 
+                 alt="Lost Item Image"
+                 onerror="this.src='{{ url_for('static', filename='images/placeholder.png') }}'">
+            <div class="image-label">Lost</div>
+          </div>
+          
+          <!-- Found Item Image -->
+          <div class="w-50 position-relative">
+            <img src="{% if match.found_image %}{{ url_for('static', filename=match.found_image) }}{% else %}{{ url_for('static', filename='images/placeholder.png') }}{% endif %}" 
+                 class="w-100 h-100 object-fit-cover" 
+                 alt="Found Item Image"
+                 onerror="this.src='{{ url_for('static', filename='images/placeholder.png') }}'">
+            <div class="image-label">Found</div>
+          </div>
         </div>
 
         <div class="card-body">
-          <!-- Center ONLY the most important elements -->
+          <!-- Center match score and title -->
           <div class="text-center mb-3">
-              {% set score = match.match_score %}
-              {% set percentage = (score * 100)|round|int %}
-              {% if match.status == 'resolved' %}
-                <span class="badge resolved-score-badge">
-                  <i class="fas fa-check-circle me-1"></i>Resolved
-                </span>
-              {% else %}
-                {% if percentage >= 95 %}
-                  <span class="badge bg-success">Perfect Match ({{ percentage }}%)</span>
-                {% elif percentage >= 80 %}
-                  <span class="badge bg-info">Very High ({{ percentage }}%)</span>
-                {% elif percentage >= 60 %}
-                  <span class="badge bg-primary">High ({{ percentage }}%)</span>
-                {% elif percentage >= 40 %}
-                  <span class="badge bg-warning text-dark">Medium ({{ percentage }}%)</span>
-                {% else %}
-                  <span class="badge bg-secondary">Low ({{ percentage }}%)</span>
-                {% endif %}
-              {% endif %}
+            {% set score = match.match_score %}
+            {% set percentage = (score * 100)|round|int %}
             
-            <h5 class="card-title mt-2 {% if match.status == 'resolved' %}resolved-title{% endif %}">
+            {% if match.status == 'resolved' %}
+              <span class="badge resolved-score-badge">
+                <i class="fas fa-check-circle me-1"></i>Resolved
+              </span>
+            {% elif match.status == 'rejected' %}
+              <span class="badge rejected-score-badge">
+                <i class="fas fa-clock me-1"></i>Expired (7+ days)
+              </span>
+            {% else %}
+              {% if percentage >= 95 %}
+                <span class="badge bg-success">Perfect Match ({{ percentage }}%)</span>
+              {% elif percentage >= 80 %}
+                <span class="badge bg-info">Very High ({{ percentage }}%)</span>
+              {% elif percentage >= 60 %}
+                <span class="badge bg-primary">High ({{ percentage }}%)</span>
+              {% elif percentage >= 40 %}
+                <span class="badge bg-warning text-dark">Medium ({{ percentage }}%)</span>
+              {% else %}
+                <span class="badge bg-secondary">Low ({{ percentage }}%)</span>
+              {% endif %}
+            {% endif %}
+            
+            <h5 class="card-title mt-2 
+                {% if match.status == 'resolved' %}resolved-title
+                {% elif match.status == 'rejected' %}rejected-title
+                {% endif %}">
               {{ match.lost_title }} ↔ {{ match.found_title }}
             </h5>
           </div>
           
-          <!-- Keep everything else left-aligned -->
-          <p class="card-text {% if match.status == 'resolved' %}resolved-text{% endif %}">
-            <b>Lost:</b> {{ match.lost_description[:50] }}{{ '...' if match.lost_description|length > 50 else '' }} <br>
-            <b>Found:</b> {{ match.found_description[:50] }}{{ '...' if match.found_description|length > 50 else '' }}
-          </p>
+          <!-- Item descriptions -->
+          <div class="mb-2">
+            <p class="card-text small mb-1">
+              <span class="fw-semibold">Lost:</span> 
+              <span class="{% if match.status == 'rejected' %}text-muted{% endif %}">
+                {{ match.lost_description[:60] }}{% if match.lost_description|length > 60 %}...{% endif %}
+              </span>
+            </p>
+            <p class="card-text small">
+              <span class="fw-semibold">Found:</span> 
+              <span class="{% if match.status == 'rejected' %}text-muted{% endif %}">
+                {{ match.found_description[:60] }}{% if match.found_description|length > 60 %}...{% endif %}
+              </span>
+            </p>
+          </div>
           
-          <p class="card-text small text-muted {% if match.status == 'resolved' %}resolved-date{% endif %}">
+          <!-- Match date -->
+          <p class="card-text small 
+              {% if match.status == 'resolved' %}text-success
+              {% elif match.status == 'rejected' %}text-danger
+              {% else %}text-muted{% endif %}">
             <i class="far fa-calendar me-1"></i>
             {% if match.status == 'resolved' %}
-              Resolved: {{ match.match_at.strftime('%b %d, %Y') if match.match_at else 'N/A' }}
+              Resolved: {{ match.match_date_short }}
+            {% elif match.status == 'rejected' %}
+              Expired: {{ match.match_date_short }}
             {% else %}
-              Matched: {{ match.match_at.strftime('%b %d, %Y') if match.match_at else 'N/A' }}
+              Matched: {{ match.match_date_short }}
             {% endif %}
           </p>
+          
+          <!-- Item status indicators -->
+          <div class="d-flex justify-content-between small">
+            <span class="badge {% if match.lost_item_status == 'claimed' %}bg-success{% else %}bg-secondary{% endif %}">
+              Lost: {{ match.lost_item_status|replace('_', ' ')|title }}
+            </span>
+            <span class="badge {% if match.found_item_status == 'returned' %}bg-success{% else %}bg-secondary{% endif %}">
+              Found: {{ match.found_item_status|replace('_', ' ')|title }}
+            </span>
+          </div>
         </div>
 
-        <div class="card-footer d-flex justify-content-between align-items-center {% if match.status == 'resolved' %}resolved-footer{% endif %}">
+        <div class="card-footer d-flex justify-content-between align-items-center 
+            {% if match.status == 'resolved' %}resolved-footer
+            {% elif match.status == 'rejected' %}rejected-footer{% endif %}">
           <!-- Lost User -->
           <div class="d-flex align-items-center">
             <div class="user-avatar me-2">
               {% if match.lost_profile %}
                 <img src="{{ url_for('uploaded_file', filename=match.lost_profile) }}" 
                      alt="Lost User" 
-                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--primary-color); color: white; display: none; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem;">
+                  {{ match.lost_first_name[0]|upper }}{{ match.lost_last_name[0]|upper }}
+                </div>
               {% else %}
-                <div style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem;">
                   {{ match.lost_first_name[0]|upper }}{{ match.lost_last_name[0]|upper }}
                 </div>
               {% endif %}
@@ -124,9 +239,13 @@
               {% if match.found_profile %}
                 <img src="{{ url_for('uploaded_file', filename=match.found_profile) }}" 
                      alt="Found User" 
-                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--primary-color); color: white; display: none; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem;">
+                  {{ match.found_first_name[0]|upper }}{{ match.found_last_name[0]|upper }}
+                </div>
               {% else %}
-                <div style="width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem;">
                   {{ match.found_first_name[0]|upper }}{{ match.found_last_name[0]|upper }}
                 </div>
               {% endif %}
@@ -142,7 +261,13 @@
         <div class="recent-activity">
           <i class="fas fa-link fa-4x text-black-50 mb-3"></i>
           <h3 class="text-black mb-3">No matches found yet.</h3>
-          <p class="text-muted">Matches will appear here when lost and found items are connected.</p>
+          <p class="text-muted">
+            Matches will appear here when lost and found items are connected.<br>
+            Post more items to increase your chances of finding matches!
+          </p>
+          <a href="{{ url_for('dashboard') }}" class="btn btn-primary mt-2">
+            <i class="fas fa-plus me-2"></i>Post New Item
+          </a>
         </div>
       </div>
     </div>
@@ -156,11 +281,12 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="matchDetailModalLabel">Match Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <!-- Match Status Banner -->
         <div class="text-center mb-4">
-          <h4 class="mb-2" id="modalMatchTitle">Match Details</h4>
+          <h4 class="mb-2" id="modalMatchTitle"></h4>
           <div id="modalMatchStatus" class="d-flex justify-content-center align-items-center gap-3">
             <span id="modalMatchScore" class="badge fs-6"></span>
             <span class="text-muted small">•</span>
@@ -180,34 +306,33 @@
             <div class="mb-3 position-relative">
               <img id="modalLostImage" src="" alt="Lost Item Image" 
                    class="img-fluid rounded shadow-sm w-100" 
-                   style="max-height: 300px; object-fit: contain; background-color: #f8f9fa;">
-              <div id="modalLostOverlay" class="resolved-image-overlay" style="display: none;">
-                <i class="fas fa-check-circle me-2"></i>
-                <span>Claimed</span>
-              </div>
+                   style="max-height: 300px; object-fit: contain; background-color: #f8f9fa;"
+                   onerror="this.src='{{ url_for('static', filename='images/placeholder.png') }}'">
+              <div id="modalLostOverlay" class="status-image-overlay" style="display: none;"></div>
             </div>
             
             <div class="mb-3">
               <h5 id="modalLostTitle" class="fw-bold text-primary"></h5>
             </div>
             
-            <div class="mb-3">
-              <h6 class="text-muted mb-1">
-                <i class="fas fa-tag me-1"></i>Category
-              </h6>
-              <p id="modalLostCategory" class="mb-0"></p>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <h6 class="text-muted mb-1">
+                  <i class="fas fa-tag me-1"></i>Category
+                </h6>
+                <p id="modalLostCategory" class="mb-0"></p>
+              </div>
+              <div class="col-md-6">
+                <h6 class="text-muted mb-1">
+                  <i class="fas fa-calendar me-1"></i>Date Reported
+                </h6>
+                <p id="modalLostDate" class="mb-0"></p>
+              </div>
             </div>
             
             <div class="mb-3">
               <h6 class="text-muted mb-1">Description</h6>
               <p id="modalLostDescription" class="mb-0"></p>
-            </div>
-            
-            <div class="mb-3">
-              <h6 class="text-muted mb-1">
-                <i class="fas fa-calendar me-1"></i>Date Reported
-              </h6>
-              <p id="modalLostDate" class="mb-0"></p>
             </div>
             
             <div class="border-top pt-3">
@@ -233,34 +358,33 @@
             <div class="mb-3 position-relative">
               <img id="modalFoundImage" src="" alt="Found Item Image" 
                    class="img-fluid rounded shadow-sm w-100" 
-                   style="max-height: 300px; object-fit: contain; background-color: #f8f9fa;">
-              <div id="modalFoundOverlay" class="resolved-image-overlay" style="display: none;">
-                <i class="fas fa-check-circle me-2"></i>
-                <span>Returned</span>
-              </div>
+                   style="max-height: 300px; object-fit: contain; background-color: #f8f9fa;"
+                   onerror="this.src='{{ url_for('static', filename='images/placeholder.png') }}'">
+              <div id="modalFoundOverlay" class="status-image-overlay" style="display: none;"></div>
             </div>
             
             <div class="mb-3">
               <h5 id="modalFoundTitle" class="fw-bold text-primary"></h5>
             </div>
             
-            <div class="mb-3">
-              <h6 class="text-muted mb-1">
-                <i class="fas fa-tag me-1"></i>Category
-              </h6>
-              <p id="modalFoundCategory" class="mb-0"></p>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <h6 class="text-muted mb-1">
+                  <i class="fas fa-tag me-1"></i>Category
+                </h6>
+                <p id="modalFoundCategory" class="mb-0"></p>
+              </div>
+              <div class="col-md-6">
+                <h6 class="text-muted mb-1">
+                  <i class="fas fa-calendar me-1"></i>Date Reported
+                </h6>
+                <p id="modalFoundDate" class="mb-0"></p>
+              </div>
             </div>
             
             <div class="mb-3">
               <h6 class="text-muted mb-1">Description</h6>
               <p id="modalFoundDescription" class="mb-0"></p>
-            </div>
-            
-            <div class="mb-3">
-              <h6 class="text-muted mb-1">
-                <i class="fas fa-calendar me-1"></i>Date Reported
-              </h6>
-              <p id="modalFoundDate" class="mb-0"></p>
             </div>
             
             <div class="border-top pt-3">
@@ -276,7 +400,7 @@
           </div>
         </div>
 
-        <!-- Success Section for Resolved Matches -->
+        <!-- Status Messages -->
         <div id="successSection" class="text-center mt-4 p-4 rounded" style="display: none;">
           <div class="row align-items-center">
             <div class="col-md-12">
@@ -288,87 +412,216 @@
             </div>
           </div>
         </div>
+
+        <div id="expiredSection" class="text-center mt-4 p-4 rounded" style="display: none;">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="expired-content">
+                <i class="fas fa-clock fa-2x text-danger mb-3"></i>
+                <h5 class="text-danger mb-2">Match Expired</h5>
+                <p class="mb-2 text-muted">This match was automatically closed after 7 days without resolution.</p>
+                <p class="mb-0 text-muted small">You can create new matches or post your items again.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <div id="actionButtons" style="display: none;">
+          <button type="button" class="btn btn-outline-primary" id="contactUserBtn">
+            <i class="fas fa-envelope me-2"></i>Contact User
+          </button>
+          <button type="button" class="btn btn-primary" id="resolveMatchBtn">
+            <i class="fas fa-handshake me-2"></i>Mark as Resolved
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <style>
-/* Resolved Match Styling */
-.resolved-match {
-  border: 2px solid #28a745 !important;
-  background: #f8fff9 !important;
-  position: relative;
-  overflow: hidden;
+/* CSS Variables */
+:root {
+  --primary-color: #1E3A8A;
+  --secondary-color: #374151;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
 }
 
-.resolved-match::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: #28a745;
+/* Stat Cards */
+.stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  border-left: 4px solid var(--primary-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.resolved-badge {
+.stat-number {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--secondary-color);
+  opacity: 0.8;
+}
+
+/* Filter Buttons */
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.filter-btn {
+  padding: 8px 20px;
+  border: 2px solid #dee2e6;
+  background: white;
+  border-radius: 6px;
+  color: var(--secondary-color);
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.filter-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.filter-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+/* Match Status Badges */
+.status-badge {
   position: absolute;
   top: 12px;
   right: 12px;
-  background: #28a745;
-  color: white;
   padding: 6px 12px;
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: bold;
   z-index: 10;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.resolved-overlay {
+.status-badge.resolved {
+  background: var(--success-color);
+  color: white;
+}
+
+.status-badge.rejected {
+  background: var(--danger-color);
+  color: white;
+}
+
+.status-badge.pending {
+  background: var(--warning-color);
+  color: black;
+}
+
+/* Match Card Status Styling */
+.resolved-match {
+  border: 2px solid var(--success-color) !important;
+  background: #f8fff9 !important;
+}
+
+.rejected-match {
+  border: 2px solid var(--danger-color) !important;
+  background: #fff5f5 !important;
+  opacity: 0.9;
+}
+
+/* Overlays */
+.status-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(40, 167, 69, 0.05);
   z-index: 2;
 }
 
+.status-overlay.resolved {
+  background: rgba(40, 167, 69, 0.05);
+}
+
+.status-overlay.rejected {
+  background: rgba(220, 53, 69, 0.05);
+}
+
+/* Image Labels */
+.image-label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.w-50 .image-label {
+  left: 8px;
+}
+
+/* Score Badges */
 .resolved-score-badge {
-  background: #28a745 !important;
+  background: var(--success-color) !important;
   color: white;
   font-size: 0.9rem;
   padding: 8px 16px;
-  border: none;
 }
 
+.rejected-score-badge {
+  background: var(--danger-color) !important;
+  color: white;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+}
+
+/* Titles */
 .resolved-title {
-  color: #28a745 !important;
+  color: var(--success-color) !important;
 }
 
-.resolved-date {
-  color: #28a745 !important;
-  font-weight: 600;
+.rejected-title {
+  color: var(--danger-color) !important;
 }
 
+/* Footers */
 .resolved-footer {
   background: #f8fff9 !important;
-  border-top: 1px solid #28a745 !important;
+  border-top: 1px solid var(--success-color) !important;
 }
 
-/* Modal Resolved Styles */
-.resolved-image-overlay {
+.rejected-footer {
+  background: #fff5f5 !important;
+  border-top: 1px solid var(--danger-color) !important;
+}
+
+/* Modal Status Overlays */
+.status-image-overlay {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(40, 167, 69, 0.95);
   color: white;
   padding: 8px 16px;
   border-radius: 4px;
@@ -376,155 +629,388 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-/* Success Section */
+/* Status Sections */
 #successSection {
   background: #f8fff9;
-  border: 1px solid #28a745;
-  border-left: 4px solid #28a745;
+  border: 1px solid var(--success-color);
+  border-left: 4px solid var(--success-color);
 }
 
-.success-content {
-  padding: 1rem;
+#expiredSection {
+  background: #fff5f5;
+  border: 1px solid var(--danger-color);
+  border-left: 4px solid var(--danger-color);
 }
 
-/* Hover effects */
+/* Hover Effects */
 .match-card-inner {
   transition: all 0.3s ease;
 }
 
 .match-card-inner:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
 }
 
 .resolved-match:hover {
-  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15) !important;
 }
 
-/* Responsive adjustments */
+.rejected-match:hover {
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15) !important;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-  .resolved-badge {
+  .status-badge {
     font-size: 0.7rem;
     padding: 4px 8px;
     top: 8px;
     right: 8px;
+  }
+  
+  .filter-buttons {
+    justify-content: center;
+  }
+  
+  .filter-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+  
+  .stat-card {
+    padding: 15px;
+  }
+  
+  .stat-number {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .match-card {
+    min-height: 350px !important;
+  }
+  
+  .card-footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .user-avatar img, .user-avatar div {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.7rem !important;
   }
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // ========== FILTERING FUNCTIONALITY ==========
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  const matchCards = document.querySelectorAll('.match-card');
+  
+  filterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove active class from all buttons
+      filterButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Add active class to clicked button
+      this.classList.add('active');
+      
+      const filter = this.dataset.filter;
+      
+      // Filter match cards
+      matchCards.forEach(card => {
+        if (filter === 'all') {
+          card.style.display = 'block';
+        } else {
+          if (card.dataset.status === filter) {
+            card.style.display = 'block';
+          } else {
+            card.style.display = 'none';
+          }
+        }
+      });
+      
+      // Show message if no matches after filtering
+      const visibleCards = Array.from(matchCards).filter(card => card.style.display !== 'none');
+      if (visibleCards.length === 0 && filter !== 'all') {
+        showNoMatchesMessage(filter);
+      }
+    });
+  });
+  
+  function showNoMatchesMessage(filter) {
+    // Check if message already exists
+    if (document.querySelector('.no-matches-message')) {
+      return;
+    }
+    
+    const message = document.createElement('div');
+    message.className = 'col-12 no-matches-message';
+    message.innerHTML = `
+      <div class="text-center py-5">
+        <div class="recent-activity">
+          <i class="fas fa-inbox fa-4x text-black-50 mb-3"></i>
+          <h3 class="text-black mb-3">No ${filter} matches found.</h3>
+          <p class="text-muted">Try changing your filter or post new items to get more matches.</p>
+        </div>
+      </div>
+    `;
+    
+    document.getElementById('matchesGrid').appendChild(message);
+  }
+  
+  // ========== MODAL FUNCTIONALITY ==========
   const matchDetailModal = document.getElementById('matchDetailModal');
   
   matchDetailModal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     
-    // Get match data from the clicked card
-    const matchScore = parseFloat(button.dataset.matchScore);
-    const matchDate = button.dataset.matchDate;
-    const matchStatus = button.dataset.matchStatus;
+    // Get all data from the clicked card
+    const matchData = {
+      matchScore: parseFloat(button.dataset.matchScore),
+      matchDate: button.dataset.matchDate,
+      matchDateShort: button.dataset.matchDateShort,
+      matchStatus: button.dataset.matchStatus,
+      
+      // Lost item data
+      lostTitle: button.dataset.lostTitle,
+      lostDescription: button.dataset.lostDescription,
+      lostCategory: button.dataset.lostCategory,
+      lostDate: button.dataset.lostDate,
+      lostItemStatus: button.dataset.lostItemStatus,
+      lostUserId: button.dataset.lostUserId,
+      lostImage: button.dataset.lostImage,
+      lostReporter: button.dataset.lostReporter,
+      lostProfile: button.dataset.lostProfile,
+      lostInitials: button.dataset.lostInitials,
+      
+      // Found item data
+      foundTitle: button.dataset.foundTitle,
+      foundDescription: button.dataset.foundDescription,
+      foundCategory: button.dataset.foundCategory,
+      foundDate: button.dataset.foundDate,
+      foundItemStatus: button.dataset.foundItemStatus,
+      foundUserId: button.dataset.foundUserId,
+      foundImage: button.dataset.foundImage,
+      foundReporter: button.dataset.foundReporter,
+      foundProfile: button.dataset.foundProfile,
+      foundInitials: button.dataset.foundInitials,
+      
+      // Current user ID (from template)
+      currentUserId: {{ session['user_id']|tojson|safe }}
+    };
     
-    // Lost item data
-    const lostTitle = button.dataset.lostTitle;
-    const lostDescription = button.dataset.lostDescription;
-    const lostCategory = button.dataset.lostCategory;
-    const lostDate = button.dataset.lostDate;
-    const lostImage = button.dataset.lostImage;
-    const lostReporter = button.dataset.lostReporter;
-    const lostProfile = button.dataset.lostProfile;
-    const lostInitials = button.dataset.lostInitials;
-    
-    // Found item data
-    const foundTitle = button.dataset.foundTitle;
-    const foundDescription = button.dataset.foundDescription;
-    const foundCategory = button.dataset.foundCategory;
-    const foundDate = button.dataset.foundDate;
-    const foundImage = button.dataset.foundImage;
-    const foundReporter = button.dataset.foundReporter;
-    const foundProfile = button.dataset.foundProfile;
-    const foundInitials = button.dataset.foundInitials;
-    
-    // Handle resolved vs active matches
-    const isResolved = matchStatus === 'resolved';
+    populateModal(matchData);
+  });
+  
+  function populateModal(data) {
+    const isResolved = data.matchStatus === 'resolved';
+    const isRejected = data.matchStatus === 'rejected';
+    const isPending = data.matchStatus === 'pending';
     
     // Update modal title and status
     const scoreBadge = document.getElementById('modalMatchScore');
     const matchDateElement = document.getElementById('modalMatchDate');
     
     if (isResolved) {
-  scoreBadge.textContent = 'Resolved';
-  scoreBadge.className = 'badge bg-success fs-6';
-  matchDateElement.textContent = 'Resolved ' + matchDate;
-} else {
-  // Convert to percentage
-  const percentage = Math.round(matchScore * 100);
-  
-  if (percentage >= 95) {
-    scoreBadge.textContent = 'Perfect Match (' + percentage + '%)';
-    scoreBadge.className = 'badge bg-success fs-6';
-  } else if (percentage >= 80) {
-    scoreBadge.textContent = 'Very High (' + percentage + '%)';
-    scoreBadge.className = 'badge bg-info fs-6';
-  } else if (percentage >= 60) {
-    scoreBadge.textContent = 'High (' + percentage + '%)';
-    scoreBadge.className = 'badge bg-primary fs-6';
-  } else if (percentage >= 40) {
-    scoreBadge.textContent = 'Medium (' + percentage + '%)';
-    scoreBadge.className = 'badge bg-warning text-dark fs-6';
-  } else {
-    scoreBadge.textContent = 'Low (' + percentage + '%)';
-    scoreBadge.className = 'badge bg-secondary fs-6';
-  }
-  matchDateElement.textContent = 'Matched ' + matchDate;
-}
+      scoreBadge.textContent = 'Resolved';
+      scoreBadge.className = 'badge bg-success fs-6';
+      matchDateElement.textContent = 'Resolved ' + data.matchDate;
+    } else if (isRejected) {
+      scoreBadge.textContent = 'Expired';
+      scoreBadge.className = 'badge bg-danger fs-6';
+      matchDateElement.textContent = 'Expired ' + data.matchDate;
+    } else {
+      // Convert to percentage
+      const percentage = Math.round(data.matchScore * 100);
+      
+      if (percentage >= 95) {
+        scoreBadge.textContent = 'Perfect Match (' + percentage + '%)';
+        scoreBadge.className = 'badge bg-success fs-6';
+      } else if (percentage >= 80) {
+        scoreBadge.textContent = 'Very High (' + percentage + '%)';
+        scoreBadge.className = 'badge bg-info fs-6';
+      } else if (percentage >= 60) {
+        scoreBadge.textContent = 'High (' + percentage + '%)';
+        scoreBadge.className = 'badge bg-primary fs-6';
+      } else if (percentage >= 40) {
+        scoreBadge.textContent = 'Medium (' + percentage + '%)';
+        scoreBadge.className = 'badge bg-warning text-dark fs-6';
+      } else {
+        scoreBadge.textContent = 'Low (' + percentage + '%)';
+        scoreBadge.className = 'badge bg-secondary fs-6';
+      }
+      matchDateElement.textContent = 'Matched ' + data.matchDate;
+    }
     
-    // Show/hide success section
+    // Show/hide status sections
     const successSection = document.getElementById('successSection');
+    const expiredSection = document.getElementById('expiredSection');
+    const actionButtons = document.getElementById('actionButtons');
+    
     successSection.style.display = isResolved ? 'block' : 'none';
+    expiredSection.style.display = isRejected ? 'block' : 'none';
+    
+    // Show action buttons only for pending matches where current user is involved
+    const isUserInvolved = (parseInt(data.currentUserId) === parseInt(data.lostUserId) || 
+                           parseInt(data.currentUserId) === parseInt(data.foundUserId));
+    actionButtons.style.display = (isPending && isUserInvolved) ? 'block' : 'none';
     
     // Populate lost item details
-    document.getElementById('modalLostTitle').textContent = lostTitle;
-    document.getElementById('modalLostDescription').textContent = lostDescription;
-    document.getElementById('modalLostCategory').textContent = lostCategory;
-    document.getElementById('modalLostDate').textContent = lostDate;
-    document.getElementById('modalLostImage').src = lostImage;
-    document.getElementById('modalLostReporter').textContent = lostReporter;
-    
-    // Show/hide resolved overlay for lost item
-    const lostOverlay = document.getElementById('modalLostOverlay');
-    lostOverlay.style.display = isResolved ? 'flex' : 'none';
+    document.getElementById('modalLostTitle').textContent = data.lostTitle;
+    document.getElementById('modalLostDescription').textContent = data.lostDescription;
+    document.getElementById('modalLostCategory').textContent = data.lostCategory;
+    document.getElementById('modalLostDate').textContent = data.lostDate;
+    document.getElementById('modalLostImage').src = data.lostImage;
+    document.getElementById('modalLostReporter').textContent = data.lostReporter;
     
     // Set lost reporter avatar
     const lostAvatar = document.getElementById('modalLostAvatar');
-    if (lostProfile) {
-      lostAvatar.innerHTML = `<img src="${lostProfile}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">`;
+    if (data.lostProfile) {
+      lostAvatar.innerHTML = `<img src="${data.lostProfile}" alt="Profile Picture" 
+                                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;"
+                                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`;
+      lostAvatar.innerHTML += `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: none; align-items: center; justify-content: center; font-weight: bold;">${data.lostInitials}</div>`;
     } else {
-      lostAvatar.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${lostInitials}</div>`;
+      lostAvatar.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${data.lostInitials}</div>`;
+    }
+    
+    // Show/hide status overlay for lost item
+    const lostOverlay = document.getElementById('modalLostOverlay');
+    if (isResolved) {
+      lostOverlay.innerHTML = '<i class="fas fa-check-circle me-2"></i><span>Claimed</span>';
+      lostOverlay.style.display = 'flex';
+      lostOverlay.style.background = 'rgba(40, 167, 69, 0.95)';
+    } else if (isRejected) {
+      lostOverlay.innerHTML = '<i class="fas fa-clock me-2"></i><span>Expired</span>';
+      lostOverlay.style.display = 'flex';
+      lostOverlay.style.background = 'rgba(220, 53, 69, 0.95)';
+    } else {
+      lostOverlay.style.display = 'none';
     }
     
     // Populate found item details
-    document.getElementById('modalFoundTitle').textContent = foundTitle;
-    document.getElementById('modalFoundDescription').textContent = foundDescription;
-    document.getElementById('modalFoundCategory').textContent = foundCategory;
-    document.getElementById('modalFoundDate').textContent = foundDate;
-    document.getElementById('modalFoundImage').src = foundImage;
-    document.getElementById('modalFoundReporter').textContent = foundReporter;
-    
-    // Show/hide resolved overlay for found item
-    const foundOverlay = document.getElementById('modalFoundOverlay');
-    foundOverlay.style.display = isResolved ? 'flex' : 'none';
+    document.getElementById('modalFoundTitle').textContent = data.foundTitle;
+    document.getElementById('modalFoundDescription').textContent = data.foundDescription;
+    document.getElementById('modalFoundCategory').textContent = data.foundCategory;
+    document.getElementById('modalFoundDate').textContent = data.foundDate;
+    document.getElementById('modalFoundImage').src = data.foundImage;
+    document.getElementById('modalFoundReporter').textContent = data.foundReporter;
     
     // Set found reporter avatar
     const foundAvatar = document.getElementById('modalFoundAvatar');
-    if (foundProfile) {
-      foundAvatar.innerHTML = `<img src="${foundProfile}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">`;
+    if (data.foundProfile) {
+      foundAvatar.innerHTML = `<img src="${data.foundProfile}" alt="Profile Picture" 
+                                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;"
+                                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`;
+      foundAvatar.innerHTML += `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: none; align-items: center; justify-content: center; font-weight: bold;">${data.foundInitials}</div>`;
     } else {
-      foundAvatar.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${foundInitials}</div>`;
+      foundAvatar.innerHTML = `<div style="width: 50px; height: 50px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${data.foundInitials}</div>`;
+    }
+    
+    // Show/hide status overlay for found item
+    const foundOverlay = document.getElementById('modalFoundOverlay');
+    if (isResolved) {
+      foundOverlay.innerHTML = '<i class="fas fa-check-circle me-2"></i><span>Returned</span>';
+      foundOverlay.style.display = 'flex';
+      foundOverlay.style.background = 'rgba(40, 167, 69, 0.95)';
+    } else if (isRejected) {
+      foundOverlay.innerHTML = '<i class="fas fa-clock me-2"></i><span>Expired</span>';
+      foundOverlay.style.display = 'flex';
+      foundOverlay.style.background = 'rgba(220, 53, 69, 0.95)';
+    } else {
+      foundOverlay.style.display = 'none';
+    }
+  }
+  
+  // ========== ACTION BUTTONS ==========
+  document.getElementById('contactUserBtn')?.addEventListener('click', function() {
+    alert('Contact feature coming soon!');
+    // You can implement email or messaging system here
+  });
+  
+  document.getElementById('resolveMatchBtn')?.addEventListener('click', function() {
+    const modal = document.getElementById('matchDetailModal');
+    const matchId = modal.querySelector('.match-card')?.dataset.matchId;
+    
+    if (matchId) {
+      if (confirm('Are you sure you want to mark this match as resolved?')) {
+        resolveMatch(matchId);
+      }
+    } else {
+      alert('Match ID not found. Please refresh and try again.');
     }
   });
+  
+  function resolveMatch(matchId) {
+    // You would typically make an AJAX call here
+    console.log('Resolving match:', matchId);
+    alert('Match resolution feature coming soon!');
+    
+    // Example AJAX call:
+    /*
+    fetch(`/api/resolve-match/${matchId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    });
+    */
+  }
+  
+  // ========== AUTO-REFRESH NOTIFICATION ==========
+  // Check for expired matches every 5 minutes
+  setInterval(() => {
+    fetch('/api/check-expired-matches')
+      .then(response => response.json())
+      .then(data => {
+        if (data.expired > 0) {
+          showExpiredNotification(data.expired);
+        }
+      });
+  }, 5 * 60 * 1000); // 5 minutes
+  
+  function showExpiredNotification(count) {
+    // Create notification toast
+    const toast = document.createElement('div');
+    toast.className = 'toast position-fixed bottom-0 end-0 m-3';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+      <div class="toast-header bg-danger text-white">
+        <i class="fas fa-clock me-2"></i>
+        <strong class="me-auto">Matches Expired</strong>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+      </div>
+      <div class="toast-body">
+        ${count} match(es) have expired and been automatically closed.
+        <a href="#" class="text-primary ms-1" onclick="location.reload()">Refresh</a>
+      </div>
+    `;
+    
+    document.body.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remove toast after 10 seconds
+    setTimeout(() => {
+      toast.remove();
+    }, 10000);
+  }
 });
 </script>
 {% endblock %}

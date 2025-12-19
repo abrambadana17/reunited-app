@@ -7,74 +7,75 @@
 
 {% block content %}
 <!-- Stats Overview -->
-<div class="row g-3 mb-4">
-  <div class="col-12 col-md-6 col-lg-3">
+<div class="row g-2 g-md-3 mb-3 mb-md-4">
+  <div class="col-6 col-md-6 col-lg-3">
     <div class="stats-card">
       <div class="stats-icon bg-primary bg-opacity-10 text-primary">
         <i class="fas fa-users"></i>
       </div>
       <h2 class="stats-number text-primary" id="totalUsers">0</h2>
-      <p class="mb-0 text-muted">Total Users</p>
+      <p class="mb-0 text-muted small">Total Users</p>
     </div>
   </div>
-  <div class="col-12 col-md-6 col-lg-3">
+  <div class="col-6 col-md-6 col-lg-3">
     <div class="stats-card">
       <div class="stats-icon bg-success bg-opacity-10 text-success">
         <i class="fas fa-box"></i>
       </div>
       <h2 class="stats-number text-success" id="totalItems">0</h2>
-      <p class="mb-0 text-muted">Total Items</p>
+      <p class="mb-0 text-muted small">Total Items</p>
     </div>
   </div>
-  <div class="col-12 col-md-6 col-lg-3">
+  <div class="col-6 col-md-6 col-lg-3">
     <div class="stats-card">
       <div class="stats-icon bg-info bg-opacity-10 text-info">
         <i class="fas fa-link"></i>
       </div>
       <h2 class="stats-number text-info" id="totalMatches">0</h2>
-      <p class="mb-0 text-muted">Successful Matches</p>
+      <p class="mb-0 text-muted small">Successful Matches</p>
     </div>
   </div>
-  <div class="col-12 col-md-6 col-lg-3">
+  <div class="col-6 col-md-6 col-lg-3">
     <div class="stats-card">
       <div class="stats-icon bg-warning bg-opacity-10 text-warning">
         <i class="fas fa-money-bill-wave"></i>
       </div>
       <h2 class="stats-number text-warning" id="totalRevenue">₱0</h2>
-      <p class="mb-0 text-muted">Total Revenue</p>
+      <p class="mb-0 text-muted small">Total Revenue</p>
     </div>
   </div>
 </div>
 
 <!-- Charts and Analytics Section -->
-<div class="row g-3 mb-4">
+<div class="row g-2 g-md-3 mb-3 mb-md-4">
   <!-- Monthly Items by Category Chart -->
-  <div class="col-12 col-lg-8">
+  <div class="col-12 col-lg-8 mb-3 mb-lg-0">
     <div class="chart-container">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0 fw-semibold text-gray-700">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2 mb-md-3">
+        <h5 class="mb-2 mb-md-0 fw-semibold text-gray-700">
           <i class="fas fa-chart-bar me-2 text-primary"></i>Monthly Items by Category
         </h5>
-        <div class="d-flex gap-2">
-          <!-- Change this select dropdown -->
-          <select class="form-select form-select-sm w-auto" id="categoryChartPeriod">
+        <div class="d-flex gap-1 gap-md-2 w-100 w-md-auto">
+          <select class="form-select form-select-sm w-100 w-md-auto" id="categoryChartPeriod">
               <option value="all_time" selected>All Time</option>
               <option value="current_month">This Month</option>
               <option value="last_month">Last Month</option>
           </select>
-          <button class="btn btn-sm btn-outline-admin" onclick="loadCategoryChartData()">
+          <button class="btn btn-sm btn-outline-admin flex-shrink-0" onclick="loadCategoryChartData()">
             <i class="fas fa-sync-alt"></i>
           </button>
         </div>
       </div>
-      <canvas id="monthlyChart" height="250"></canvas>
+      <div class="chart-wrapper">
+        <canvas id="monthlyChart" height="200"></canvas>
+      </div>
     </div>
   </div>
 
   <!-- Recent Platform Activity -->
   <div class="col-12 col-lg-4">
-    <div class="chart-container">
-      <h5 class="mb-3 fw-semibold text-gray-700">
+    <div class="chart-container h-100">
+      <h5 class="mb-2 mb-md-3 fw-semibold text-gray-700">
         <i class="fas fa-clock me-2 text-primary"></i>Recent Platform Activity
       </h5>
       <div id="recentActivity" class="recent-activity-container">
@@ -90,7 +91,6 @@
 </div>
 
 <style>
-  /* Your Theme Variables */
   :root {
     --color-primary: #1E3A8A;
     --color-primary-hover: #1e40af;
@@ -118,14 +118,33 @@
     --radius-lg: 12px;
   }
 
+  /* Stats Cards */
   .stats-card {
     background: var(--color-white);
     border-radius: var(--radius-lg);
-    padding: 1.5rem;
+    padding: 1rem;
     box-shadow: var(--shadow-sm);
     border: var(--border-light);
     transition: all 0.3s ease;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  @media (min-width: 576px) {
+    .stats-card {
+      padding: 1.25rem;
+      align-items: flex-start;
+      text-align: left;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .stats-card {
+      padding: 1.5rem;
+    }
   }
 
   .stats-card:hover {
@@ -134,39 +153,197 @@
   }
 
   .stats-icon {
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  @media (min-width: 576px) {
+    .stats-icon {
+      width: 56px;
+      height: 56px;
+      font-size: 1.375rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .stats-icon {
+      width: 60px;
+      height: 60px;
+      font-size: 1.5rem;
+    }
   }
 
   .stats-number {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.2;
+    word-break: break-all;
   }
 
-  .admin-table {
+  @media (min-width: 576px) {
+    .stats-number {
+      font-size: 1.75rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .stats-number {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .stats-card p.small {
+    font-size: 0.75rem;
+  }
+
+  @media (min-width: 576px) {
+    .stats-card p.small {
+      font-size: 0.875rem;
+    }
+  }
+
+  /* Chart Container */
+  .chart-container {
     background: var(--color-white);
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    padding: 1rem;
     box-shadow: var(--shadow-sm);
     border: var(--border-light);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (min-width: 768px) {
+    .chart-container {
+      padding: 1.5rem;
+    }
+  }
+
+  .chart-wrapper {
+    flex: 1;
+    position: relative;
+    min-height: 200px;
+  }
+
+  @media (max-width: 767.98px) {
+    .chart-wrapper {
+      min-height: 180px;
+    }
+  }
+
+  /* Recent Activity */
+  .recent-activity-container {
+    max-height: 300px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (min-width: 768px) {
+    .recent-activity-container {
+      max-height: 400px;
+    }
+  }
+
+  .activity-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--color-gray-200);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  @media (min-width: 576px) {
+    .activity-item {
+      padding: 0.75rem;
+      gap: 0.75rem;
+    }
+  }
+
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+
+  .activity-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+  }
+
+  @media (min-width: 576px) {
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      font-size: 0.875rem;
+    }
+  }
+
+  .activity-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .activity-message {
+    font-size: 0.75rem;
+    margin-bottom: 0.125rem;
+    word-wrap: break-word;
+    line-height: 1.3;
+  }
+
+  @media (min-width: 576px) {
+    .activity-message {
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+    }
+  }
+
+  .activity-time {
+    font-size: 0.65rem;
+    color: var(--color-gray-500);
+  }
+
+  @media (min-width: 576px) {
+    .activity-time {
+      font-size: 0.75rem;
+    }
+  }
+
+  /* Buttons */
+  .btn-admin, .btn-outline-admin {
+    border-radius: var(--radius-md);
+    padding: 0.375rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 576px) {
+    .btn-admin, .btn-outline-admin {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+    }
   }
 
   .btn-admin {
     background: var(--color-primary);
     border: none;
     color: var(--color-white);
-    border-radius: var(--radius-md);
-    padding: 0.5rem 1rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    transition: all 0.3s ease;
   }
 
   .btn-admin:hover {
@@ -180,11 +357,6 @@
     background: transparent;
     border: 1px solid var(--color-primary);
     color: var(--color-primary);
-    border-radius: var(--radius-md);
-    padding: 0.5rem 1rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    transition: all 0.3s ease;
   }
 
   .btn-outline-admin:hover {
@@ -192,116 +364,84 @@
     color: var(--color-white);
   }
 
-  .chart-container {
-    background: var(--color-white);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    box-shadow: var(--shadow-sm);
-    border: var(--border-light);
-    height: 100%;
-  }
-
-  .recent-activity-container {
-    max-height: 400px;
-    overflow-y: auto;
-  }
-
-  .activity-item {
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--color-gray-200);
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .activity-item:last-child {
-    border-bottom: none;
-  }
-
-  .activity-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.875rem;
-    flex-shrink: 0;
-  }
-
-  .activity-content {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .activity-message {
-    font-size: 0.875rem;
-    margin-bottom: 0.25rem;
-    word-wrap: break-word;
-  }
-
-  .activity-time {
+  /* Form Controls */
+  .form-select-sm {
     font-size: 0.75rem;
-    color: var(--color-gray-500);
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
   }
 
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .stats-card {
-      padding: 1rem;
-    }
-
-    .stats-number {
-      font-size: 1.5rem;
-    }
-
-    .stats-icon {
-      width: 50px;
-      height: 50px;
-      font-size: 1.25rem;
-    }
-
-    .chart-container {
-      padding: 1rem;
-    }
-
-    .activity-item {
-      padding: 0.5rem;
-    }
-
-    .activity-message {
-      font-size: 0.8rem;
-    }
-
-    .activity-time {
-      font-size: 0.7rem;
-    }
-
-    .btn-admin,
-    .btn-outline-admin {
-      font-size: 0.8rem;
-      padding: 0.75rem 0.5rem;
+  @media (min-width: 576px) {
+    .form-select-sm {
+      font-size: 0.875rem;
     }
   }
 
-  @media (max-width: 576px) {
-    .stats-card {
-      text-align: center;
+  /* Typography adjustments for mobile */
+  @media (max-width: 575.98px) {
+    h5 {
+      font-size: 1rem;
     }
-
-    .stats-icon {
-      margin: 0 auto 1rem auto;
+    
+    .fw-semibold {
+      font-weight: 600 !important;
     }
+  }
 
-    .row.g-3 > .col-12 {
-      margin-bottom: 0.5rem;
+  /* Gap adjustments */
+  .row.g-2 {
+    --bs-gutter-x: 0.5rem;
+    --bs-gutter-y: 0.5rem;
+  }
+
+  .row.g-3 {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: 1rem;
+  }
+
+  /* Spacing utilities for mobile */
+  .mb-3 {
+    margin-bottom: 1rem !important;
+  }
+
+  @media (max-width: 767.98px) {
+    .mb-3 {
+      margin-bottom: 0.75rem !important;
+    }
+  }
+
+  /* Improve touch targets on mobile */
+  @media (max-width: 767.98px) {
+    select, button {
+      min-height: 38px;
+    }
+    
+    .form-select {
+      background-position: right 0.5rem center;
+      background-size: 12px 12px;
+    }
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Loading spinner adjustments */
+  .spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  @media (max-width: 767.98px) {
+    .spinner-border {
+      width: 1.25rem;
+      height: 1.25rem;
     }
   }
 </style>
 
 <script>
-
-  
   let monthlyChart;
 
   // Check if Chart.js is loaded
@@ -403,6 +543,7 @@
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             display: true,

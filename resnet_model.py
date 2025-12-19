@@ -5,7 +5,7 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Model
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity as cos_sim
-from utils import send_email   # ✅ Import helper
+from utils import send_email
 
 # -----------------------------
 # Load ResNet50 once at startup
@@ -47,7 +47,6 @@ def text_similarity(text1, text2):
     
     docs = [clean_text(text1), clean_text(text2)]
     
-    # Handle case where one or both texts are empty after cleaning
     if not docs[0] or not docs[1]:
         return 0.0
     
@@ -64,32 +63,37 @@ def enhanced_text_similarity(details1, details2):
     - Category exact match: 20% bonus
     - Location similarity: 20% weight
     - Title + Description: 60% weight
-    
-    Returns: Score between 0 and 1
     """
     
-    # 1. Exact category match = bonus points
     category_bonus = 0.0
     if details1.get('category') and details2.get('category'):
         if clean_text(details1['category']) == clean_text(details2['category']):
             category_bonus = 0.2
     
-    # 2. Location similarity (important for physical items)
     location_score = 0.0
     loc1 = details1.get('location', '')
     loc2 = details2.get('location', '')
     if loc1 and loc2:
         location_score = text_similarity(loc1, loc2) * 0.2
     
-    # 3. Title + Description content matching (main matching)
     content1 = f"{details1.get('title', '')} {details1.get('description', '')}"
     content2 = f"{details2.get('title', '')} {details2.get('description', '')}"
     content_score = text_similarity(content1, content2) * 0.6
     
-    # Combine all scores (cap at 1.0)
     final_text_score = min(1.0, category_bonus + location_score + content_score)
     
     return final_text_score
+
+def get_match_confidence_level(score):
+    """Convert numeric score to confidence level description"""
+    if score >= 0.8:
+        return "Very High", "🟢"
+    elif score >= 0.65:
+        return "High", "🟡"
+    elif score >= 0.5:
+        return "Moderate", "🟠"
+    else:
+        return "Low", "🔴"
 
 # -----------------------------
 # Combined Auto Match with Dynamic Weights
@@ -101,30 +105,27 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
     """
     opposite_type = 'found' if type_ == 'lost' else 'lost'
 
-     # ✅ FIXED: Use LEFT JOIN to include items without images
     if opposite_type == 'lost':
-        # When matching against lost items, only include paid lost items
         cursor.execute('''
             SELECT i.id, i.user_id, i.title, i.description, i.category, i.location_reported,
                    img.ai_features,
                    CONCAT(u.first_name, ' ', u.last_name) AS fullname,
                    u.email, u.phone
             FROM items i
-            LEFT JOIN images img ON i.id = img.item_id  # <-- CHANGED TO LEFT JOIN
+            LEFT JOIN images img ON i.id = img.item_id
             JOIN users u ON i.user_id = u.id
             WHERE i.type = 'lost'
             AND i.status NOT IN ('claimed', 'returned', 'resolved', 'Claimed', 'Returned', 'Resolved')
-            AND i.payment_status = 'paid'  -- Only paid lost items
+            AND i.payment_status = 'paid'
         ''')
     else:
-        # For found items, no payment restriction
         cursor.execute('''
             SELECT i.id, i.user_id, i.title, i.description, i.category, i.location_reported,
                    img.ai_features,
                    CONCAT(u.first_name, ' ', u.last_name) AS fullname,
                    u.email, u.phone
             FROM items i
-            LEFT JOIN images img ON i.id = img.item_id  # <-- CHANGED TO LEFT JOIN
+            LEFT JOIN images img ON i.id = img.item_id
             JOIN users u ON i.user_id = u.id
             WHERE i.type = 'found'
             AND i.status NOT IN ('claimed', 'returned', 'resolved', 'Claimed', 'Returned', 'Resolved')
@@ -134,34 +135,27 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
 
     print(f"🔍 Comparing new {type_} item {new_item_id} against {len(others)} active {opposite_type} items")
     
-    # Determine if new item has image
     new_item_has_image = new_features is not None
     
-    # Set threshold based on whether new item has image
     if threshold is None:
         threshold = 0.4 if new_item_has_image else 0.5
     
     for other in others:
         try:
-            # ---- Determine weights based on image availability ----
             other_has_image = other['ai_features'] is not None
             
-            # Case 1: Both items have images (70% image, 30% text)
             if new_item_has_image and other_has_image:
                 image_weight = 0.7
                 text_weight = 0.3
-            # Case 2: New item has image but other doesn't (use default 60%/40%)
             elif new_item_has_image and not other_has_image:
                 image_weight = 0.6
                 text_weight = 0.4
-            # Case 3: New item has NO image (100% text)
             else:
                 image_weight = 0.0
                 text_weight = 1.0
             
             print(f"Weights for item {other['id']}: Image={image_weight}, Text={text_weight}")
             
-            # ---- Image similarity ----
             image_score = 0.0
             if new_item_has_image and other_has_image:
                 try:
@@ -170,7 +164,6 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                 except:
                     image_score = 0.0
             
-            # ---- Enhanced text similarity ----
             other_details = {
                 'title': other['title'],
                 'description': other['description'],
@@ -179,7 +172,6 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
             }
             text_score = enhanced_text_similarity(new_details, other_details)
             
-            # ---- Combined score with dynamic weights ----
             final_score = (image_weight * image_score) + (text_weight * text_score)
 
             print(f"Comparing: {new_details['title']} (ID:{new_item_id}) vs {other['title']} (ID:{other['id']})")
@@ -189,7 +181,6 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                 lost_id = new_item_id if type_ == 'lost' else other['id']
                 found_id = other['id'] if type_ == 'lost' else new_item_id
 
-                # ✅ IMPROVED: Better duplicate check
                 cursor.execute('''
                     SELECT id FROM ai_matches 
                     WHERE (lost_item_id = %s AND found_item_id = %s)
@@ -203,7 +194,6 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                     print(f"⚠️ Match already exists between items {lost_id} and {found_id} (Match ID: {existing_match['id']}), skipping...")
                     continue
 
-                # Insert into ai_matches
                 cursor.execute('''
                     INSERT INTO ai_matches (lost_item_id, found_item_id, match_score, status)
                     VALUES (%s, %s, %s, 'pending')
@@ -212,7 +202,6 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
 
                 match_id = cursor.lastrowid 
 
-                # ---- Get both users ----
                 cursor.execute("""
                     SELECT id, CONCAT(first_name, ' ', u.last_name) AS fullname, u.email, u.phone
                     FROM users u WHERE u.id = (SELECT user_id FROM items WHERE id = %s)
@@ -225,28 +214,49 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                 """, (found_id,))
                 found_user = cursor.fetchone()
 
-                # ---- Get item titles ----
                 lost_title = new_details['title'] if type_ == 'lost' else other['title']
                 found_title = other['title'] if type_ == 'lost' else new_details['title']
+                
+                confidence_level, confidence_icon = get_match_confidence_level(final_score)
 
-                # ---- Notifications ----
-                message_text_lost = (
-                    f"A possible match has been found for your lost item: {lost_title}\n\n"
-                    f"Match Score: {round(float(final_score) * 100)}%\n"
-                    f"Found Item: {found_title}\n"
-                    f"Found By: {found_user['fullname']}\n"
-                    f"Email: {found_user['email']}\n"
-                    f"Contact: {found_user['phone']}"
-                )
+                # Enhanced notification messages
+                message_text_lost = f"""🎯 POTENTIAL MATCH FOUND
 
-                message_text_found = (
-                    f"A possible match has been found for your found item: {found_title}\n\n"
-                    f"Match Score: {round(float(final_score) * 100)}%\n"
-                    f"Lost Item: {lost_title}\n"
-                    f"Lost By: {lost_user['fullname']}\n"
-                    f"Email: {lost_user['email']}\n"
-                    f"Contact: {lost_user['phone']}"
-                )
+{confidence_icon} Match Confidence: {confidence_level} ({round(float(final_score) * 100)}%)
+
+📦 Your Lost Item: {lost_title}
+✅ Potentially Found: {found_title}
+
+👤 Found By: {found_user['fullname']}
+📧 Email: {found_user['email']}
+📱 Phone: {found_user['phone']}
+
+Next Steps:
+• Review the match details carefully
+• Contact the finder to verify the item
+• Arrange a safe meeting location
+• Confirm item identity before meeting
+
+⚠️ Safety Reminder: Always meet in public places and verify item details before any exchange."""
+
+                message_text_found = f"""🎯 POTENTIAL MATCH FOUND
+
+{confidence_icon} Match Confidence: {confidence_level} ({round(float(final_score) * 100)}%)
+
+📦 Your Found Item: {found_title}
+🔍 Potentially Matches: {lost_title}
+
+👤 Lost By: {lost_user['fullname']}
+📧 Email: {lost_user['email']}
+📱 Phone: {lost_user['phone']}
+
+Next Steps:
+• Review the match details carefully
+• Wait for the owner to contact you
+• Verify ownership before returning
+• Arrange a safe meeting location
+
+⚠️ Safety Reminder: Always meet in public places and ask for proof of ownership before returning items."""
 
                 cursor.execute('''
                     INSERT INTO notifications (user_id, item_id, match_id, type, message, is_read, sent_at)
@@ -259,32 +269,83 @@ def auto_match(new_item_id, type_, new_features, new_details, cursor, mysql, mai
                 ''', (found_user['id'], found_id, match_id, message_text_found))
                 mysql.connection.commit()
 
-                # ---- Email ----
-                subject = "🔔 Reunited: Possible Item Match Found!"
+                # Enhanced email
+                subject = f"🎯 Reunited Alert: {confidence_level} Confidence Match Found!"
                 body = f"""
-Hello {lost_user['fullname']} and {found_user['fullname']},
-
-A possible match has been found in Reunited! 🎉
-
-Match Confidence: {round(float(final_score) * 100)}%
-
-Lost Item: {lost_title}
-Found Item: {found_title}
-
-For your reference, here are the contact details:
-
-👤 {lost_user['fullname']} (Lost Item)
-📧 {lost_user['email']}
-📱 {lost_user['phone']}
-
-👤 {found_user['fullname']} (Found Item)
-📧 {found_user['email']}
-📱 {found_user['phone']}
-
-Please check your Reunited app to view full details.
-
-Best regards,
-Reunited Team
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .match-box {{ background: white; padding: 20px; margin: 20px 0; border-left: 4px solid #667eea; border-radius: 5px; }}
+        .confidence {{ font-size: 24px; font-weight: bold; color: #667eea; }}
+        .contact-card {{ background: #fff; border: 1px solid #e0e0e0; padding: 15px; margin: 10px 0; border-radius: 5px; }}
+        .safety-notice {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }}
+        .btn {{ display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Potential Match Found!</h1>
+            <p>Reunited AI has identified a possible match</p>
+        </div>
+        
+        <div class="content">
+            <div class="match-box">
+                <p class="confidence">{confidence_icon} {confidence_level} Confidence Match</p>
+                <p style="font-size: 18px; color: #666;">Match Score: {round(float(final_score) * 100)}%</p>
+            </div>
+            
+            <h2>📦 Item Details</h2>
+            <div class="contact-card">
+                <p><strong>Lost Item:</strong> {lost_title}</p>
+                <p><strong>Found Item:</strong> {found_title}</p>
+            </div>
+            
+            <h2>👥 Contact Information</h2>
+            
+            <div class="contact-card">
+                <h3>🔍 Person Who Lost Item</h3>
+                <p><strong>Name:</strong> {lost_user['fullname']}</p>
+                <p><strong>Email:</strong> {lost_user['email']}</p>
+                <p><strong>Phone:</strong> {lost_user['phone']}</p>
+            </div>
+            
+            <div class="contact-card">
+                <h3>✅ Person Who Found Item</h3>
+                <p><strong>Name:</strong> {found_user['fullname']}</p>
+                <p><strong>Email:</strong> {found_user['email']}</p>
+                <p><strong>Phone:</strong> {found_user['phone']}</p>
+            </div>
+            
+            <div class="safety-notice">
+                <h3>⚠️ Safety Guidelines</h3>
+                <ul>
+                    <li>Always meet in well-lit public places</li>
+                    <li>Verify item details before meeting</li>
+                    <li>Ask for additional proof of ownership</li>
+                    <li>Bring a friend if possible</li>
+                    <li>Never pay fees upfront</li>
+                    <li>Trust your instincts</li>
+                </ul>
+            </div>
+            
+            <center>
+                <a href="https://reunited.com/dashboard" class="btn">View Match Details</a>
+            </center>
+            
+            <p style="margin-top: 30px; color: #666; font-size: 14px;">
+                This is an automated match generated by Reunited's AI system. 
+                Please verify all details before proceeding with any exchange.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
                 """
 
                 send_email(mail, subject, [lost_user['email'], found_user['email']], body)

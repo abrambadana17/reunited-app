@@ -3287,24 +3287,195 @@ def match():
         flash("Please log in to view matches.", "danger")
         return redirect(url_for("login_page"))
 
-    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("""SELECT m.id, m.match_score, m.match_at, m.status, lost.id AS lost_id, lost.title AS lost_title, lost.description AS lost_description, lost.category AS lost_category, lost.date_reported AS lost_date_reported, u1.first_name AS lost_first_name, u1.last_name AS lost_last_name, u1.profile_picture AS lost_profile, lost_img.file_path AS lost_image, found.id AS found_id, found.title AS found_title, found.description AS found_description, found.category AS found_category, found.date_reported AS found_date_reported, u2.first_name AS found_first_name, u2.last_name AS found_last_name, u2.profile_picture AS found_profile, found_img.file_path AS found_image FROM ai_matches m JOIN items lost ON m.lost_item_id = lost.id JOIN users u1 ON lost.user_id = u1.id LEFT JOIN images lost_img ON lost.id = lost_img.item_id JOIN items found ON m.found_item_id = found.id JOIN users u2 ON found.user_id = u2.id LEFT JOIN images found_img ON found.id = found_img.item_id WHERE lost.user_id = %s OR found.user_id = %s ORDER BY m.match_at DESC""", (session['user_id'], session['user_id']))
-    
-    matches = cursor.fetchall()
-    cursor.close()
-
-    # Normalize image paths for Flask
-    for m in matches:
-        if m['lost_image']:
-            m['lost_image'] = m['lost_image'].replace("\\", "/")  # Windows → web
-            if m['lost_image'].startswith("static/"):
-                m['lost_image'] = m['lost_image'][7:]  # remove "static/"
-        if m['found_image']:
-            m['found_image'] = m['found_image'].replace("\\", "/")
-            if m['found_image'].startswith("static/"):
-                m['found_image'] = m['found_image'][7:]
-
-    return render_template("match.html", matches=matches, active_page="match")
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # First, check and expire old matches (older than 7 days)
+        # Call the function directly
+        try:
+            expire_old_matches()
+        except Exception as e:
+            print(f"Warning: Could not expire old matches: {e}")
+        
+        # Get all matches for the current user with proper image paths
+        # FIXED: Added missing table alias for m.status
+        cursor.execute("""
+            SELECT 
+                m.id, 
+                m.match_score, 
+                m.match_at, 
+                m.status,
+                
+                -- Lost Item Details
+                lost.id AS lost_id, 
+                lost.title AS lost_title, 
+                lost.description AS lost_description, 
+                lost.category AS lost_category, 
+                lost.date_reported AS lost_date_reported,
+                lost.status AS lost_item_status,
+                lost.user_id AS lost_user_id,
+                
+                -- Lost User Details
+                u1.first_name AS lost_first_name, 
+                u1.last_name AS lost_last_name, 
+                u1.profile_picture AS lost_profile,
+                
+                -- Lost Image
+                lost_img.file_path AS lost_image,
+                
+                -- Found Item Details
+                found.id AS found_id, 
+                found.title AS found_title, 
+                found.description AS found_description, 
+                found.category AS found_category, 
+                found.date_reported AS found_date_reported,
+                found.status AS found_item_status,
+                found.user_id AS found_user_id,
+                
+                -- Found User Details
+                u2.first_name AS found_first_name, 
+                u2.last_name AS found_last_name, 
+                u2.profile_picture AS found_profile,
+                
+                -- Found Image
+                found_img.file_path AS found_image
+                
+            FROM ai_matches m 
+            
+            -- Lost Item Join
+            JOIN items lost ON m.lost_item_id = lost.id 
+            JOIN users u1 ON lost.user_id = u1.id 
+            LEFT JOIN images lost_img ON lost.id = lost_img.item_id 
+            
+            -- Found Item Join
+            JOIN items found ON m.found_item_id = found.id 
+            JOIN users u2 ON found.user_id = u2.id 
+            LEFT JOIN images found_img ON found.id = found_img.item_id 
+            
+            -- User Filter
+            WHERE (lost.user_id = %s OR found.user_id = %s) 
+            
+            -- Status Filter (include all statuses)
+            ORDER BY 
+                CASE 
+                    WHEN m.status = 'pending' THEN 1
+                    WHEN m.status = 'resolved' THEN 2
+                    WHEN m.status = 'rejected' THEN 3
+                    ELSE 4
+                END,
+                m.match_at DESC
+        """, (session['user_id'], session['user_id']))
+        
+        matches = cursor.fetchall()
+        
+        # Process and normalize image paths for display
+        for match in matches:
+            # Lost image path processing
+            if match.get('lost_image'):
+                lost_image = match['lost_image']
+                if isinstance(lost_image, str):
+                    lost_image = lost_image.replace("\\", "/")
+                    if lost_image.startswith("static/"):
+                        match['lost_image'] = lost_image[7:]
+                    elif lost_image.startswith("uploads/"):
+                        match['lost_image'] = "static/" + lost_image
+                    else:
+                        match['lost_image'] = lost_image
+            
+            # Found image path processing
+            if match.get('found_image'):
+                found_image = match['found_image']
+                if isinstance(found_image, str):
+                    found_image = found_image.replace("\\", "/")
+                    if found_image.startswith("static/"):
+                        match['found_image'] = found_image[7:]
+                    elif found_image.startswith("uploads/"):
+                        match['found_image'] = "static/" + found_image
+                    else:
+                        match['found_image'] = found_image
+            
+            # Format dates safely
+            # Lost date
+            if match.get('lost_date_reported'):
+                try:
+                    if isinstance(match['lost_date_reported'], datetime):
+                        match['lost_date_formatted'] = match['lost_date_reported'].strftime('%B %d, %Y at %I:%M %p')
+                    else:
+                        # Try to parse string date
+                        date_obj = datetime.strptime(str(match['lost_date_reported']), '%Y-%m-%d %H:%M:%S')
+                        match['lost_date_formatted'] = date_obj.strftime('%B %d, %Y at %I:%M %p')
+                except:
+                    match['lost_date_formatted'] = 'Date not available'
+            else:
+                match['lost_date_formatted'] = 'Date not available'
+                
+            # Found date
+            if match.get('found_date_reported'):
+                try:
+                    if isinstance(match['found_date_reported'], datetime):
+                        match['found_date_formatted'] = match['found_date_reported'].strftime('%B %d, %Y at %I:%M %p')
+                    else:
+                        # Try to parse string date
+                        date_obj = datetime.strptime(str(match['found_date_reported']), '%Y-%m-%d %H:%M:%S')
+                        match['found_date_formatted'] = date_obj.strftime('%B %d, %Y at %I:%M %p')
+                except:
+                    match['found_date_formatted'] = 'Date not available'
+            else:
+                match['found_date_formatted'] = 'Date not available'
+                
+            # Match date
+            if match.get('match_at'):
+                try:
+                    if isinstance(match['match_at'], datetime):
+                        match['match_date_formatted'] = match['match_at'].strftime('%B %d, %Y at %I:%M %p')
+                        match['match_date_short'] = match['match_at'].strftime('%b %d, %Y')
+                    else:
+                        # Try to parse string date
+                        date_obj = datetime.strptime(str(match['match_at']), '%Y-%m-%d %H:%M:%S')
+                        match['match_date_formatted'] = date_obj.strftime('%B %d, %Y at %I:%M %p')
+                        match['match_date_short'] = date_obj.strftime('%b %d, %Y')
+                except:
+                    match['match_date_formatted'] = 'Date not available'
+                    match['match_date_short'] = 'N/A'
+            else:
+                match['match_date_formatted'] = 'Date not available'
+                match['match_date_short'] = 'N/A'
+                
+            # Handle None values for names
+            if not match.get('lost_first_name'):
+                match['lost_first_name'] = 'Unknown'
+            if not match.get('lost_last_name'):
+                match['lost_last_name'] = 'User'
+            if not match.get('found_first_name'):
+                match['found_first_name'] = 'Unknown'
+            if not match.get('found_last_name'):
+                match['found_last_name'] = 'User'
+        
+        # Count matches by status for statistics
+        stats = {
+            'total': len(matches),
+            'pending': sum(1 for m in matches if m.get('status') == 'pending'),
+            'resolved': sum(1 for m in matches if m.get('status') == 'resolved'),
+            'rejected': sum(1 for m in matches if m.get('status') == 'rejected')
+        }
+        
+        cursor.close()
+        
+        return render_template("match.html", 
+                             matches=matches, 
+                             stats=stats,
+                             active_page="match")
+        
+    except Exception as e:
+        print(f"❌ Error in match route: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Return template with empty data instead of crashing
+        return render_template("match.html", 
+                             matches=[], 
+                             stats={'total': 0, 'pending': 0, 'resolved': 0, 'rejected': 0},
+                             active_page="match")
 
 @app.route('/api/match-details/<int:match_id>')
 def get_match_details(match_id):
@@ -3337,6 +3508,189 @@ def get_match_details(match_id):
         
     except Exception as e:
         return jsonify({'success': False, 'errors': [f'Server error: {str(e)}']}), 500
+    
+def expire_old_matches():
+    """Automatically reject matches that are unresolved after 7 days"""
+    try:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # Find matches that are pending and older than 7 days
+        cursor.execute("""
+            SELECT id, lost_item_id, found_item_id, match_at 
+            FROM ai_matches 
+            WHERE status = 'pending' 
+            AND match_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
+        """)
+        
+        old_matches = cursor.fetchall()
+        
+        for match in old_matches:
+            print(f"🔍 Auto-rejecting match {match['id']} (created {match['match_at']})")
+            
+            # Update match status to rejected
+            cursor.execute("""
+                UPDATE ai_matches 
+                SET status = 'rejected' 
+                WHERE id = %s
+            """, (match['id'],))
+            
+            # Send notifications to both users
+            send_match_expired_notifications(match['id'], cursor)
+        
+        mysql.connection.commit()
+        cursor.close()
+        
+        if old_matches:
+            print(f"✅ Auto-rejected {len(old_matches)} expired matches")
+        else:
+            print("✅ No expired matches found")
+            
+    except Exception as e:
+        print(f"❌ Error expiring old matches: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+def send_match_expired_notifications(match_id, cursor):
+    """Send notifications when a match expires"""
+    try:
+        # Get match details with user info
+        cursor.execute("""
+            SELECT 
+                m.id as match_id,
+                lost.id as lost_item_id, lost.title as lost_title, lost.user_id as lost_user_id,
+                found.id as found_item_id, found.title as found_title, found.user_id as found_user_id,
+                u1.email as lost_email, u1.first_name as lost_first_name,
+                u2.email as found_email, u2.first_name as found_first_name
+            FROM ai_matches m
+            JOIN items lost ON m.lost_item_id = lost.id
+            JOIN items found ON m.found_item_id = found.id
+            JOIN users u1 ON lost.user_id = u1.id
+            JOIN users u2 ON found.user_id = u2.id
+            WHERE m.id = %s
+        """, (match_id,))
+        
+        match = cursor.fetchone()
+        
+        if not match:
+            return
+        
+        message = f"Match between '{match['lost_title']}' and '{match['found_title']}' has expired after 7 days without resolution."
+        
+        # Notify lost item owner
+        cursor.execute("""
+            INSERT INTO notifications (user_id, type, message, match_id, sent_at, is_read)
+            VALUES (%s, 'match_expired', %s, %s, NOW(), 0)
+        """, (match['lost_user_id'], message, match_id))
+        
+        # Notify found item owner
+        cursor.execute("""
+            INSERT INTO notifications (user_id, type, message, match_id, sent_at, is_read)
+            VALUES (%s, 'match_expired', %s, %s, NOW(), 0)
+        """, (match['found_user_id'], message, match_id))
+        
+        # Send email notifications (optional)
+        send_match_expired_email(match)
+        
+    except Exception as e:
+        print(f"Error sending match expired notifications: {e}")
+        
+
+def send_match_expired_email(match_data):
+    """Send email notification for expired match"""
+    try:
+        # Email for lost item owner
+        msg_lost = Message(
+            subject='Match Expired - Reunited',
+            recipients=[match_data['lost_email']],
+            html=f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #1E3A8A; margin-bottom: 10px;">🤝 Reunited</h1>
+                    <h2 style="color: #374151; font-weight: normal;">Match Expired</h2>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 30px; border-radius: 10px;">
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                        Hi {match_data['lost_first_name']},
+                    </p>
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                        The match between your lost item <strong>"{match_data['lost_title']}"</strong> 
+                        and the found item <strong>"{match_data['found_title']}"</strong> has expired.
+                    </p>
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                        This match remained unresolved for 7 days and has been automatically closed.
+                    </p>
+                    
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="color: #856404; margin: 0;">
+                            <i class="fas fa-clock me-2"></i>
+                            You can always create new matches or post your item again if it's still missing.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            '''
+        )
+        
+        # Email for found item owner (similar but with different wording)
+        msg_found = Message(
+            subject='Match Expired - Reunited',
+            recipients=[match_data['found_email']],
+            html=f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #1E3A8A; margin-bottom: 10px;">🤝 Reunited</h1>
+                    <h2 style="color: #374151; font-weight: normal;">Match Expired</h2>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 30px; border-radius: 10px;">
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                        Hi {match_data['found_first_name']},
+                    </p>
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                        The match between the found item <strong>"{match_data['found_title']}"</strong> 
+                        and the lost item <strong>"{match_data['lost_title']}"</strong> has expired.
+                    </p>
+                    <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+                        This match remained unresolved for 7 days and has been automatically closed.
+                    </p>
+                    
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="color: #856404; margin: 0;">
+                            <i class="fas fa-clock me-2"></i>
+                            You can keep the item posted or mark it as available for other potential matches.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            '''
+        )
+        
+        # Send emails
+        mail.send(msg_lost)
+        mail.send(msg_found)
+        
+        return True
+    except Exception as e:
+        print(f"Error sending match expired emails: {e}")
+        return False
+
+    except Exception as e:
+        print(f"Error sending match expired notifications: {e}")
+
+@app.route('/api/check-match-expiry', methods=['POST'])
+def check_match_expiry():
+    """API endpoint to check and expire old matches"""
+    # Add security token check
+    auth_token = request.headers.get('X-Auth-Token')
+    if auth_token != os.getenv('CRON_SECRET_TOKEN', 'your-secret-token'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        expire_old_matches()
+        return jsonify({'success': True, 'message': 'Match expiry check completed'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_otp():
     """Generate a 6-digit OTP"""
